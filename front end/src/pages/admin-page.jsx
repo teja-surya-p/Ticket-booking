@@ -15,11 +15,13 @@ export function AdminPage({
   movies,
   onViewMovie,
   onCreateMovie,
+  onUpdateMovie,
   onDeleteMovie
 }) {
   const {
     showAddDialog,
     setShowAddDialog,
+    editingMovie,
     filterStatus,
     setFilterStatus,
     form,
@@ -40,13 +42,16 @@ export function AdminPage({
     handleChange,
     handleToggleGenre,
     handleFileChange,
+    openCreateDialog,
+    openEditDialog,
     closeDialog,
-    handleCreateMovie,
+    handleSaveMovie,
     copyIssueReport,
     handleDeleteMovie
   } = useAdminPageController({
     movies,
     onCreateMovie,
+    onUpdateMovie,
     onDeleteMovie
   });
 
@@ -109,7 +114,7 @@ export function AdminPage({
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={() => setShowAddDialog(true)} className={"admin-add-button"}>
+        <Button onClick={openCreateDialog} className={"admin-add-button"}>
           <Plus className={"admin-icon"} />
           Add Movie
         </Button>
@@ -148,7 +153,7 @@ export function AdminPage({
                 <Button variant="ghost" size="sm" onClick={() => onViewMovie(movie)} aria-label={`View ${movie.title}`}>
                   <Eye className={"admin-icon"} />
                 </Button>
-                <Button variant="ghost" size="sm" aria-label={`Edit ${movie.title}`}>
+                <Button variant="ghost" size="sm" onClick={() => openEditDialog(movie)} aria-label={`Edit ${movie.title}`}>
                   <Edit2 className={"admin-icon"} />
                 </Button>
                 <Button variant="ghost" size="sm" className={"admin-delete-button"} onClick={() => handleDeleteMovie(movie)} disabled={deletingMovieId === movie.id || isSubmitting} aria-label={`Delete ${movie.title}`}>
@@ -226,7 +231,7 @@ export function AdminPage({
                       <Button variant="ghost" size="icon-sm" onClick={() => onViewMovie(movie)} aria-label={`View ${movie.title}`}>
                         <Eye className={"admin-icon"} />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" aria-label={`Edit ${movie.title}`}>
+                      <Button variant="ghost" size="icon-sm" onClick={() => openEditDialog(movie)} aria-label={`Edit ${movie.title}`}>
                         <Edit2 className={"admin-icon"} />
                       </Button>
                       <Button variant="ghost" size="icon-sm" className={"admin-delete-button"} onClick={() => handleDeleteMovie(movie)} disabled={deletingMovieId === movie.id || isSubmitting} aria-label={`Delete ${movie.title}`}>
@@ -244,9 +249,11 @@ export function AdminPage({
       <Dialog open={showAddDialog} onOpenChange={open => open ? setShowAddDialog(true) : closeDialog()}>
         <DialogContent className={"admin-dialog"}>
           <DialogHeader>
-            <DialogTitle>Add New Movie</DialogTitle>
+            <DialogTitle>{editingMovie ? "Edit Movie" : "Add New Movie"}</DialogTitle>
             <DialogDescription>
-              Upload poster, trailer video, and trailer thumbnail. Use JPG, PNG, or WebP for images and MP4, MOV, or M4V for trailers so Safari can render them reliably.
+              {editingMovie
+                ? "Update any movie fields below. File uploads are optional while editing, and unchanged assets will be kept."
+                : "Upload poster, trailer video, and trailer thumbnail. Use JPG, PNG, or WebP for images and MP4, MOV, or M4V for trailers so Safari can render them reliably."}
             </DialogDescription>
           </DialogHeader>
 
@@ -368,31 +375,31 @@ export function AdminPage({
 
               <div className={"admin-form-field"}>
                 <label className={"admin-assets-label"}>
-                  Poster Image
+                  {editingMovie ? "Poster Image Replacement" : "Poster Image"}
                 </label>
                 <Input type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={handleFileChange("poster")} />
                 <p className={"admin-muted-text"}>
-                  {assets.poster?.name ?? "No file selected"}
+                  {assets.poster?.name ?? (editingMovie?.poster ? "Keep current poster" : "No file selected")}
                 </p>
               </div>
 
               <div className={"admin-form-field"}>
                 <label className={"admin-assets-label"}>
-                  Trailer Video
+                  {editingMovie ? "Trailer Video Replacement" : "Trailer Video"}
                 </label>
                 <Input type="file" accept=".mp4,.mov,.m4v,video/mp4,video/quicktime,video/x-m4v" onChange={handleFileChange("trailer")} />
                 <p className={"admin-muted-text"}>
-                  {assets.trailer?.name ?? "No file selected"}
+                  {assets.trailer?.name ?? (editingMovie?.trailerUrl ? "Keep current trailer" : "No file selected")}
                 </p>
               </div>
 
               <div className={"admin-form-field"}>
                 <label className={"admin-assets-label"}>
-                  Trailer Thumbnail Image
+                  {editingMovie ? "Trailer Thumbnail Replacement" : "Trailer Thumbnail Image"}
                 </label>
                 <Input type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={handleFileChange("trailerThumbnail")} />
                 <p className={"admin-muted-text"}>
-                  {assets.trailerThumbnail?.name ?? "No file selected"}
+                  {assets.trailerThumbnail?.name ?? (editingMovie?.trailerThumbnail ? "Keep current trailer thumbnail" : "No file selected")}
                 </p>
               </div>
             </div>
@@ -418,8 +425,12 @@ export function AdminPage({
             <Button variant="outline" onClick={closeDialog} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleCreateMovie} disabled={isSubmitting} className={"admin-submit-button"}>
-              {isSubmitting ? "Uploading & Saving..." : "Add Movie"}
+            <Button onClick={handleSaveMovie} disabled={isSubmitting} className={"admin-submit-button"}>
+              {isSubmitting
+                ? "Uploading & Saving..."
+                : editingMovie
+                  ? "Save Changes"
+                  : "Add Movie"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -433,6 +444,7 @@ export default function AdminPageRoute() {
       movies={[]}
       onViewMovie={() => {}}
       onCreateMovie={async () => {}}
+      onUpdateMovie={async () => {}}
       onDeleteMovie={async () => {}}
     />
   );

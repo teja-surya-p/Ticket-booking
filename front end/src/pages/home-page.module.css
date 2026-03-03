@@ -67,7 +67,14 @@
 }
 
 :global(.home-search-grid-single) {
-  @apply mx-auto w-full max-w-[16rem];
+  grid-template-columns: minmax(18rem, 22rem);
+  @apply justify-center;
+}
+
+@media (max-width: 639px) {
+  :global(.home-search-grid-single) {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 :global(.home-notify-copy) {

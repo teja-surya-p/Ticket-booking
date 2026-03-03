@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createMovie, deleteMovie, fetchMovies, getMeaningfulErrorMessage } from "@/services";
+import { createMovie, deleteMovie, fetchMovies, getMeaningfulErrorMessage, updateMovie } from "@/services";
 import {
   addMovieToCart,
   getCartCount,
@@ -98,6 +98,32 @@ export function useCinemaAppController() {
     setMovies((previous) => [createdMovie, ...previous]);
   };
 
+  const handleUpdateMovie = async (movieId, payload) => {
+    const updatedMovie = await updateMovie(movieId, payload);
+
+    setMovies((previous) =>
+      previous.map((movie) => (movie.id === movieId ? updatedMovie : movie))
+    );
+    setCartItems((previous) =>
+      previous.map((item) =>
+        item.movie.id === movieId
+          ? {
+              ...item,
+              movie: updatedMovie
+            }
+          : item
+      )
+    );
+    setView((previous) =>
+      previous.type === "detail" && previous.movie?.id === movieId
+        ? {
+            ...previous,
+            movie: updatedMovie
+          }
+        : previous
+    );
+  };
+
   const handleDeleteMovie = async (movieId) => {
     await deleteMovie(movieId);
     setMovies((previous) => previous.filter((movie) => movie.id !== movieId));
@@ -169,6 +195,7 @@ export function useCinemaAppController() {
     handleAddToCart,
     handleAddToCartFromCard,
     handleCreateMovie,
+    handleUpdateMovie,
     handleDeleteMovie,
     handleUpdateCartTickets,
     handleRemoveCartItem,
