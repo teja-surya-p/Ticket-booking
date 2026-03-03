@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import { buildAdminIssueReport, getMeaningfulErrorMessage } from "@/services/apiErrorUtils";
 import { uploadMovieAssetToStorage } from "@/services/firebaseStorage";
-import { formatDurationLabel, getMovieGenres, MOVIE_GENRE_OPTIONS } from "@/models/movie-model";
+import {
+  formatDurationLabel,
+  getMovieGenreList,
+  getMovieGenres,
+  MOVIE_GENRE_OPTIONS
+} from "@/models/movie-model";
 
 const initialFormState = {
   title: "",
@@ -52,8 +57,43 @@ function fileMatchesSupportedFormat(file, mimeTypes, extensions) {
   return extensions.some((extension) => fileName.endsWith(extension));
 }
 
-export function useAdminPageController({ movies, onCreateMovie, onDeleteMovie }) {
+function parseDurationParts(value) {
+  const normalized = String(value || "").trim();
+  const match = normalized.match(/^(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?$/i);
+
+  if (!match) {
+    return {
+      durationHours: "",
+      durationMinutes: ""
+    };
+  }
+
+  return {
+    durationHours: match[1] ?? "",
+    durationMinutes: match[2] ?? ""
+  };
+}
+
+function buildFormStateFromMovie(movie) {
+  const { durationHours, durationMinutes } = parseDurationParts(movie?.duration);
+
+  return {
+    title: String(movie?.title ?? ""),
+    genres: getMovieGenreList(movie),
+    rating: String(movie?.rating ?? "PG-13"),
+    status: String(movie?.status ?? "coming_soon"),
+    description: String(movie?.description ?? ""),
+    durationHours,
+    durationMinutes,
+    director: String(movie?.director ?? ""),
+    cast: Array.isArray(movie?.cast) ? movie.cast.join(", ") : "",
+    showtimes: Array.isArray(movie?.showtimes) ? movie.showtimes.join(", ") : ""
+  };
+}
+
+export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, onDeleteMovie }) {
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingMovie, setEditingMovie] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [form, setForm] = useState(initialFormState);
   const [assets, setAssets] = useState(initialAssetSelection);
@@ -112,9 +152,25 @@ export function useAdminPageController({ movies, onCreateMovie, onDeleteMovie })
   const resetFormState = () => {
     setForm(initialFormState);
     setAssets(initialAssetSelection);
+    setEditingMovie(null);
     setSubmitError(null);
     setAdminIssueReport(null);
     setCopiedIssueReport(false);
+  };
+
+  const openCreateDialog = () => {
+    resetFormState();
+    setShowAddDialog(true);
+  };
+
+  const openEditDialog = (movie) => {
+    setForm(buildFormStateFromMovie(movie));
+    setAssets(initialAssetSelection);
+    setEditingMovie(movie);
+    setSubmitError(null);
+    setAdminIssueReport(null);
+    setCopiedIssueReport(false);
+    setShowAddDialog(true);
   };
 
   const closeDialog = () => {
@@ -123,6 +179,8 @@ export function useAdminPageController({ movies, onCreateMovie, onDeleteMovie })
   };
 
   const validateBeforeSubmit = () => {
+    const isEditing = Boolean(editingMovie);
+
     if (!form.title.trim()) return "Movie title is required.";
     if (form.genres.length === 0) return "Select at least one genre.";
     if (form.status === "currently_running" && !form.rating) return "Rating is required for currently playing movies.";
@@ -134,16 +192,23 @@ export function useAdminPageController({ movies, onCreateMovie, onDeleteMovie })
       return "Duration is required.";
     }
     if (!form.director.trim()) return "Director is required.";
-    if (!assets.poster) return "Poster image is required.";
-    if (!assets.trailer) return "Trailer video is required.";
-    if (!assets.trailerThumbnail) return "Trailer thumbnail image is required.";
-    if (!fileMatchesSupportedFormat(assets.poster, SUPPORTED_POSTER_TYPES, SUPPORTED_POSTER_EXTENSIONS)) {
+    if (!isEditing && !assets.poster) return "Poster image is required.";
+    if (!isEditing && !assets.trailer) return "Trailer video is required.";
+    if (!isEditing && !assets.trailerThumbnail) return "Trailer thumbnail image is required.";
+    if (
+      assets.poster &&
+      !fileMatchesSupportedFormat(assets.poster, SUPPORTED_POSTER_TYPES, SUPPORTED_POSTER_EXTENSIONS)
+    ) {
       return "Poster must be a JPG, PNG, or WebP image for Safari compatibility.";
     }
-    if (!fileMatchesSupportedFormat(assets.trailer, SUPPORTED_TRAILER_TYPES, SUPPORTED_TRAILER_EXTENSIONS)) {
+    if (
+      assets.trailer &&
+      !fileMatchesSupportedFormat(assets.trailer, SUPPORTED_TRAILER_TYPES, SUPPORTED_TRAILER_EXTENSIONS)
+    ) {
       return "Trailer must be an MP4, MOV, or M4V video for Safari compatibility.";
     }
     if (
+      assets.trailerThumbnail &&
       !fileMatchesSupportedFormat(
         assets.trailerThumbnail,
         SUPPORTED_POSTER_TYPES,
@@ -162,7 +227,7 @@ export function useAdminPageController({ movies, onCreateMovie, onDeleteMovie })
     return null;
   };
 
-  const handleCreateMovie = async () => {
+  const handleSaveMovie = async () => {
     const validationError = validateBeforeSubmit();
     if (validationError) {
       setSubmitError(validationError);
@@ -175,9 +240,11 @@ export function useAdminPageController({ movies, onCreateMovie, onDeleteMovie })
 
     try {
       const [posterUpload, trailerUpload, trailerThumbnailUpload] = await Promise.all([
-        uploadMovieAssetToStorage(assets.poster, "poster", form.title),
-        uploadMovieAssetToStorage(assets.trailer, "trailer", form.title),
-        uploadMovieAssetToStorage(assets.trailerThumbnail, "trailer-thumbnail", form.title)
+        assets.poster ? uploadMovieAssetToStorage(assets.poster, "poster", form.title) : null,
+        assets.trailer ? uploadMovieAssetToStorage(assets.trailer, "trailer", form.title) : null,
+        assets.trailerThumbnail
+          ? uploadMovieAssetToStorage(assets.trailerThumbnail, "trailer-thumbnail", form.title)
+          : null
       ]);
 
       const payload = {
@@ -191,18 +258,23 @@ export function useAdminPageController({ movies, onCreateMovie, onDeleteMovie })
         director: form.director.trim(),
         cast: toCommaSeparatedList(form.cast),
         showtimes: toCommaSeparatedList(form.showtimes),
-        poster: posterUpload.url,
-        trailerUrl: trailerUpload.url,
-        trailerThumbnail: trailerThumbnailUpload.url
+        poster: posterUpload?.url ?? editingMovie?.poster ?? "",
+        trailerUrl: trailerUpload?.url ?? editingMovie?.trailerUrl ?? "",
+        trailerThumbnail: trailerThumbnailUpload?.url ?? editingMovie?.trailerThumbnail ?? ""
       };
 
-      await onCreateMovie(payload);
+      if (editingMovie) {
+        await onUpdateMovie?.(editingMovie.id, payload);
+      } else {
+        await onCreateMovie(payload);
+      }
       closeDialog();
     } catch (error) {
       setSubmitError(getMeaningfulErrorMessage(error, "admin"));
       setAdminIssueReport(
         buildAdminIssueReport(error, {
-          feature: "Admin - Create Movie",
+          feature: editingMovie ? "Admin - Update Movie" : "Admin - Create Movie",
+          movieId: editingMovie?.id,
           title: form.title,
           selectedFiles: {
             poster: assets.poster?.name,
@@ -265,6 +337,7 @@ export function useAdminPageController({ movies, onCreateMovie, onDeleteMovie })
   return {
     showAddDialog,
     setShowAddDialog,
+    editingMovie,
     filterStatus,
     setFilterStatus,
     form,
@@ -285,8 +358,10 @@ export function useAdminPageController({ movies, onCreateMovie, onDeleteMovie })
     handleChange,
     handleToggleGenre,
     handleFileChange,
+    openCreateDialog,
+    openEditDialog,
     closeDialog,
-    handleCreateMovie,
+    handleSaveMovie,
     copyIssueReport,
     handleDeleteMovie
   };

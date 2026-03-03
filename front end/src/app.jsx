@@ -35,6 +35,7 @@ export default function App() {
     handleAddToCart,
     handleAddToCartFromCard,
     handleCreateMovie,
+    handleUpdateMovie,
     handleDeleteMovie,
     handleUpdateCartTickets,
     handleRemoveCartItem,
@@ -65,6 +66,7 @@ export default function App() {
             movies={movies}
             onViewMovie={handleMovieClick}
             onCreateMovie={handleCreateMovie}
+            onUpdateMovie={handleUpdateMovie}
             onDeleteMovie={handleDeleteMovie}
           />
         ) : view.type === "confirmation" ? (
