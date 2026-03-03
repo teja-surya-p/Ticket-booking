@@ -1,0 +1,6 @@
+@reference "../../pages/globals.css";
+
+:global(.sonner-class-1) {
+  @apply toaster;
+}
+

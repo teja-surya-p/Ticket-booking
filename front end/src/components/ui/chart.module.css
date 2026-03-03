@@ -1,0 +1,82 @@
+@reference "../../pages/globals.css";
+
+:global(.chart-class-1) {
+  @apply [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border flex aspect-video justify-center text-xs [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden;
+}
+
+:global(.chart-class-2) {
+  @apply font-medium;
+}
+
+:global(.chart-class-3) {
+  @apply border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl;
+}
+
+:global(.chart-class-4) {
+  @apply grid gap-1.5;
+}
+
+:global(.chart-class-5) {
+  @apply [&>svg]:text-muted-foreground flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5;
+}
+
+:global(.chart-class-6) {
+  @apply items-center;
+}
+
+:global(.chart-class-7) {
+  @apply shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg);
+}
+
+:global(.chart-class-8) {
+  @apply h-2.5 w-2.5;
+}
+
+:global(.chart-class-9) {
+  @apply w-1;
+}
+
+:global(.chart-class-10) {
+  @apply w-0 border-[1.5px] border-dashed bg-transparent;
+}
+
+:global(.chart-class-11) {
+  @apply my-0.5;
+}
+
+:global(.chart-class-12) {
+  @apply flex flex-1 justify-between leading-none;
+}
+
+:global(.chart-class-13) {
+  @apply items-end;
+}
+
+:global(.chart-class-14) {
+  @apply text-muted-foreground;
+}
+
+:global(.chart-class-15) {
+  @apply text-foreground font-mono font-medium tabular-nums;
+}
+
+:global(.chart-class-16) {
+  @apply flex items-center justify-center gap-4;
+}
+
+:global(.chart-class-17) {
+  @apply pb-3;
+}
+
+:global(.chart-class-18) {
+  @apply pt-3;
+}
+
+:global(.chart-class-19) {
+  @apply [&>svg]:text-muted-foreground flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3;
+}
+
+:global(.chart-class-20) {
+  @apply h-2 w-2 shrink-0 rounded-[2px];
+}
+

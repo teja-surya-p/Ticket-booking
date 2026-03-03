@@ -1,0 +1,5 @@
+@reference "./pages/globals.css";
+
+:global(.app-shell) {
+  @apply min-h-screen bg-background;
+}

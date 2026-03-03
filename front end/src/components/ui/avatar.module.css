@@ -1,0 +1,14 @@
+@reference "../../pages/globals.css";
+
+:global(.avatar-class-1) {
+  @apply relative flex size-8 shrink-0 overflow-hidden rounded-full;
+}
+
+:global(.avatar-class-2) {
+  @apply aspect-square size-full;
+}
+
+:global(.avatar-class-3) {
+  @apply bg-muted flex size-full items-center justify-center rounded-full;
+}
+

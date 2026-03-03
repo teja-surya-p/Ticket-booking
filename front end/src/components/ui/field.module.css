@@ -1,0 +1,78 @@
+@reference "../../pages/globals.css";
+
+:global(.field-class-1) {
+  @apply flex flex-col gap-6;
+}
+
+:global(.field-class-2) {
+  @apply has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3;
+}
+
+:global(.field-class-3) {
+  @apply mb-3 font-medium;
+}
+
+:global(.field-class-4) {
+  @apply data-[variant=legend]:text-base;
+}
+
+:global(.field-class-5) {
+  @apply data-[variant=label]:text-sm;
+}
+
+:global(.field-class-6) {
+  @apply group/field-group @container/field-group flex w-full flex-col gap-7 data-[slot=checkbox-group]:gap-3 [&>[data-slot=field-group]]:gap-4;
+}
+
+:global(.field-class-7) {
+  @apply group/field-content flex flex-1 flex-col gap-1.5 leading-snug;
+}
+
+:global(.field-class-8) {
+  @apply group/field-label peer/field-label flex w-fit gap-2 leading-snug group-data-[disabled=true]/field:opacity-50;
+}
+
+:global(.field-class-9) {
+  @apply has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col has-[>[data-slot=field]]:rounded-md has-[>[data-slot=field]]:border [&>*]:data-[slot=field]:p-4;
+}
+
+:global(.field-class-10) {
+  @apply has-data-[state=checked]:bg-primary/5 has-data-[state=checked]:border-primary dark:has-data-[state=checked]:bg-primary/10;
+}
+
+:global(.field-class-11) {
+  @apply flex w-fit items-center gap-2 text-sm leading-snug font-medium group-data-[disabled=true]/field:opacity-50;
+}
+
+:global(.field-class-12) {
+  @apply text-muted-foreground text-sm leading-normal font-normal group-has-[[data-orientation=horizontal]]/field:text-balance;
+}
+
+:global(.field-class-13) {
+  @apply last:mt-0 nth-last-2:-mt-1 [[data-variant=legend]+&]:-mt-1.5;
+}
+
+:global(.field-class-14) {
+  @apply [&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4;
+}
+
+:global(.field-class-15) {
+  @apply relative -my-2 h-5 text-sm group-data-[variant=outline]/field-group:-mb-2;
+}
+
+:global(.field-class-16) {
+  @apply absolute inset-0 top-1/2;
+}
+
+:global(.field-class-17) {
+  @apply bg-background text-muted-foreground relative mx-auto block w-fit px-2;
+}
+
+:global(.field-class-18) {
+  @apply ml-4 flex list-disc flex-col gap-1;
+}
+
+:global(.field-class-19) {
+  @apply text-destructive text-sm font-normal;
+}
+

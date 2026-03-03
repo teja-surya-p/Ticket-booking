@@ -1,0 +1,6 @@
+@reference "../../pages/globals.css";
+
+:global(.skeleton-class-1) {
+  @apply bg-accent animate-pulse rounded-md;
+}
+

@@ -1,0 +1,73 @@
+@reference "../pages/globals.css";
+
+:global(.movie-card-class-1) {
+  @apply flex flex-col overflow-hidden rounded-lg border border-border bg-card text-left transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5;
+}
+
+:global(.movie-card-class-2) {
+  @apply flex flex-1 flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+}
+
+:global(.movie-card-class-3) {
+  @apply relative aspect-[2/3] w-full overflow-hidden;
+}
+
+:global(.movie-card-class-4) {
+  @apply size-full object-cover transition-transform duration-300 group-hover:scale-105;
+}
+
+:global(.movie-card-class-5) {
+  @apply absolute inset-0 bg-gradient-to-t from-card/90 via-transparent to-transparent;
+}
+
+:global(.movie-card-class-6) {
+  @apply absolute bottom-3 left-3 right-3 flex items-end justify-between;
+}
+
+:global(.movie-card-class-7) {
+  @apply bg-primary text-primary-foreground;
+}
+
+:global(.movie-card-class-8) {
+  @apply bg-secondary text-secondary-foreground;
+}
+
+:global(.movie-card-class-9) {
+  @apply flex flex-1 flex-col gap-2 p-4;
+}
+
+:global(.movie-card-class-10) {
+  @apply text-base font-semibold leading-tight text-foreground text-balance;
+}
+
+:global(.movie-card-class-11) {
+  @apply flex items-center gap-3 text-xs text-muted-foreground;
+}
+
+:global(.movie-card-class-12) {
+  @apply flex items-center gap-1;
+}
+
+:global(.movie-card-class-13) {
+  @apply size-3;
+}
+
+:global(.movie-card-class-14) {
+  @apply mt-auto line-clamp-2 text-sm text-muted-foreground leading-relaxed;
+}
+
+:global(.movie-card-class-15) {
+  @apply text-xs text-muted-foreground;
+}
+
+:global(.movie-card-class-16) {
+  @apply border-t border-border p-3;
+}
+
+:global(.movie-card-class-17) {
+  @apply w-full;
+}
+
+:global(.movie-card-class-18) {
+  @apply size-4;
+}

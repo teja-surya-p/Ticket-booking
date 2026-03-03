@@ -1,0 +1,26 @@
+@reference "../../pages/globals.css";
+
+:global(.scroll-area-class-1) {
+  @apply relative;
+}
+
+:global(.scroll-area-class-2) {
+  @apply focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1;
+}
+
+:global(.scroll-area-class-3) {
+  @apply flex touch-none p-px transition-colors select-none;
+}
+
+:global(.scroll-area-class-4) {
+  @apply h-full w-2.5 border-l border-l-transparent;
+}
+
+:global(.scroll-area-class-5) {
+  @apply h-2.5 flex-col border-t border-t-transparent;
+}
+
+:global(.scroll-area-class-6) {
+  @apply bg-border relative flex-1 rounded-full;
+}
+
