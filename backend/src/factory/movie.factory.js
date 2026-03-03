@@ -1,7 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createSeedMovies = createSeedMovies;
-const movie_entity_1 = require("../entities/movie.entity");
+import { toMovieEntity } from "../entities/movie.entity.js";
+
 function createSeedMovies() {
     const seedMovies = [
         {
@@ -145,5 +143,8 @@ function createSeedMovies() {
             cast: ['Daniel Kaluuya', 'Viola Davis', 'Mahershala Ali'],
         },
     ];
-    return seedMovies.map(movie_entity_1.toMovieEntity);
+
+    return seedMovies.map(toMovieEntity);
 }
+
+export { createSeedMovies };
