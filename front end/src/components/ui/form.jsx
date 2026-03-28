@@ -5,7 +5,7 @@ import { Slot } from '@radix-ui/react-slot';
 import { Controller, FormProvider, useFormContext, useFormState } from 'react-hook-form';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
-import "./form.module.css";
+import styles from "./form.module.css";
 const Form = FormProvider;
 const FormFieldContext = React.createContext({});
 const FormField = ({
@@ -51,7 +51,7 @@ function FormItem({
   return <FormItemContext.Provider value={{
     id
   }}>
-      <div data-slot="form-item" className={cn("form-class-1", className)} {...props} />
+      <div data-slot="form-item" className={cn(styles["form-class-1"], className)} {...props} />
     </FormItemContext.Provider>;
 }
 function FormLabel({
@@ -62,7 +62,7 @@ function FormLabel({
     error,
     formItemId
   } = useFormField();
-  return <Label data-slot="form-label" data-error={!!error} className={cn("form-class-2", className)} htmlFor={formItemId} {...props} />;
+  return <Label data-slot="form-label" data-error={!!error} className={cn(styles["form-class-2"], className)} htmlFor={formItemId} {...props} />;
 }
 function FormControl({
   ...props
@@ -82,7 +82,7 @@ function FormDescription({
   const {
     formDescriptionId
   } = useFormField();
-  return <p data-slot="form-description" id={formDescriptionId} className={cn("form-class-3", className)} {...props} />;
+  return <p data-slot="form-description" id={formDescriptionId} className={cn(styles["form-class-3"], className)} {...props} />;
 }
 function FormMessage({
   className,
@@ -96,7 +96,7 @@ function FormMessage({
   if (!body) {
     return null;
   }
-  return <p data-slot="form-message" id={formMessageId} className={cn("form-class-4", className)} {...props}>
+  return <p data-slot="form-message" id={formMessageId} className={cn(styles["form-class-4"], className)} {...props}>
       {body}
     </p>;
 }

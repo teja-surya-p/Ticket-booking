@@ -1,30 +1,30 @@
 @reference "../../pages/globals.css";
 
-:global(.card-class-1) {
+.card-class-1 {
   @apply bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm;
 }
 
-:global(.card-class-2) {
+.card-class-2 {
   @apply @container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6;
 }
 
-:global(.card-class-3) {
+.card-class-3 {
   @apply leading-none font-semibold;
 }
 
-:global(.card-class-4) {
+.card-class-4 {
   @apply text-muted-foreground text-sm;
 }
 
-:global(.card-class-5) {
+.card-class-5 {
   @apply col-start-2 row-span-2 row-start-1 self-start justify-self-end;
 }
 
-:global(.card-class-6) {
+.card-class-6 {
   @apply px-6;
 }
 
-:global(.card-class-7) {
+.card-class-7 {
   @apply flex items-center px-6 [.border-t]:pt-6;
 }
 

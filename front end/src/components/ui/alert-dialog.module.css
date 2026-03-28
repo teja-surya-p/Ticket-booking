@@ -1,30 +1,30 @@
 @reference "../../pages/globals.css";
 
-:global(.alert-dialog-class-1) {
+.alert-dialog-class-1 {
   @apply data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50;
 }
 
-:global(.alert-dialog-class-2) {
+.alert-dialog-class-2 {
   @apply bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg;
 }
 
-:global(.alert-dialog-class-3) {
+.alert-dialog-class-3 {
   @apply flex flex-col gap-2 text-center sm:text-left;
 }
 
-:global(.alert-dialog-class-4) {
+.alert-dialog-class-4 {
   @apply flex flex-col-reverse gap-2 sm:flex-row sm:justify-end;
 }
 
-:global(.alert-dialog-class-5) {
+.alert-dialog-class-5 {
   @apply text-lg font-semibold;
 }
 
-:global(.alert-dialog-class-6) {
+.alert-dialog-class-6 {
   @apply text-muted-foreground text-sm;
 }
 
-:global(.alert-dialog-class-7) {
+.alert-dialog-class-7 {
   @apply outline;
 }
 

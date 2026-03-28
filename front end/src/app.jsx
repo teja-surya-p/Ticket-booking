@@ -7,7 +7,7 @@ import { HomePage } from "@/pages/home-page";
 import { AdminPage } from "@/pages/admin-page";
 import { CheckoutPage } from "@/pages/checkout-page";
 import { useCinemaAppController } from "@/controllers/useCinemaAppController";
-import "./app.module.css";
+import styles from "./app.module.css";
 
 export default function App() {
   const {
@@ -44,7 +44,7 @@ export default function App() {
   } = useCinemaAppController();
 
   return (
-    <div className={"app-shell"}>
+    <div className={styles.appShell}>
       <Navbar
         isAdmin={isAdmin}
         onToggleRole={() => setIsAdmin(!isAdmin)}

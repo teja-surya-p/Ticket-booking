@@ -1,265 +1,265 @@
 @reference "../pages/globals.css";
 
-:global(.admin-dashboard) {
+.admin-dashboard {
   @apply mx-auto max-w-6xl px-4 py-6 md:px-6;
 }
 
-:global(.admin-header) {
+.admin-header {
   @apply mb-8;
 }
 
-:global(.admin-title) {
+.admin-title {
   @apply text-2xl font-bold text-foreground;
 }
 
-:global(.admin-subtitle) {
+.admin-subtitle {
   @apply text-muted-foreground;
 }
 
-:global(.admin-stats-grid) {
+.admin-stats-grid {
   @apply mb-8 grid grid-cols-1 gap-3 xs:grid-cols-2 sm:gap-4 md:grid-cols-4;
 }
 
-:global(.admin-stat-card) {
+.admin-stat-card {
   @apply rounded-lg border border-border bg-card p-3 sm:p-4;
 }
 
-:global(.admin-stat-label) {
+.admin-stat-label {
   @apply flex items-center gap-2 text-muted-foreground;
 }
 
-:global(.admin-icon) {
+.admin-icon {
   @apply size-4;
 }
 
-:global(.admin-stat-label-text) {
+.admin-stat-label-text {
   @apply text-xs font-medium uppercase tracking-wider;
 }
 
-:global(.admin-stat-value) {
+.admin-stat-value {
   @apply mt-2 text-xl font-bold text-foreground sm:text-2xl;
 }
 
-:global(.admin-stat-value-highlight) {
+.admin-stat-value-highlight {
   @apply mt-2 text-xl font-bold text-primary sm:text-2xl;
 }
 
-:global(.admin-actions) {
+.admin-actions {
   @apply mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4;
 }
 
-:global(.admin-inline) {
+.admin-inline {
   @apply flex items-center gap-3;
 }
 
-:global(.admin-status-filter) {
+.admin-status-filter {
   @apply w-full sm:w-[180px] bg-secondary border-border text-foreground;
 }
 
-:global(.admin-add-button) {
+.admin-add-button {
   @apply gap-1.5 bg-primary text-primary-foreground;
 }
 
-:global(.admin-mobile-list) {
+.admin-mobile-list {
   @apply flex flex-col gap-3 md:hidden;
 }
 
-:global(.admin-mobile-card) {
+.admin-mobile-card {
   @apply rounded-lg border border-border bg-card p-4;
 }
 
-:global(.admin-mobile-card-header) {
+.admin-mobile-card-header {
   @apply flex items-start gap-3;
 }
 
-:global(.admin-mobile-poster) {
+.admin-mobile-poster {
   @apply size-14 rounded object-cover;
 }
 
-:global(.admin-mobile-content) {
+.admin-mobile-content {
   @apply flex-1 min-w-0;
 }
 
-:global(.admin-mobile-movie-title) {
+.admin-mobile-movie-title {
   @apply text-sm font-medium text-foreground truncate;
 }
 
-:global(.admin-muted-text) {
+.admin-muted-text {
   @apply text-xs text-muted-foreground;
 }
 
-:global(.admin-badge-group) {
+.admin-badge-group {
   @apply mt-2 flex flex-wrap gap-1.5;
 }
 
-:global(.admin-genre-badge) {
+.admin-genre-badge {
   @apply bg-secondary text-secondary-foreground text-xs;
 }
 
-:global(.admin-status-now) {
+.admin-status-now {
   @apply bg-primary/20 text-primary border-primary/30 text-xs;
 }
 
-:global(.admin-status-soon) {
+.admin-status-soon {
   @apply bg-secondary text-muted-foreground border-border text-xs;
 }
 
-:global(.admin-rating-badge) {
+.admin-rating-badge {
   @apply text-foreground border-border text-xs;
 }
 
-:global(.admin-mobile-card-footer) {
+.admin-mobile-card-footer {
   @apply mt-3 flex items-center justify-between border-t border-border pt-3;
 }
 
-:global(.admin-showtime-text) {
+.admin-showtime-text {
   @apply text-xs text-muted-foreground truncate max-w-[60%];
 }
 
-:global(.admin-mobile-actions) {
+.admin-mobile-actions {
   @apply flex items-center gap-1;
 }
 
-:global(.admin-delete-button) {
+.admin-delete-button {
   @apply text-destructive hover:text-destructive;
 }
 
-:global(.admin-table-wrapper) {
+.admin-table-wrapper {
   @apply hidden overflow-hidden rounded-lg border border-border md:block;
 }
 
-:global(.admin-table-scroll) {
+.admin-table-scroll {
   @apply overflow-x-auto;
 }
 
-:global(.admin-table) {
+.admin-table {
   @apply w-full;
 }
 
-:global(.admin-table-header-row) {
+.admin-table-header-row {
   @apply border-b border-border bg-secondary/50;
 }
 
-:global(.admin-table-header-cell) {
+.admin-table-header-cell {
   @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground;
 }
 
-:global(.admin-table-header-cell-actions) {
+.admin-table-header-cell-actions {
   @apply px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground;
 }
 
-:global(.admin-table-row) {
+.admin-table-row {
   @apply border-b border-border transition-colors hover:bg-secondary/30;
 }
 
-:global(.admin-table-row-alt) {
+.admin-table-row-alt {
   @apply bg-secondary/10;
 }
 
-:global(.admin-table-cell) {
+.admin-table-cell {
   @apply px-4 py-3;
 }
 
-:global(.admin-table-poster) {
+.admin-table-poster {
   @apply size-10 rounded object-cover;
 }
 
-:global(.admin-field-label) {
+.admin-field-label {
   @apply text-sm font-medium text-foreground;
 }
 
-:global(.admin-table-genre-badge) {
+.admin-table-genre-badge {
   @apply bg-secondary text-secondary-foreground;
 }
 
-:global(.admin-table-rating) {
+.admin-table-rating {
   @apply px-4 py-3 text-sm text-foreground;
 }
 
-:global(.admin-table-status-now) {
+.admin-table-status-now {
   @apply bg-primary/20 text-primary border-primary/30;
 }
 
-:global(.admin-table-status-soon) {
+.admin-table-status-soon {
   @apply bg-secondary text-muted-foreground border-border;
 }
 
-:global(.admin-table-showtimes) {
+.admin-table-showtimes {
   @apply px-4 py-3 text-sm text-muted-foreground;
 }
 
-:global(.admin-table-actions) {
+.admin-table-actions {
   @apply flex items-center justify-end gap-1;
 }
 
-:global(.admin-dialog) {
+.admin-dialog {
   @apply max-h-[90vh] overflow-y-auto sm:max-w-xl;
 }
 
-:global(.admin-form) {
+.admin-form {
   @apply grid gap-4 py-2;
 }
 
-:global(.admin-form-field) {
+.admin-form-field {
   @apply grid gap-1.5;
 }
 
-:global(.admin-field-control) {
+.admin-field-control {
   @apply bg-secondary border-border text-foreground;
 }
 
-:global(.admin-form-grid-meta) {
+.admin-form-grid-meta {
   @apply grid grid-cols-1 gap-3 sm:grid-cols-3;
 }
 
-:global(.admin-form-grid-duration) {
+.admin-form-grid-duration {
   @apply grid grid-cols-1 gap-3 sm:grid-cols-2;
 }
 
-:global(.admin-description-input) {
+.admin-description-input {
   @apply min-h-24 rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground;
 }
 
-:global(.admin-assets-card) {
+.admin-assets-card {
   @apply grid gap-3 rounded-md border border-border bg-secondary/40 p-3;
 }
 
-:global(.admin-assets-header) {
+.admin-assets-header {
   @apply flex items-center gap-2 text-sm font-medium text-foreground;
 }
 
-:global(.admin-assets-label) {
+.admin-assets-label {
   @apply text-xs font-medium uppercase tracking-wide text-muted-foreground;
 }
 
-:global(.admin-error-card) {
+.admin-error-card {
   @apply rounded-md border border-destructive/40 bg-destructive/10 p-3;
 }
 
-:global(.admin-error-title) {
+.admin-error-title {
   @apply text-sm font-medium text-destructive;
 }
 
-:global(.admin-issue-report) {
+.admin-issue-report {
   @apply mt-2 space-y-2;
 }
 
-:global(.admin-issue-report-code) {
+.admin-issue-report-code {
   @apply max-h-28 overflow-auto rounded border border-border bg-background p-2 text-[11px] text-muted-foreground;
 }
 
-:global(.admin-copy-button) {
+.admin-copy-button {
   @apply gap-1.5;
 }
 
-:global(.admin-copy-icon) {
+.admin-copy-icon {
   @apply size-3.5;
 }
 
-:global(.admin-submit-button) {
+.admin-submit-button {
   @apply bg-primary text-primary-foreground;
 }
 
-:global(.admin-duration-selects) {
+.admin-duration-selects {
   @apply grid grid-cols-2 gap-2;
 }

@@ -1,181 +1,181 @@
 @reference "../pages/globals.css";
 
-:global(.home-hero-shell) {
+.home-hero-shell {
   @apply relative overflow-hidden rounded-[2rem] border border-white/10 bg-neutral-950 shadow-[0_40px_120px_rgba(0,0,0,0.4)];
 }
 
-:global(.home-hero-carousel) {
+.home-hero-carousel {
   @apply relative;
 }
 
-:global(.home-hero-item) {
+.home-hero-item {
   @apply basis-full;
 }
 
-:global(.home-hero-slide) {
+.home-hero-slide {
   @apply relative min-h-[520px] overflow-hidden md:min-h-[620px];
 }
 
-:global(.home-hero-image) {
+.home-hero-image {
   @apply absolute inset-0 size-full object-cover;
 }
 
-:global(.home-hero-image-tint) {
+.home-hero-image-tint {
   background:
     linear-gradient(90deg, rgba(2, 0, 4, 0.92) 0%, rgba(2, 0, 4, 0.72) 42%, rgba(2, 0, 4, 0.18) 100%),
     radial-gradient(circle at top left, rgba(255, 98, 64, 0.3), transparent 34%);
   @apply absolute inset-0;
 }
 
-:global(.home-hero-image-vignette) {
+.home-hero-image-vignette {
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.42) 100%);
   @apply absolute inset-0;
 }
 
-:global(.home-hero-content) {
+.home-hero-content {
   @apply relative z-10 flex min-h-[520px] flex-col justify-between gap-8 px-5 py-8 sm:px-8 sm:py-10 md:min-h-[620px] md:px-12 md:py-12 lg:flex-row lg:items-end lg:gap-12 lg:px-14;
 }
 
-:global(.home-hero-copy) {
+.home-hero-copy {
   @apply flex max-w-2xl flex-1 flex-col justify-end;
 }
 
-:global(.home-hero-kicker) {
+.home-hero-kicker {
   @apply mb-5 flex items-center gap-3 text-sm text-white/60;
 }
 
-:global(.home-hero-pill) {
+.home-hero-pill {
   @apply rounded-full border border-primary/25 bg-primary/20 px-4 py-2 font-semibold tracking-[0.12em] text-primary-foreground;
 }
 
-:global(.home-hero-kicker-label) {
+.home-hero-kicker-label {
   @apply hidden text-base text-white/50 sm:inline;
 }
 
-:global(.home-hero-title) {
+.home-hero-title {
   @apply max-w-3xl text-5xl font-black tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl;
 }
 
-:global(.home-hero-meta) {
+.home-hero-meta {
   @apply mt-5 flex flex-wrap items-center gap-x-4 gap-y-3 text-base text-white/70;
 }
 
-:global(.home-hero-meta-item) {
+.home-hero-meta-item {
   @apply inline-flex items-center gap-2;
 }
 
-:global(.home-hero-meta-item)::before {
+.home-hero-meta-item::before {
   content: "";
   @apply size-2 rounded-full bg-primary;
 }
 
-:global(.home-hero-meta-icon) {
+.home-hero-meta-icon {
   @apply size-4;
 }
 
-:global(.home-hero-meta-item-with-icon)::before {
+.home-hero-meta-item-with-icon::before {
   @apply hidden;
 }
 
-:global(.home-hero-meta-score) {
+.home-hero-meta-score {
   @apply text-xl font-semibold text-orange-300;
 }
 
-:global(.home-hero-description) {
+.home-hero-description {
   @apply mt-6 max-w-xl text-lg leading-9 text-white/72 sm:text-xl;
 }
 
-:global(.home-hero-actions) {
+.home-hero-actions {
   @apply mt-8 flex flex-col gap-3 sm:flex-row;
 }
 
-:global(.home-hero-primary-action) {
+.home-hero-primary-action {
   @apply h-14 rounded-2xl border border-primary/40 px-7 text-base font-semibold shadow-[0_20px_40px_rgba(224,74,80,0.22)];
 }
 
-:global(.home-hero-secondary-action) {
+.home-hero-secondary-action {
   @apply h-14 rounded-2xl border-white/15 bg-black/25 px-7 text-base font-semibold text-white backdrop-blur-md hover:bg-white/10 hover:text-white;
 }
 
-:global(.home-hero-action-icon) {
+.home-hero-action-icon {
   @apply size-4;
 }
 
-:global(.home-hero-side-panel) {
+.home-hero-side-panel {
   background: linear-gradient(180deg, rgba(17, 9, 12, 0.62), rgba(17, 9, 12, 0.2));
   @apply hidden w-full max-w-[280px] self-end rounded-[1.75rem] border border-white/10 p-6 text-white shadow-[0_25px_80px_rgba(0,0,0,0.25)] backdrop-blur-xl lg:flex lg:flex-col;
 }
 
-:global(.home-hero-side-label) {
+.home-hero-side-label {
   @apply text-xs font-semibold uppercase tracking-[0.18em] text-white/48;
 }
 
-:global(.home-hero-side-status) {
+.home-hero-side-status {
   @apply mt-6 inline-flex items-center gap-2 text-sm text-white/70;
 }
 
-:global(.home-hero-side-status-dot) {
+.home-hero-side-status-dot {
   @apply size-2 rounded-full bg-primary;
 }
 
-:global(.home-hero-side-title) {
+.home-hero-side-title {
   @apply mt-4 text-2xl font-bold text-white;
 }
 
-:global(.home-hero-side-copy) {
+.home-hero-side-copy {
   @apply mt-3 text-sm leading-7 text-white/64;
 }
 
-:global(.home-hero-side-link) {
+.home-hero-side-link {
   @apply mt-8 inline-flex items-center gap-2 text-sm font-semibold text-white transition-colors hover:text-primary-foreground;
 }
 
-:global(.home-hero-side-link-icon) {
+.home-hero-side-link-icon {
   @apply size-4;
 }
 
-:global(.home-hero-controls) {
+.home-hero-controls {
   @apply pointer-events-none absolute inset-x-0 bottom-6 z-20 min-h-11 px-5 sm:px-8 md:px-12 lg:px-14;
 }
 
-:global(.home-hero-pagination) {
+.home-hero-pagination {
   @apply pointer-events-auto absolute left-1/2 flex max-w-full -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-full border border-white/10 bg-black/35 px-3 py-2 backdrop-blur-md;
 }
 
-:global(.home-hero-dot) {
+.home-hero-dot {
   @apply h-2.5 w-7 rounded-full border border-white/15 bg-white/20 transition-all;
 }
 
-:global(.home-hero-dot.active) {
+.home-hero-dot.active {
   @apply w-14 bg-primary;
 }
 
-:global(.home-hero-nav) {
+.home-hero-nav {
   @apply pointer-events-auto absolute right-5 flex items-center gap-2 sm:right-8 md:right-12 lg:right-14;
 }
 
-:global(.home-hero-nav-button) {
+.home-hero-nav-button {
   @apply inline-flex size-11 items-center justify-center rounded-full border border-white/12 bg-black/35 text-white transition-colors hover:bg-white/12;
 }
 
-:global(.home-hero-nav-button:disabled) {
+.home-hero-nav-button:disabled {
   @apply cursor-not-allowed opacity-40 hover:bg-black/35;
 }
 
-:global(.home-hero-nav-icon) {
+.home-hero-nav-icon {
   @apply size-5;
 }
 
 @media (max-width: 767px) {
-  :global(.home-hero-controls) {
+  .home-hero-controls {
     @apply static mt-0 flex min-h-0 items-center justify-center gap-4 border-t border-white/8 bg-black/55 px-5 py-4;
   }
 
-  :global(.home-hero-pagination) {
+  .home-hero-pagination {
     @apply static left-auto max-w-[calc(100%-4.5rem)] translate-x-0;
   }
 
-  :global(.home-hero-nav) {
+  .home-hero-nav {
     @apply static;
   }
 }

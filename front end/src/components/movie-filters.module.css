@@ -1,18 +1,18 @@
 @reference "../pages/globals.css";
 
-:global(.movie-filters-class-1) {
+.movie-filters-class-1 {
   @apply flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center;
 }
 
-:global(.movie-filters-class-2) {
+.movie-filters-class-2 {
   @apply w-full sm:w-[160px] bg-secondary border-border text-foreground;
 }
 
-:global(.movie-filters-class-3) {
+.movie-filters-class-3 {
   @apply gap-1 text-muted-foreground hover:text-foreground self-start;
 }
 
-:global(.movie-filters-class-4) {
+.movie-filters-class-4 {
   @apply size-3;
 }
 

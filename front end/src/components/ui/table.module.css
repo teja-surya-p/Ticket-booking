@@ -1,38 +1,38 @@
 @reference "../../pages/globals.css";
 
-:global(.table-class-1) {
+.table-class-1 {
   @apply relative w-full overflow-x-auto;
 }
 
-:global(.table-class-2) {
+.table-class-2 {
   @apply w-full caption-bottom text-sm;
 }
 
-:global(.table-class-3) {
+.table-class-3 {
   @apply [&_tr]:border-b;
 }
 
-:global(.table-class-4) {
+.table-class-4 {
   @apply [&_tr:last-child]:border-0;
 }
 
-:global(.table-class-5) {
+.table-class-5 {
   @apply bg-muted/50 border-t font-medium [&>tr]:last:border-b-0;
 }
 
-:global(.table-class-6) {
+.table-class-6 {
   @apply hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors;
 }
 
-:global(.table-class-7) {
+.table-class-7 {
   @apply text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px];
 }
 
-:global(.table-class-8) {
+.table-class-8 {
   @apply p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px];
 }
 
-:global(.table-class-9) {
+.table-class-9 {
   @apply text-muted-foreground mt-4 text-sm;
 }
 

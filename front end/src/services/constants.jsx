@@ -7,7 +7,8 @@ const withPrefix = path => `${API_PREFIX}${path.startsWith("/") ? path : `/${pat
 export const API_ROUTES = {
   movies: withPrefix("/movies"),
   bookings: withPrefix("/bookings"),
-  admin: withPrefix("/admin")
+  admin: withPrefix("/admin"),
+  auth: withPrefix("/auth")
 };
 export const API_ENDPOINTS = {
   movies: {
@@ -23,6 +24,10 @@ export const API_ENDPOINTS = {
   },
   admin: {
     stats: `${API_ROUTES.admin}/stats`
+  },
+  auth: {
+    register: `${API_ROUTES.auth}/register`,
+    syncVerification: `${API_ROUTES.auth}/sync-verification`
   }
 };
 export const QUERY_KEYS = {

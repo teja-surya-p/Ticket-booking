@@ -3,7 +3,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import "./movie-filters.module.css";
+import styles from "./movie-filters.module.css";
 const showDates = ["Today", "Tomorrow", "This Weekend"];
 export function MovieFilters({
   availableGenres,
@@ -13,9 +13,9 @@ export function MovieFilters({
   onDateChange
 }) {
   const hasFilters = selectedGenre !== "all" || selectedDate !== "all";
-  return <div className={"movie-filters-class-1"}>
+  return <div className={styles["movie-filters-class-1"]}>
       <Select value={selectedGenre} onValueChange={onGenreChange}>
-        <SelectTrigger className={"movie-filters-class-2"}>
+        <SelectTrigger className={styles["movie-filters-class-2"]}>
           <SelectValue placeholder="Genre" />
         </SelectTrigger>
         <SelectContent>
@@ -27,7 +27,7 @@ export function MovieFilters({
       </Select>
 
       <Select value={selectedDate} onValueChange={onDateChange}>
-        <SelectTrigger className={"movie-filters-class-2"}>
+        <SelectTrigger className={styles["movie-filters-class-2"]}>
           <SelectValue placeholder="Show Date" />
         </SelectTrigger>
         <SelectContent>
@@ -41,8 +41,8 @@ export function MovieFilters({
       {hasFilters && <Button variant="ghost" size="sm" onClick={() => {
       onGenreChange("all");
       onDateChange("all");
-    }} className={"movie-filters-class-3"}>
-          <X className={"movie-filters-class-4"} />
+    }} className={styles["movie-filters-class-3"]}>
+          <X className={styles["movie-filters-class-4"]} />
           Clear
         </Button>}
     </div>;

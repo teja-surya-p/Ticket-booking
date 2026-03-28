@@ -2,7 +2,7 @@
 
 import { useTheme } from 'next-themes';
 import { Toaster as Sonner } from 'sonner';
-import "./sonner.module.css";
+import styles from "./sonner.module.css";
 const Toaster = ({
   ...props
 }) => {

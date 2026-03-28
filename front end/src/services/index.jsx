@@ -7,5 +7,6 @@ export * from "./constants";
 export * from "./moviesApi";
 export * from "./bookingApi";
 export * from "./adminApi";
+export * from "./authApi";
 export * from "./firebaseConfig";
 export * from "./firebaseStorage";

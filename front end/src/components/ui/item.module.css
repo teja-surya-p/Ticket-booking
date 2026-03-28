@@ -1,34 +1,34 @@
 @reference "../../pages/globals.css";
 
-:global(.item-class-1) {
+.item-class-1 {
   @apply group/item-group flex flex-col;
 }
 
-:global(.item-class-2) {
+.item-class-2 {
   @apply my-0;
 }
 
-:global(.item-class-3) {
+.item-class-3 {
   @apply flex flex-1 flex-col gap-1 [&+[data-slot=item-content]]:flex-none;
 }
 
-:global(.item-class-4) {
+.item-class-4 {
   @apply flex w-fit items-center gap-2 text-sm leading-snug font-medium;
 }
 
-:global(.item-class-5) {
+.item-class-5 {
   @apply text-muted-foreground line-clamp-2 text-sm leading-normal font-normal text-balance;
 }
 
-:global(.item-class-6) {
+.item-class-6 {
   @apply [&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4;
 }
 
-:global(.item-class-7) {
+.item-class-7 {
   @apply flex items-center gap-2;
 }
 
-:global(.item-class-8) {
+.item-class-8 {
   @apply flex basis-full items-center justify-between gap-2;
 }
 

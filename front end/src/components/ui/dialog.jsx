@@ -4,7 +4,7 @@ import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import "./dialog.module.css";
+import styles from "./dialog.module.css";
 function Dialog({
   ...props
 }) {
@@ -29,7 +29,7 @@ function DialogOverlay({
   className,
   ...props
 }) {
-  return <DialogPrimitive.Overlay data-slot="dialog-overlay" className={cn("dialog-class-1", className)} {...props} />;
+  return <DialogPrimitive.Overlay data-slot="dialog-overlay" className={cn(styles["dialog-class-1"], className)} {...props} />;
 }
 function DialogContent({
   className,
@@ -39,11 +39,11 @@ function DialogContent({
 }) {
   return <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
-      <DialogPrimitive.Content data-slot="dialog-content" className={cn("dialog-class-2", className)} {...props}>
+      <DialogPrimitive.Content data-slot="dialog-content" className={cn(styles["dialog-class-2"], className)} {...props}>
         {children}
-        {showCloseButton && <DialogPrimitive.Close data-slot="dialog-close" className={"dialog-class-3"}>
+        {showCloseButton && <DialogPrimitive.Close data-slot="dialog-close" className={styles["dialog-class-3"]}>
             <XIcon />
-            <span className={"dialog-class-4"}>Close</span>
+            <span className={styles["dialog-class-4"]}>Close</span>
           </DialogPrimitive.Close>}
       </DialogPrimitive.Content>
     </DialogPortal>;
@@ -52,24 +52,24 @@ function DialogHeader({
   className,
   ...props
 }) {
-  return <div data-slot="dialog-header" className={cn("dialog-class-5", className)} {...props} />;
+  return <div data-slot="dialog-header" className={cn(styles["dialog-class-5"], className)} {...props} />;
 }
 function DialogFooter({
   className,
   ...props
 }) {
-  return <div data-slot="dialog-footer" className={cn("dialog-class-6", className)} {...props} />;
+  return <div data-slot="dialog-footer" className={cn(styles["dialog-class-6"], className)} {...props} />;
 }
 function DialogTitle({
   className,
   ...props
 }) {
-  return <DialogPrimitive.Title data-slot="dialog-title" className={cn("dialog-class-7", className)} {...props} />;
+  return <DialogPrimitive.Title data-slot="dialog-title" className={cn(styles["dialog-class-7"], className)} {...props} />;
 }
 function DialogDescription({
   className,
   ...props
 }) {
-  return <DialogPrimitive.Description data-slot="dialog-description" className={cn("dialog-class-8", className)} {...props} />;
+  return <DialogPrimitive.Description data-slot="dialog-description" className={cn(styles["dialog-class-8"], className)} {...props} />;
 }
 export { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger };

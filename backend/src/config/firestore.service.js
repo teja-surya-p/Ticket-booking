@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger } from "@nestjs/common";
 import { applicationDefault, cert, getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -15,11 +16,13 @@ class FirestoreService {
         "USE_LOCAL_DATA=true detected. Firestore is disabled and in-memory local data mode is enabled."
       );
       this.app = null;
+      this.authClient = null;
       this.firestore = null;
       return;
     }
 
     this.app = this.initializeFirebaseApp();
+    this.authClient = getAuth(this.app);
     this.firestore = getFirestore(this.app);
   }
 
@@ -31,6 +34,16 @@ class FirestoreService {
     }
 
     return this.firestore;
+  }
+
+  auth() {
+    if (!this.authClient) {
+      throw new InternalServerErrorException(
+        "Firebase Auth is disabled in local data mode. Set USE_LOCAL_DATA=false and configure Firebase credentials."
+      );
+    }
+
+    return this.authClient;
   }
 
   isEnabled() {

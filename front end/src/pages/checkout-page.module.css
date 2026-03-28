@@ -1,69 +1,69 @@
 @reference "../pages/globals.css";
 
-:global(.checkout-confirmation-class-1) {
+.checkout-confirmation-class-1 {
   @apply mx-auto max-w-3xl px-4 py-10 md:px-6;
 }
 
-:global(.checkout-confirmation-class-2) {
+.checkout-confirmation-class-2 {
   @apply rounded-xl border border-emerald-200/80 bg-card p-6 text-center shadow-[0_25px_80px_rgba(16,185,129,0.08)] sm:p-8;
 }
 
-:global(.checkout-confirmation-class-3) {
+.checkout-confirmation-class-3 {
   @apply mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600;
 }
 
-:global(.checkout-confirmation-class-4) {
+.checkout-confirmation-class-4 {
   @apply size-8;
 }
 
-:global(.checkout-confirmation-class-5) {
+.checkout-confirmation-class-5 {
   @apply text-2xl font-bold text-foreground sm:text-3xl;
 }
 
-:global(.checkout-confirmation-class-6) {
+.checkout-confirmation-class-6 {
   @apply mt-2 text-sm text-muted-foreground sm:text-base;
 }
 
-:global(.checkout-confirmation-class-7) {
+.checkout-confirmation-class-7 {
   @apply mx-auto mt-6 max-w-md rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 text-left;
 }
 
-:global(.checkout-confirmation-class-8) {
+.checkout-confirmation-class-8 {
   @apply text-xs uppercase tracking-wider text-muted-foreground;
 }
 
-:global(.checkout-confirmation-class-9) {
+.checkout-confirmation-class-9 {
   @apply mt-1 text-base font-semibold text-foreground;
 }
 
-:global(.checkout-confirmation-class-10) {
+.checkout-confirmation-class-10 {
   @apply mt-4 flex items-center justify-between;
 }
 
-:global(.checkout-confirmation-class-11) {
+.checkout-confirmation-class-11 {
   @apply text-sm text-muted-foreground;
 }
 
-:global(.checkout-confirmation-class-12) {
+.checkout-confirmation-class-12 {
   @apply text-lg font-bold text-emerald-700;
 }
 
-:global(.checkout-confirmation-class-13) {
+.checkout-confirmation-class-13 {
   @apply mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center;
 }
 
-:global(.checkout-confirmation-class-14) {
+.checkout-confirmation-class-14 {
   @apply gap-1.5;
 }
 
-:global(.checkout-confirmation-class-15) {
+.checkout-confirmation-class-15 {
   @apply size-4;
 }
 
-:global(.checkout-confirmation-class-16) {
+.checkout-confirmation-class-16 {
   @apply border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700;
 }
 
-:global(.checkout-confirmation-class-17) {
+.checkout-confirmation-class-17 {
   @apply border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800;
 }

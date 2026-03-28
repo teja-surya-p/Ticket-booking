@@ -1,6 +1,6 @@
 @reference "./globals.css";
 
-:global(.app-root) {
+.appRoot {
   @apply font-sans antialiased;
 }
 
