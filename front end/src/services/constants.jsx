@@ -19,7 +19,8 @@ export const API_ENDPOINTS = {
     seats: `${API_ROUTES.bookings}/seats`,
     pricing: `${API_ROUTES.bookings}/pricing`,
     quote: `${API_ROUTES.bookings}/quote`,
-    create: API_ROUTES.bookings
+    create: API_ROUTES.bookings,
+    card: `${API_ROUTES.bookings}/card`
   },
   admin: {
     stats: `${API_ROUTES.admin}/stats`

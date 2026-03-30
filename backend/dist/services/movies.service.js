@@ -1,7 +1,6 @@
 import {
   Injectable,
   InternalServerErrorException,
-  Logger,
   NotFoundException
 } from "@nestjs/common";
 import {
@@ -12,37 +11,17 @@ import {
 import { decorateClass } from "../common/nest-metadata.js";
 import { FirestoreService } from "../config/firestore.service.js";
 import { toMovieEntity } from "../entities/movie.entity.js";
-import { createSeedMovies } from "../factory/movie.factory.js";
 
 class MoviesService {
   constructor(firestoreService) {
     this.firestoreService = firestoreService;
-    this.logger = new Logger(MoviesService.name);
-    this.restProjectId =
-      process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
-    this.restApiKey =
-      process.env.FIREBASE_WEB_API_KEY ?? process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
-    this.firestoreRestEnabled =
-      !this.firestoreService.isEnabled() && Boolean(this.restProjectId && this.restApiKey);
-    this.inMemoryMovies =
-      this.firestoreService.isEnabled() || this.firestoreRestEnabled ? [] : createSeedMovies();
-
-    if (this.firestoreRestEnabled) {
-      this.logger.warn(
-        "Using Firestore REST mode for movies. Configure FIREBASE_SERVICE_ACCOUNT_PATH for full admin mode."
-      );
-    }
   }
 
   async findAll(query = {}) {
     const search = query.search?.trim().toLowerCase();
     const genre = query.genre?.trim();
     const status = query.status;
-    const movies = this.firestoreService.isEnabled()
-      ? await this.readAllMoviesFromStore()
-      : this.firestoreRestEnabled
-        ? await this.readAllMoviesFromFirestoreRest()
-        : this.readAllMoviesFromMemory();
+    const movies = await this.readAllMoviesFromStore();
 
     return movies.filter((movie) => {
       const matchesSearch = search ? movie.title.toLowerCase().includes(search) : true;
@@ -54,27 +33,6 @@ class MoviesService {
   }
 
   async findById(id) {
-    if (!this.firestoreService.isEnabled() && !this.firestoreRestEnabled) {
-      const movie = this.inMemoryMovies.find((item) => item.id === id);
-
-      if (!movie) {
-        throw new NotFoundException(`Movie with id ${id} not found`);
-      }
-
-      return toMovieEntity(movie);
-    }
-
-    if (this.firestoreRestEnabled) {
-      const movies = await this.readAllMoviesFromFirestoreRest();
-      const movie = movies.find((item) => item.id === id);
-
-      if (!movie) {
-        throw new NotFoundException(`Movie with id ${id} not found`);
-      }
-
-      return toMovieEntity(movie);
-    }
-
     const docRef = await this.findMovieDocRefById(id);
     if (!docRef) {
       throw new NotFoundException(`Movie with id ${id} not found`);
@@ -89,33 +47,13 @@ class MoviesService {
   }
 
   async getGenres() {
-    const movies = this.firestoreService.isEnabled()
-      ? await this.readAllMoviesFromStore()
-      : this.firestoreRestEnabled
-        ? await this.readAllMoviesFromFirestoreRest()
-        : this.readAllMoviesFromMemory();
+    const movies = await this.readAllMoviesFromStore();
 
     return Array.from(new Set(movies.flatMap((movie) => this.normalizeGenres(movie)))).sort();
   }
 
   async create(dto) {
-    if (!this.firestoreService.isEnabled() && !this.firestoreRestEnabled) {
-      const nextId = Math.max(...this.inMemoryMovies.map((movie) => movie.id), 0) + 1;
-      const newMovie = this.normalizeMovie(
-        {
-          id: nextId,
-          ...dto
-        },
-        nextId
-      );
-
-      this.inMemoryMovies.push(toMovieEntity(newMovie));
-      return toMovieEntity(newMovie);
-    }
-
-    const movies = this.firestoreRestEnabled
-      ? await this.readAllMoviesFromFirestoreRest()
-      : await this.readAllMoviesFromStore();
+    const movies = await this.readAllMoviesFromStore();
     const nextId = Math.max(...movies.map((movie) => movie.id), 0) + 1;
     const newMovie = this.normalizeMovie(
       {
@@ -125,57 +63,11 @@ class MoviesService {
       nextId
     );
 
-    if (this.firestoreRestEnabled) {
-      await this.createMovieViaFirestoreRest(String(nextId), newMovie);
-      return toMovieEntity(newMovie);
-    }
-
     await this.collection().doc(String(nextId)).set(newMovie);
     return toMovieEntity(newMovie);
   }
 
   async update(id, dto) {
-    if (!this.firestoreService.isEnabled() && !this.firestoreRestEnabled) {
-      const index = this.inMemoryMovies.findIndex((movie) => movie.id === id);
-
-      if (index < 0) {
-        throw new NotFoundException(`Movie with id ${id} not found`);
-      }
-
-      const updatedMovie = this.normalizeMovie(
-        {
-          ...this.inMemoryMovies[index],
-          ...dto,
-          id
-        },
-        id
-      );
-
-      this.inMemoryMovies[index] = toMovieEntity(updatedMovie);
-      return toMovieEntity(updatedMovie);
-    }
-
-    if (this.firestoreRestEnabled) {
-      const existingMovie = await this.findById(id);
-      const restDoc = await this.findMovieDocumentByIdViaFirestoreRest(id);
-
-      if (!restDoc) {
-        throw new NotFoundException(`Movie with id ${id} not found`);
-      }
-
-      const updatedMovie = this.normalizeMovie(
-        {
-          ...existingMovie,
-          ...dto,
-          id
-        },
-        id
-      );
-
-      await this.updateMovieViaFirestoreRest(restDoc.name, updatedMovie);
-      return toMovieEntity(updatedMovie);
-    }
-
     const existing = await this.findById(id);
     const docRef = await this.findMovieDocRefById(id);
 
@@ -197,32 +89,6 @@ class MoviesService {
   }
 
   async remove(id) {
-    if (!this.firestoreService.isEnabled() && !this.firestoreRestEnabled) {
-      const index = this.inMemoryMovies.findIndex((movie) => movie.id === id);
-
-      if (index < 0) {
-        throw new NotFoundException(`Movie with id ${id} not found`);
-      }
-
-      const movieToDelete = this.inMemoryMovies[index];
-      await this.deleteMovieAssetsFromStorage(movieToDelete);
-      this.inMemoryMovies.splice(index, 1);
-      return;
-    }
-
-    if (this.firestoreRestEnabled) {
-      const restDoc = await this.findMovieDocumentByIdViaFirestoreRest(id);
-
-      if (!restDoc) {
-        throw new NotFoundException(`Movie with id ${id} not found`);
-      }
-
-      const movieToDelete = this.normalizeMovie(this.fromFirestoreFields(restDoc.fields), id);
-      await this.deleteMovieAssetsFromStorage(movieToDelete);
-      await this.deleteMovieViaFirestoreRest(restDoc.name);
-      return;
-    }
-
     const docRef = await this.findMovieDocRefById(id);
     if (!docRef) {
       throw new NotFoundException(`Movie with id ${id} not found`);
@@ -347,202 +213,10 @@ class MoviesService {
     return this.firestoreService.db().collection(FIRESTORE_COLLECTIONS.movies);
   }
 
-  readAllMoviesFromMemory() {
-    return this.inMemoryMovies
-      .map((movie) => toMovieEntity(movie))
-      .sort((a, b) => a.id - b.id);
-  }
-
   async readAllMoviesFromStore() {
     const snapshot = await this.collection().get();
     const movies = snapshot.docs.map((doc, index) => this.normalizeMovie(doc.data(), index + 1));
     return movies.sort((a, b) => a.id - b.id);
-  }
-
-  async readAllMoviesFromFirestoreRest() {
-    const payload = await this.fetchFirestoreRest(this.moviesRestCollectionUrl());
-    const documents = Array.isArray(payload?.documents) ? payload.documents : [];
-    const movies = documents.map((document, index) =>
-      this.normalizeMovie(this.fromFirestoreFields(document.fields), index + 1)
-    );
-    return movies.sort((a, b) => a.id - b.id);
-  }
-
-  async findMovieDocumentByIdViaFirestoreRest(id) {
-    const payload = await this.fetchFirestoreRest(this.moviesRestCollectionUrl());
-    const documents = Array.isArray(payload?.documents) ? payload.documents : [];
-
-    for (let index = 0; index < documents.length; index += 1) {
-      const document = documents[index];
-      const normalized = this.normalizeMovie(this.fromFirestoreFields(document.fields), index + 1);
-
-      if (normalized.id === id) {
-        return document;
-      }
-    }
-
-    return null;
-  }
-
-  async createMovieViaFirestoreRest(documentId, movie) {
-    const url = this.moviesRestCollectionUrl(`documentId=${encodeURIComponent(documentId)}`);
-    await this.fetchFirestoreRest(url, {
-      method: "POST",
-      body: JSON.stringify({
-        fields: this.toFirestoreFields(movie)
-      })
-    });
-  }
-
-  async updateMovieViaFirestoreRest(documentName, movie) {
-    const url = `https://firestore.googleapis.com/v1/${documentName}?key=${encodeURIComponent(this.restApiKey)}`;
-    await this.fetchFirestoreRest(url, {
-      method: "PATCH",
-      body: JSON.stringify({
-        fields: this.toFirestoreFields(movie)
-      })
-    });
-  }
-
-  async deleteMovieViaFirestoreRest(documentName) {
-    const url = `https://firestore.googleapis.com/v1/${documentName}?key=${encodeURIComponent(this.restApiKey)}`;
-    await this.fetchFirestoreRest(url, {
-      method: "DELETE"
-    });
-  }
-
-  moviesRestCollectionUrl(extraQuery = "") {
-    const query = extraQuery ? `&${extraQuery}` : "";
-    return `https://firestore.googleapis.com/v1/projects/${this.restProjectId}/databases/(default)/documents/${FIRESTORE_COLLECTIONS.movies}?key=${encodeURIComponent(this.restApiKey)}${query}`;
-  }
-
-  async fetchFirestoreRest(url, options = {}) {
-    const response = await fetch(url, {
-      method: options.method ?? "GET",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: options.body
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new InternalServerErrorException(
-        `Firestore REST request failed (${response.status}): ${errorText || response.statusText}`
-      );
-    }
-
-    if (response.status === 204) {
-      return null;
-    }
-
-    return await response.json();
-  }
-
-  fromFirestoreFields(fields) {
-    if (!fields || typeof fields !== "object") {
-      return {};
-    }
-
-    return Object.entries(fields).reduce((accumulator, [key, value]) => {
-      accumulator[key] = this.fromFirestoreValue(value);
-      return accumulator;
-    }, {});
-  }
-
-  fromFirestoreValue(value) {
-    if (!value || typeof value !== "object") {
-      return undefined;
-    }
-
-    if ("stringValue" in value) {
-      return value.stringValue;
-    }
-
-    if ("integerValue" in value) {
-      return Number(value.integerValue);
-    }
-
-    if ("doubleValue" in value) {
-      return Number(value.doubleValue);
-    }
-
-    if ("booleanValue" in value) {
-      return Boolean(value.booleanValue);
-    }
-
-    if ("timestampValue" in value) {
-      return value.timestampValue;
-    }
-
-    if ("nullValue" in value) {
-      return null;
-    }
-
-    if ("arrayValue" in value) {
-      const values = Array.isArray(value.arrayValue?.values) ? value.arrayValue.values : [];
-      return values.map((item) => this.fromFirestoreValue(item));
-    }
-
-    if ("mapValue" in value) {
-      return this.fromFirestoreFields(value.mapValue?.fields);
-    }
-
-    return undefined;
-  }
-
-  toFirestoreFields(data) {
-    if (!data || typeof data !== "object") {
-      return {};
-    }
-
-    return Object.entries(data).reduce((accumulator, [key, value]) => {
-      if (value !== undefined) {
-        accumulator[key] = this.toFirestoreValue(value);
-      }
-
-      return accumulator;
-    }, {});
-  }
-
-  toFirestoreValue(value) {
-    if (value === null) {
-      return { nullValue: null };
-    }
-
-    if (typeof value === "string") {
-      return { stringValue: value };
-    }
-
-    if (typeof value === "number") {
-      if (Number.isFinite(value) && Number.isInteger(value)) {
-        return { integerValue: String(value) };
-      }
-
-      return { doubleValue: value };
-    }
-
-    if (typeof value === "boolean") {
-      return { booleanValue: value };
-    }
-
-    if (Array.isArray(value)) {
-      return {
-        arrayValue: {
-          values: value.map((item) => this.toFirestoreValue(item))
-        }
-      };
-    }
-
-    if (typeof value === "object") {
-      return {
-        mapValue: {
-          fields: this.toFirestoreFields(value)
-        }
-      };
-    }
-
-    return { stringValue: String(value) };
   }
 
   async findMovieDocRefById(id) {

@@ -7,6 +7,14 @@ class BookingsController {
     this.bookingsService = bookingsService;
   }
 
+  async getSavedCard(customerEmail) {
+    return await this.bookingsService.getSavedCard({ customerEmail });
+  }
+
+  async saveCard(body) {
+    return await this.bookingsService.saveCard(body);
+  }
+
   async getReservedSeats(movieId, showtime) {
     return await this.bookingsService.getReservedSeats({ movieId, showtime });
   }
@@ -23,6 +31,26 @@ class BookingsController {
     return await this.bookingsService.createBooking(body);
   }
 }
+
+decorateMethod(
+  BookingsController.prototype,
+  "getSavedCard",
+  [Get("card"), parameterDecorator(0, Query("customerEmail"))],
+  {
+    paramTypes: [String],
+    returnType: Promise
+  }
+);
+
+decorateMethod(
+  BookingsController.prototype,
+  "saveCard",
+  [Post("card"), parameterDecorator(0, Body())],
+  {
+    paramTypes: [Object],
+    returnType: Promise
+  }
+);
 
 decorateMethod(
   BookingsController.prototype,

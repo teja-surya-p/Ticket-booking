@@ -8,33 +8,16 @@ import { decorateClass } from "../common/nest-metadata.js";
 class FirestoreService {
   constructor() {
     this.logger = new Logger(FirestoreService.name);
-    this.localDataMode = process.env.USE_LOCAL_DATA === "true";
-
-    if (this.localDataMode) {
-      this.logger.warn(
-        "USE_LOCAL_DATA=true detected. Firestore is disabled and in-memory local data mode is enabled."
-      );
-      this.app = null;
-      this.firestore = null;
-      return;
-    }
-
     this.app = this.initializeFirebaseApp();
     this.firestore = getFirestore(this.app);
   }
 
   db() {
     if (!this.firestore) {
-      throw new InternalServerErrorException(
-        "Firestore is disabled in local data mode. Set USE_LOCAL_DATA=false and configure Firebase credentials."
-      );
+      throw new InternalServerErrorException("Firestore is not initialized.");
     }
 
     return this.firestore;
-  }
-
-  isEnabled() {
-    return !this.localDataMode;
   }
 
   initializeFirebaseApp() {

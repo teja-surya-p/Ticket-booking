@@ -35,3 +35,25 @@ export function createBooking(payload) {
     body: payload
   });
 }
+
+export function fetchSavedCards(customerEmail) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.card,
+    method: "GET",
+    operation: "Fetch saved cards",
+    query: {
+      customerEmail
+    }
+  });
+}
+
+export function savePaymentCard(payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.card,
+    method: "POST",
+    operation: "Save payment card",
+    body: payload
+  });
+}
+
+export const fetchSavedCard = fetchSavedCards;

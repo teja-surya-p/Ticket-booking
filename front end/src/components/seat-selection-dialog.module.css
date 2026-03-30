@@ -197,6 +197,78 @@
   @apply flex flex-col-reverse gap-2 sm:flex-row sm:justify-end;
 }
 
+:global(.seat-dialog-class-43) {
+  @apply mt-4 rounded-2xl border border-border bg-card px-4 py-4;
+}
+
+:global(.seat-dialog-class-44) {
+  @apply mb-3 flex flex-wrap items-center justify-between gap-2;
+}
+
+:global(.seat-dialog-class-45) {
+  @apply text-sm font-medium text-foreground;
+}
+
+:global(.seat-dialog-class-46) {
+  @apply flex flex-col gap-3 sm:flex-row sm:items-end;
+}
+
+:global(.seat-dialog-class-47) {
+  @apply flex-1 space-y-1.5;
+}
+
+:global(.seat-dialog-class-48) {
+  @apply mt-3 rounded-xl border border-border bg-background px-3 py-2;
+}
+
+:global(.seat-dialog-class-49) {
+  @apply text-sm font-semibold text-foreground;
+}
+
+:global(.seat-dialog-class-50) {
+  @apply mt-3 space-y-3 rounded-xl border border-border bg-background p-3;
+}
+
+:global(.seat-dialog-class-51) {
+  @apply grid grid-cols-1 gap-3 sm:grid-cols-3;
+}
+
+:global(.seat-dialog-class-52) {
+  @apply mt-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-foreground;
+}
+
+:global(.seat-dialog-class-53) {
+  @apply space-y-2;
+}
+
+:global(.seat-dialog-class-54) {
+  @apply flex w-full items-center justify-between rounded-xl border border-border bg-background px-3 py-2 text-left transition-colors;
+}
+
+:global(.seat-dialog-class-54:hover) {
+  @apply border-primary/40 bg-primary/5;
+}
+
+:global(.seat-dialog-class-55) {
+  @apply border-primary bg-primary/10;
+}
+
+:global(.seat-dialog-class-56) {
+  @apply flex flex-col gap-0.5;
+}
+
+:global(.seat-dialog-class-57) {
+  @apply text-sm font-semibold text-foreground;
+}
+
+:global(.seat-dialog-class-58) {
+  @apply text-xs font-semibold uppercase tracking-[0.1em] text-primary;
+}
+
+:global(.seat-dialog-class-59) {
+  @apply mt-3 flex flex-wrap items-center justify-between gap-2;
+}
+
 @media (max-width: 900px) {
   :global(.seat-dialog-class-22) {
     --seat-size: 2.9rem;
@@ -267,6 +339,10 @@
 
   :global(.seat-dialog-class-40) {
     @apply px-3 py-3;
+  }
+
+  :global(.seat-dialog-class-46) {
+    @apply gap-2;
   }
 }
 

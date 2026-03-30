@@ -29,9 +29,25 @@ export function CartPage({
     selectedSeatIds,
     totalTickets: seatSelectionTicketCount,
     remainingSeats,
+    savedCards,
+    selectedCardId,
+    cardForm,
+    showCardForm,
+    isCheckingCards,
+    isSavingCard,
+    paymentError,
+    paymentInfo,
+    canAddMoreCards,
+    maxCardsAllowed,
+    showPaymentStep,
+    canCheckoutWithPayment,
     ROWS,
     COLS,
     formatSeatLabel,
+    handleSelectCard,
+    handleCardFieldChange,
+    setShowCardForm,
+    saveCardForEmail,
     openDialog,
     closeDialog,
     toggleSeat,
@@ -162,6 +178,18 @@ export function CartPage({
         selectedSeatIds={selectedSeatIds}
         totalTickets={seatSelectionTicketCount}
         remainingSeats={remainingSeats}
+        savedCards={savedCards}
+        selectedCardId={selectedCardId}
+        cardForm={cardForm}
+        showCardForm={showCardForm}
+        isCheckingCards={isCheckingCards}
+        isSavingCard={isSavingCard}
+        paymentError={paymentError}
+        paymentInfo={paymentInfo}
+        canAddMoreCards={canAddMoreCards}
+        maxCardsAllowed={maxCardsAllowed}
+        showPaymentStep={showPaymentStep}
+        canCheckoutWithPayment={canCheckoutWithPayment}
         ROWS={ROWS}
         COLS={COLS}
         isLoadingSeats={isLoadingSeats}
@@ -169,6 +197,10 @@ export function CartPage({
         loadError={loadError}
         selectionError={selectionError}
         formatSeatLabel={formatSeatLabel}
+        onSelectCard={handleSelectCard}
+        onCardFieldChange={handleCardFieldChange}
+        onToggleAddCard={setShowCardForm}
+        onSaveCard={saveCardForEmail}
         onClose={closeDialog}
         onToggleSeat={toggleSeat}
         onContinue={continueCheckout}

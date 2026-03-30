@@ -2,7 +2,8 @@ export const API_PREFIX = "api/v1";
 
 export const FIRESTORE_COLLECTIONS = {
   movies: "movies",
-  bookings: "booking"
+  bookings: "booking",
+  paymentCards: "payment_cards"
 };
 
 export const TICKET_PRICING = {

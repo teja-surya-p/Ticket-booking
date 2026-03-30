@@ -3,7 +3,7 @@ import {
   ConflictException,
   Injectable
 } from "@nestjs/common";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   FIRESTORE_COLLECTIONS,
   MAX_TICKETS_PER_BOOKING,
@@ -11,19 +11,71 @@ import {
   BOOKING_SERVICE_FEE_RATE
 } from "../common/constants.js";
 import { decorateClass } from "../common/nest-metadata.js";
-import { buildSeatMapKey, roundCurrency } from "../common/utils.js";
+import { roundCurrency } from "../common/utils.js";
 import { FirestoreService } from "../config/firestore.service.js";
 import { toBookingEntity } from "../entities/booking.entity.js";
-import { createInitialReservedSeatMap } from "../factory/booking.factory.js";
-import { createSeedMovies } from "../factory/movie.factory.js";
 import { MoviesService } from "./movies.service.js";
 
 class BookingsService {
   constructor(firestoreService, moviesService) {
     this.firestoreService = firestoreService;
     this.moviesService = moviesService;
-    this.inMemoryBookings = new Map();
-    this.inMemoryReservedSeats = createInitialReservedSeatMap(createSeedMovies());
+  }
+
+  async getSavedCard(query) {
+    const customerEmail = this.normalizeCustomerEmail(query?.customerEmail);
+    const cards = await this.findCardsByEmail(customerEmail);
+
+    return {
+      customerEmail,
+      cards,
+      maxCardsAllowed: 3
+    };
+  }
+
+  async saveCard(payload) {
+    const customerEmail = this.normalizeCustomerEmail(payload?.customerEmail);
+    const normalizedCard = this.validateAndNormalizeCardPayload(payload);
+    const existingCards = await this.findCardDocsByEmail(customerEmail);
+    const now = new Date().toISOString();
+    const cardFingerprint = this.buildCardFingerprint(customerEmail, normalizedCard.cardNumber);
+    const existingMatchingCard = existingCards.find(
+      (card) => card.data.cardFingerprint === cardFingerprint
+    );
+
+    if (!existingMatchingCard && existingCards.length >= 3) {
+      throw new BadRequestException("You can save up to 3 cards only.");
+    }
+
+    const cardDocId = existingMatchingCard ? existingMatchingCard.id : randomUUID();
+    const existingData = existingMatchingCard ? existingMatchingCard.data : null;
+
+    const cardRecord = {
+      cardId: cardDocId,
+      customerEmail,
+      cardholderName: normalizedCard.cardholderName,
+      brand: normalizedCard.brand,
+      last4: normalizedCard.last4,
+      expMonth: normalizedCard.expMonth,
+      expYear: normalizedCard.expYear,
+      cardToken:
+        existingData?.cardFingerprint === cardFingerprint && typeof existingData?.cardToken === "string"
+          ? existingData.cardToken
+          : randomUUID(),
+      cardFingerprint,
+      createdAt: typeof existingData?.createdAt === "string" ? existingData.createdAt : now,
+      updatedAt: now
+    };
+
+    await this.cardCollection().doc(cardDocId).set(cardRecord);
+    const cards = await this.findCardsByEmail(customerEmail);
+
+    return {
+      customerEmail,
+      cards,
+      savedCardId: cardDocId,
+      maxCardsAllowed: 3
+    };
   }
 
   async getReservedSeats(query) {
@@ -31,23 +83,6 @@ class BookingsService {
 
     if (!query.showtime || !movie.showtimes.includes(query.showtime)) {
       throw new BadRequestException("Invalid showtime for the selected movie");
-    }
-
-    if (!this.firestoreService.isEnabled()) {
-      const key = buildSeatMapKey(query.movieId, query.showtime);
-      const reservedSeats = new Set(this.inMemoryReservedSeats.get(key) ?? []);
-
-      for (const booking of this.inMemoryBookings.values()) {
-        if (booking.movieId === query.movieId && booking.showtime === query.showtime) {
-          booking.seatIds.forEach((seatId) => reservedSeats.add(seatId));
-        }
-      }
-
-      return {
-        movieId: query.movieId,
-        showtime: query.showtime,
-        reservedSeats: Array.from(reservedSeats).sort()
-      };
     }
 
     const bookings = await this.findBookingsByShowtime(query.movieId, query.showtime);
@@ -89,7 +124,11 @@ class BookingsService {
   }
 
   async createBooking(payload) {
+    const customerEmail = this.normalizeCustomerEmail(payload?.customerEmail);
+    const customerName = this.normalizeCustomerName(payload?.customerName);
+    const paymentCardId = this.normalizePaymentCardId(payload?.paymentCardId);
     await this.validateAndNormalizePayload(payload);
+    const savedCard = await this.requireSavedCard(customerEmail, paymentCardId);
     const uniqueSeatIds = Array.from(new Set(payload.seatIds));
     const existingReservedSeats = new Set(
       (
@@ -112,21 +151,20 @@ class BookingsService {
       showtime: payload.showtime,
       seatIds: uniqueSeatIds,
       tickets: payload.tickets,
-      customerName: payload.customerName,
-      customerEmail: payload.customerEmail,
+      customerName: customerName ?? savedCard.cardholderName,
+      customerEmail,
+      paymentCard: {
+        cardId: savedCard.cardId,
+        cardToken: savedCard.cardToken,
+        brand: savedCard.brand,
+        last4: savedCard.last4,
+        expMonth: savedCard.expMonth,
+        expYear: savedCard.expYear
+      },
       status: "confirmed",
       total: quote.total,
       createdAt: new Date().toISOString()
     });
-
-    if (!this.firestoreService.isEnabled()) {
-      this.inMemoryBookings.set(booking.bookingId, booking);
-      return {
-        bookingId: booking.bookingId,
-        status: booking.status,
-        total: booking.total
-      };
-    }
 
     await this.collection().doc(booking.bookingId).set(booking);
     return {
@@ -137,15 +175,6 @@ class BookingsService {
   }
 
   async getRevenue() {
-    if (!this.firestoreService.isEnabled()) {
-      return roundCurrency(
-        Array.from(this.inMemoryBookings.values()).reduce(
-          (sum, booking) => sum + booking.total,
-          0
-        )
-      );
-    }
-
     const snapshot = await this.collection().get();
 
     return roundCurrency(
@@ -160,13 +189,216 @@ class BookingsService {
     return this.firestoreService.db().collection(FIRESTORE_COLLECTIONS.bookings);
   }
 
-  async findBookingsByShowtime(movieId, showtime) {
-    if (!this.firestoreService.isEnabled()) {
-      return Array.from(this.inMemoryBookings.values())
-        .filter((booking) => booking.movieId === movieId && booking.showtime === showtime)
-        .map((booking) => ({ seatIds: [...booking.seatIds] }));
+  cardCollection() {
+    return this.firestoreService.db().collection(FIRESTORE_COLLECTIONS.paymentCards);
+  }
+
+  async findCardDocsByEmail(customerEmail) {
+    const snapshot = await this.cardCollection().where("customerEmail", "==", customerEmail).get();
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      data: doc.data()
+    }));
+  }
+
+  async findCardsByEmail(customerEmail) {
+    const docs = await this.findCardDocsByEmail(customerEmail);
+    return docs
+      .map((item) => this.toSavedCardEntity(item.data, item.id))
+      .sort((a, b) => {
+        const aTime = Date.parse(a.updatedAt ?? a.createdAt ?? "");
+        const bTime = Date.parse(b.updatedAt ?? b.createdAt ?? "");
+        return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+      });
+  }
+
+  async requireSavedCard(customerEmail, paymentCardId) {
+    const cards = await this.findCardsByEmail(customerEmail);
+    if (cards.length === 0) {
+      throw new BadRequestException(
+        "No saved card found for this email. Save a card before checkout."
+      );
     }
 
+    const selectedCard = cards.find((card) => card.cardId === paymentCardId);
+    if (!selectedCard) {
+      throw new BadRequestException("Select a valid saved card before checkout.");
+    }
+
+    return selectedCard;
+  }
+
+  toSavedCardEntity(data, fallbackCardId) {
+    return {
+      cardId:
+        typeof data?.cardId === "string" && data.cardId.trim().length > 0
+          ? data.cardId
+          : fallbackCardId,
+      customerEmail: this.normalizeCustomerEmail(data?.customerEmail),
+      cardholderName:
+        typeof data?.cardholderName === "string" && data.cardholderName.trim().length > 0
+          ? data.cardholderName.trim()
+          : "Card Holder",
+      brand: typeof data?.brand === "string" && data.brand.trim().length > 0 ? data.brand : "Unknown",
+      last4:
+        typeof data?.last4 === "string" && data.last4.trim().length === 4 ? data.last4 : "0000",
+      expMonth: Number.isFinite(Number(data?.expMonth)) ? Number(data.expMonth) : 1,
+      expYear: Number.isFinite(Number(data?.expYear)) ? Number(data.expYear) : 1970,
+      cardToken:
+        typeof data?.cardToken === "string" && data.cardToken.trim().length > 0
+          ? data.cardToken
+          : "",
+      createdAt:
+        typeof data?.createdAt === "string" && data.createdAt.trim().length > 0
+          ? data.createdAt
+          : undefined,
+      updatedAt:
+        typeof data?.updatedAt === "string" && data.updatedAt.trim().length > 0
+          ? data.updatedAt
+          : undefined
+    };
+  }
+
+  normalizeCustomerEmail(value) {
+    if (typeof value !== "string" || value.trim().length === 0) {
+      throw new BadRequestException("customerEmail is required");
+    }
+
+    const email = value.trim().toLowerCase();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      throw new BadRequestException("customerEmail must be a valid email address");
+    }
+
+    return email;
+  }
+
+  normalizeCustomerName(value) {
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    const customerName = value.trim();
+    return customerName.length > 0 ? customerName : null;
+  }
+
+  normalizePaymentCardId(value) {
+    if (typeof value !== "string" || value.trim().length === 0) {
+      throw new BadRequestException("paymentCardId is required");
+    }
+
+    return value.trim();
+  }
+
+  validateAndNormalizeCardPayload(payload) {
+    const cardholderName =
+      typeof payload?.cardholderName === "string" ? payload.cardholderName.trim() : "";
+    if (cardholderName.length === 0) {
+      throw new BadRequestException("cardholderName is required");
+    }
+
+    const cardNumberInput = typeof payload?.cardNumber === "string" ? payload.cardNumber : "";
+    const cardNumber = cardNumberInput.replace(/\D/g, "");
+    if (cardNumber.length < 12 || cardNumber.length > 19) {
+      throw new BadRequestException("cardNumber must contain between 12 and 19 digits");
+    }
+
+    if (!this.passesLuhn(cardNumber)) {
+      throw new BadRequestException(
+        "cardNumber is invalid. Use a valid card number (for testing: 4242 4242 4242 4242)."
+      );
+    }
+
+    const cvvInput = typeof payload?.cvv === "string" ? payload.cvv : "";
+    const cvv = cvvInput.replace(/\D/g, "");
+    if (cvv.length < 3 || cvv.length > 4) {
+      throw new BadRequestException("cvv must contain 3 or 4 digits");
+    }
+
+    const rawMonth = Number(payload?.expMonth);
+    const rawYear = Number(payload?.expYear);
+    if (!Number.isInteger(rawMonth) || rawMonth < 1 || rawMonth > 12) {
+      throw new BadRequestException("expMonth must be a number between 1 and 12");
+    }
+
+    if (!Number.isInteger(rawYear)) {
+      throw new BadRequestException("expYear must be a valid year");
+    }
+
+    const expYear = rawYear < 100 ? 2000 + rawYear : rawYear;
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+    const currentMonth = now.getUTCMonth() + 1;
+    if (
+      expYear < currentYear ||
+      (expYear === currentYear && rawMonth < currentMonth)
+    ) {
+      throw new BadRequestException("Card expiry date is in the past");
+    }
+
+    return {
+      cardholderName,
+      cardNumber,
+      last4: cardNumber.slice(-4),
+      brand: this.detectCardBrand(cardNumber),
+      expMonth: rawMonth,
+      expYear
+    };
+  }
+
+  buildCardFingerprint(customerEmail, cardNumber) {
+    return createHash("sha256").update(`${customerEmail}:${cardNumber}`).digest("hex");
+  }
+
+  passesLuhn(cardNumber) {
+    let sum = 0;
+    let shouldDouble = false;
+
+    for (let index = cardNumber.length - 1; index >= 0; index -= 1) {
+      let digit = Number(cardNumber[index]);
+      if (!Number.isFinite(digit)) {
+        return false;
+      }
+
+      if (shouldDouble) {
+        digit *= 2;
+        if (digit > 9) {
+          digit -= 9;
+        }
+      }
+
+      sum += digit;
+      shouldDouble = !shouldDouble;
+    }
+
+    return sum % 10 === 0;
+  }
+
+  detectCardBrand(cardNumber) {
+    if (/^4\d{12}(\d{3})?(\d{3})?$/.test(cardNumber)) {
+      return "Visa";
+    }
+
+    if (
+      /^(5[1-5]\d{14}|2(2[2-9]\d{12}|[3-6]\d{13}|7([01]\d{12}|20\d{12})))$/.test(
+        cardNumber
+      )
+    ) {
+      return "Mastercard";
+    }
+
+    if (/^3[47]\d{13}$/.test(cardNumber)) {
+      return "American Express";
+    }
+
+    if (/^6(?:011|5\d{2})\d{12}$/.test(cardNumber)) {
+      return "Discover";
+    }
+
+    return "Card";
+  }
+
+  async findBookingsByShowtime(movieId, showtime) {
     const [numberIdSnapshot, stringIdSnapshot] = await Promise.all([
       this.collection().where("movieId", "==", movieId).where("showtime", "==", showtime).get(),
       this.collection().where("movieId", "==", String(movieId)).where("showtime", "==", showtime).get()
