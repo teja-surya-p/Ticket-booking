@@ -384,6 +384,18 @@ export async function signInWithGoogle() {
       syncWarning
     };
   } catch (error) {
+    if (isUnverifiedAccountError(error)) {
+      await signOut(firebaseAuth);
+
+      return {
+        ok: false,
+        code: UNVERIFIED_ACCOUNT_BACKEND_CODE,
+        message: EMAIL_VERIFICATION_REQUIRED_MESSAGE,
+        requiresVerification: true,
+        error
+      };
+    }
+
     return {
       ok: false,
       message: mapAuthErrorToMessage(error),

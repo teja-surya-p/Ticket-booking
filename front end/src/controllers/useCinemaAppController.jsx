@@ -300,9 +300,12 @@ export function useCinemaAppController() {
   };
 
   const handleAddToCart = (movie, showtime) => {
+    if (!showtime) {
+      return;
+    }
+
     setAuthMessage("");
     setCartItems((previous) => addMovieToCart(previous, movie, showtime));
-    setView({ type: "cart" });
   };
 
   const handleAddToCartFromCard = (movie) => {

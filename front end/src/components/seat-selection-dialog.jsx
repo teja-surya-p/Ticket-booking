@@ -97,6 +97,14 @@ export function SeatSelectionDialog({
     (_, index) => index + leftColumns.length
   );
   const inlineCardErrors = cardFieldErrors ?? {};
+  const getCardholderFirstName = (value) => {
+    if (typeof value !== "string") {
+      return "Cardholder";
+    }
+
+    const [firstName = ""] = value.trim().split(/\s+/);
+    return firstName.length > 0 ? firstName : "Cardholder";
+  };
   const hasInlineCardErrors =
     showPaymentStep &&
     showCardForm &&
@@ -357,8 +365,8 @@ export function SeatSelectionDialog({
                             </span>
                           </button>
                           <div className={styles["seat-dialog-class-62"]}>
-                            <span className={styles["seat-dialog-class-58"]}>
-                              {selectedCardId === card.cardId ? "Selected" : "Select"}
+                            <span className={styles["seat-dialog-class-65"]}>
+                              {getCardholderFirstName(card.cardholderName)}
                             </span>
                             <Button
                               type="button"

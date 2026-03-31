@@ -227,7 +227,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setPaymentInfo(
       cards.length === 0
         ? "No saved cards found. Add a card to continue."
-        : `Found ${cards.length} saved card${cards.length === 1 ? "" : "s"}.`
+        : null
     );
   };
 

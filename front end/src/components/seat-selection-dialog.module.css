@@ -289,6 +289,10 @@
   @apply size-4;
 }
 
+.seat-dialog-class-65 {
+  @apply text-xs font-semibold text-foreground;
+}
+
 @media (max-width: 900px) {
   .seat-dialog-class-22 {
     --seat-size: 2.9rem;

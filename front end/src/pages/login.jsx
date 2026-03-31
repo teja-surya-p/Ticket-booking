@@ -418,10 +418,20 @@ export default function LoginPage() {
     });
     setFormError("");
     setStatusMessage("");
+    setVerificationPopupOpen(false);
     setAdminMode(false);
 
     const result = await signInWithGoogle();
     if (!result.ok) {
+      if (result.requiresVerification) {
+        setSocialState({
+          loading: false,
+          message: ""
+        });
+        setVerificationPopupOpen(true);
+        return;
+      }
+
       setSocialState({
         loading: false,
         message: result.message || "Sign-in failed."

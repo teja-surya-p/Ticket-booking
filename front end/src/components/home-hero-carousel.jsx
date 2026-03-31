@@ -180,7 +180,7 @@ export function HomeHeroCarousel({
                           }}
                         >
                           <Ticket className={styles["home-hero-action-icon"]} />
-                          {defaultShowtime ? "Book Tickets" : "View Movie"}
+                          {defaultShowtime ? "Add to Cart" : "View Movie"}
                         </Button>
 
                         <Button
