@@ -461,6 +461,10 @@ export function useCinemaAppController() {
     setFavoriteMovieIds([]);
     setFavoritePendingMovieIds([]);
     setFavoritesLoading(false);
+    if (isAdmin && typeof window !== "undefined") {
+      window.location.assign("/login?mode=login");
+      return;
+    }
     setAuthMessage("Signed out.");
   };
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, ParseIntPipe, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Param, ParseIntPipe, Patch, Post, Query } from "@nestjs/common";
 import { decorateClass, decorateMethod, parameterDecorator } from "../common/nest-metadata.js";
 import { BookingsService } from "../services/bookings.service.js";
 
@@ -16,6 +16,10 @@ class BookingsController {
 
   async saveCard(authorization, body) {
     return await this.bookingsService.saveCard(body, authorization);
+  }
+
+  async updateCard(authorization, cardId, body) {
+    return await this.bookingsService.updateCard(cardId, body, authorization);
   }
 
   async deleteCard(authorization, cardId) {
@@ -64,6 +68,21 @@ decorateMethod(
   ],
   {
     paramTypes: [String, Object],
+    returnType: Promise
+  }
+);
+
+decorateMethod(
+  BookingsController.prototype,
+  "updateCard",
+  [
+    Patch("card/:cardId"),
+    parameterDecorator(0, Headers("authorization")),
+    parameterDecorator(1, Param("cardId")),
+    parameterDecorator(2, Body())
+  ],
+  {
+    paramTypes: [String, String, Object],
     returnType: Promise
   }
 );

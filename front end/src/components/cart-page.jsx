@@ -39,7 +39,11 @@ export function CartPage({
     isCheckingCards,
     isSavingCard,
     isDeletingCard,
+    isUpdatingCard,
     cardFieldErrors,
+    editingCardId,
+    editCardForm,
+    editCardFieldErrors,
     paymentError,
     paymentInfo,
     canAddMoreCards,
@@ -51,8 +55,12 @@ export function CartPage({
     formatSeatLabel,
     handleSelectCard,
     handleCardFieldChange,
+    startEditingCard,
+    cancelEditingCard,
+    handleEditCardFieldChange,
     setShowCardForm,
     saveCardForEmail,
+    updateSavedCardById,
     deleteSavedCardById,
     openDialog,
     closeDialog,
@@ -205,7 +213,11 @@ export function CartPage({
         isCheckingCards={isCheckingCards}
         isSavingCard={isSavingCard}
         isDeletingCard={isDeletingCard}
+        isUpdatingCard={isUpdatingCard}
         cardFieldErrors={cardFieldErrors}
+        editingCardId={editingCardId}
+        editCardForm={editCardForm}
+        editCardFieldErrors={editCardFieldErrors}
         paymentError={paymentError}
         paymentInfo={paymentInfo}
         canAddMoreCards={canAddMoreCards}
@@ -221,8 +233,12 @@ export function CartPage({
         formatSeatLabel={formatSeatLabel}
         onSelectCard={handleSelectCard}
         onCardFieldChange={handleCardFieldChange}
+        onStartEditCard={startEditingCard}
+        onCancelEditCard={cancelEditingCard}
+        onEditCardFieldChange={handleEditCardFieldChange}
         onToggleAddCard={setShowCardForm}
         onSaveCard={saveCardForEmail}
+        onUpdateCard={updateSavedCardById}
         onDeleteCard={deleteSavedCardById}
         onClose={closeDialog}
         onToggleSeat={toggleSeat}

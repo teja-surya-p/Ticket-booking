@@ -2,14 +2,30 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   changeCurrentUserPassword,
+  deleteSavedCard as deleteSavedCardRequest,
+  fetchSavedCards,
   fetchCurrentUserProfile,
+  getMeaningfulErrorMessage,
+  isAPICallError,
+  savePaymentCard,
   subscribeToAuthState,
+  updateSavedCard as updateSavedCardRequest,
   updateCurrentUserProfile
 } from "@/services";
 import styles from "./profile.module.css";
@@ -53,6 +69,123 @@ function toDisplayValue(value) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : "Not provided";
 }
 
+function formatCardExpiry(month, year) {
+  const normalizedMonth = Number(month);
+  const normalizedYear = Number(year);
+  const monthText =
+    Number.isInteger(normalizedMonth) && normalizedMonth > 0
+      ? String(normalizedMonth).padStart(2, "0")
+      : "--";
+  const yearText =
+    Number.isInteger(normalizedYear) && normalizedYear > 0 ? String(normalizedYear) : "----";
+
+  return `${monthText}/${yearText}`;
+}
+
+function createEmptyCardForm() {
+  return {
+    cardholderName: "",
+    cardNumber: "",
+    cvv: "",
+    expMonth: "",
+    expYear: ""
+  };
+}
+
+function createEmptyCardFieldErrors() {
+  return {
+    cardholderName: "",
+    cardNumber: "",
+    cvv: "",
+    expMonth: "",
+    expYear: ""
+  };
+}
+
+function createEmptyEditCardForm() {
+  return {
+    cardholderName: "",
+    expMonth: "",
+    expYear: ""
+  };
+}
+
+function createEmptyEditCardFieldErrors() {
+  return {
+    cardholderName: "",
+    expMonth: "",
+    expYear: ""
+  };
+}
+
+function toMaxCardsAllowed(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 3;
+}
+
+function mapPaymentMessageToField(message) {
+  const normalizedMessage = typeof message === "string" ? message.trim() : "";
+  const lowerMessage = normalizedMessage.toLowerCase();
+
+  if (!normalizedMessage) {
+    return null;
+  }
+
+  if (lowerMessage.includes("cardnumber") || lowerMessage.includes("card number")) {
+    return "cardNumber";
+  }
+
+  if (
+    lowerMessage.includes("cardholdername") ||
+    lowerMessage.includes("card holder") ||
+    lowerMessage.includes("cardholder")
+  ) {
+    return "cardholderName";
+  }
+
+  if (lowerMessage.includes("cvv")) {
+    return "cvv";
+  }
+
+  if (
+    lowerMessage.includes("expmonth") ||
+    lowerMessage.includes("expiry month") ||
+    lowerMessage.includes("expiration month")
+  ) {
+    return "expMonth";
+  }
+
+  if (
+    lowerMessage.includes("expyear") ||
+    lowerMessage.includes("expiry year") ||
+    lowerMessage.includes("expiration year") ||
+    lowerMessage.includes("expiry date") ||
+    lowerMessage.includes("expiration date")
+  ) {
+    return "expYear";
+  }
+
+  return null;
+}
+
+function getCardErrorMessage(error) {
+  if (isAPICallError(error)) {
+    const serverMessage = typeof error?.message === "string" ? error.message.trim() : "";
+    if (serverMessage.length > 0) {
+      if (
+        /cardnumber|card number/i.test(serverMessage) &&
+        /invalid|not valid|failed/i.test(serverMessage)
+      ) {
+        return "Invalid card number.";
+      }
+
+      return serverMessage;
+    }
+  }
+
+  return getMeaningfulErrorMessage(error, "user");
+}
+
 function hasPasswordProvider(user) {
   if (!user || !Array.isArray(user.providerData)) {
     return false;
@@ -80,6 +213,22 @@ export default function ProfilePage() {
     currentPassword: "",
     newPassword: ""
   });
+  const [savedCards, setSavedCards] = useState([]);
+  const [savedCardsLoading, setSavedCardsLoading] = useState(false);
+  const [savedCardsError, setSavedCardsError] = useState("");
+  const [maxCardsAllowed, setMaxCardsAllowed] = useState(3);
+  const [showAddCardForm, setShowAddCardForm] = useState(false);
+  const [addCardSaving, setAddCardSaving] = useState(false);
+  const [addCardError, setAddCardError] = useState("");
+  const [addCardMessage, setAddCardMessage] = useState("");
+  const [addCardForm, setAddCardForm] = useState(createEmptyCardForm());
+  const [addCardFieldErrors, setAddCardFieldErrors] = useState(createEmptyCardFieldErrors());
+  const [editingCardId, setEditingCardId] = useState("");
+  const [editCardForm, setEditCardForm] = useState(createEmptyEditCardForm());
+  const [editCardFieldErrors, setEditCardFieldErrors] = useState(createEmptyEditCardFieldErrors());
+  const [editCardSaving, setEditCardSaving] = useState(false);
+  const [deleteCardSaving, setDeleteCardSaving] = useState(false);
+  const [deleteTargetCardId, setDeleteTargetCardId] = useState("");
 
   useEffect(() => {
     const unsubscribe = subscribeToAuthState((user) => {
@@ -160,6 +309,99 @@ export default function ProfilePage() {
     });
   }, [currentUser?.uid]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSavedCards = async () => {
+      if (!currentUser) {
+        setSavedCards([]);
+        setSavedCardsLoading(false);
+        setSavedCardsError("");
+        setMaxCardsAllowed(3);
+        setShowAddCardForm(false);
+        setAddCardSaving(false);
+        setAddCardError("");
+        setAddCardMessage("");
+        setAddCardForm(createEmptyCardForm());
+        setAddCardFieldErrors(createEmptyCardFieldErrors());
+        setEditingCardId("");
+        setEditCardForm(createEmptyEditCardForm());
+        setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+        setEditCardSaving(false);
+        setDeleteCardSaving(false);
+        setDeleteTargetCardId("");
+        return;
+      }
+
+      const userEmail =
+        typeof currentUser.email === "string" ? currentUser.email.trim().toLowerCase() : "";
+      if (userEmail.length === 0) {
+        setSavedCards([]);
+        setSavedCardsLoading(false);
+        setSavedCardsError("Email is not available for this account.");
+        setShowAddCardForm(false);
+        setEditingCardId("");
+        setEditCardForm(createEmptyEditCardForm());
+        setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+        setDeleteTargetCardId("");
+        return;
+      }
+
+      setSavedCardsLoading(true);
+      setSavedCardsError("");
+
+      try {
+        const token = await currentUser.getIdToken();
+        const response = await fetchSavedCards(
+          userEmail,
+          typeof currentUser.uid === "string" ? currentUser.uid : undefined,
+          token
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setSavedCards(Array.isArray(response?.cards) ? response.cards : []);
+        setMaxCardsAllowed(toMaxCardsAllowed(response?.maxCardsAllowed));
+        setShowAddCardForm(false);
+        setEditingCardId("");
+        setEditCardForm(createEmptyEditCardForm());
+        setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+        setDeleteTargetCardId("");
+        setAddCardSaving(false);
+        setEditCardSaving(false);
+        setDeleteCardSaving(false);
+      } catch (loadCardsError) {
+        if (cancelled) {
+          return;
+        }
+
+        setSavedCards([]);
+        setMaxCardsAllowed(3);
+        setSavedCardsError(getMeaningfulErrorMessage(loadCardsError, "user"));
+        setShowAddCardForm(false);
+        setEditingCardId("");
+        setEditCardForm(createEmptyEditCardForm());
+        setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+        setDeleteTargetCardId("");
+        setAddCardSaving(false);
+        setEditCardSaving(false);
+        setDeleteCardSaving(false);
+      } finally {
+        if (!cancelled) {
+          setSavedCardsLoading(false);
+        }
+      }
+    };
+
+    void loadSavedCards();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.uid, currentUser?.email]);
+
   const hasMissingProfileFields = useMemo(() => {
     return (
       form.firstName.trim().length === 0 ||
@@ -203,6 +445,14 @@ export default function ProfilePage() {
   const canChangePassword = useMemo(
     () => hasPasswordProvider(currentUser),
     [currentUser]
+  );
+  const canAddMoreCards = useMemo(
+    () => savedCards.length < maxCardsAllowed,
+    [savedCards.length, maxCardsAllowed]
+  );
+  const deleteTargetCard = useMemo(
+    () => savedCards.find((card) => card.cardId === deleteTargetCardId) ?? null,
+    [savedCards, deleteTargetCardId]
   );
 
   const handleChange = (key) => (event) => {
@@ -327,6 +577,358 @@ export default function ProfilePage() {
     });
   };
 
+  const handleAddCardFieldChange = (key) => (event) => {
+    const value = typeof event?.target?.value === "string" ? event.target.value : "";
+    setAddCardMessage("");
+    setAddCardError("");
+    setAddCardFieldErrors((previous) => ({
+      ...previous,
+      [key]: ""
+    }));
+
+    setAddCardForm((previous) => {
+      if (key === "cardNumber") {
+        return {
+          ...previous,
+          cardNumber: value.replace(/[^\d\s]/g, "").slice(0, 23)
+        };
+      }
+
+      if (key === "expMonth") {
+        return {
+          ...previous,
+          expMonth: value.replace(/\D/g, "").slice(0, 2)
+        };
+      }
+
+      if (key === "cvv") {
+        return {
+          ...previous,
+          cvv: value.replace(/\D/g, "").slice(0, 4)
+        };
+      }
+
+      if (key === "expYear") {
+        return {
+          ...previous,
+          expYear: value.replace(/\D/g, "").slice(0, 4)
+        };
+      }
+
+      return {
+        ...previous,
+        [key]: value
+      };
+    });
+  };
+
+  const handleToggleAddCard = () => {
+    if (showAddCardForm) {
+      setShowAddCardForm(false);
+      setAddCardError("");
+      setAddCardMessage("");
+      setAddCardFieldErrors(createEmptyCardFieldErrors());
+      setAddCardForm(createEmptyCardForm());
+      return;
+    }
+
+    setAddCardError("");
+    setAddCardMessage("");
+    setAddCardFieldErrors(createEmptyCardFieldErrors());
+    setEditingCardId("");
+    setEditCardForm(createEmptyEditCardForm());
+    setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+    setShowAddCardForm(true);
+  };
+
+  const handleSaveCard = async (event) => {
+    event.preventDefault();
+    setAddCardMessage("");
+    setAddCardError("");
+    setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+    const nextFieldErrors = createEmptyCardFieldErrors();
+
+    if (!currentUser) {
+      setAddCardError("Please sign in to save a card.");
+      return;
+    }
+
+    if (!canAddMoreCards) {
+      setAddCardError(`You can save up to ${maxCardsAllowed} cards only.`);
+      return;
+    }
+
+    const fallbackName = [form.firstName.trim(), form.lastName.trim()].filter(Boolean).join(" ");
+    const cardholderName = addCardForm.cardholderName.trim() || fallbackName;
+    if (cardholderName.length === 0) {
+      nextFieldErrors.cardholderName = "Card holder name is required.";
+    }
+
+    if (!addCardForm.cardNumber) {
+      nextFieldErrors.cardNumber = "Card number is required.";
+    }
+    if (!addCardForm.cvv) {
+      nextFieldErrors.cvv = "CVV is required.";
+    }
+    if (!addCardForm.expMonth) {
+      nextFieldErrors.expMonth = "Expiry month is required.";
+    }
+    if (!addCardForm.expYear) {
+      nextFieldErrors.expYear = "Expiry year is required.";
+    }
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      setAddCardFieldErrors(nextFieldErrors);
+      return;
+    }
+
+    const userEmail =
+      typeof currentUser.email === "string" ? currentUser.email.trim().toLowerCase() : "";
+    if (userEmail.length === 0) {
+      setAddCardError("Email is not available for this account.");
+      return;
+    }
+
+    setAddCardSaving(true);
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await savePaymentCard(
+        {
+          customerUid: typeof currentUser.uid === "string" ? currentUser.uid : undefined,
+          customerEmail: userEmail,
+          cardholderName,
+          cardNumber: addCardForm.cardNumber,
+          cvv: addCardForm.cvv,
+          expMonth: Number(addCardForm.expMonth),
+          expYear: Number(addCardForm.expYear)
+        },
+        token
+      );
+
+      const cards = Array.isArray(response?.cards) ? response.cards : [];
+      setSavedCards(cards);
+      setMaxCardsAllowed(toMaxCardsAllowed(response?.maxCardsAllowed));
+      setSavedCardsError("");
+      setShowAddCardForm(false);
+      setEditingCardId("");
+      setEditCardForm(createEmptyEditCardForm());
+      setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+      setAddCardError("");
+      setAddCardMessage("Card saved successfully.");
+      setAddCardForm(createEmptyCardForm());
+      setAddCardFieldErrors(createEmptyCardFieldErrors());
+    } catch (saveCardError) {
+      const message = getCardErrorMessage(saveCardError);
+      const field = mapPaymentMessageToField(message);
+
+      if (field) {
+        setAddCardFieldErrors({
+          ...createEmptyCardFieldErrors(),
+          [field]: message
+        });
+        setAddCardError("");
+      } else {
+        setAddCardFieldErrors(createEmptyCardFieldErrors());
+        setAddCardError(message);
+      }
+    } finally {
+      setAddCardSaving(false);
+    }
+  };
+
+  const handleStartEditCard = (card) => {
+    if (!card || typeof card.cardId !== "string" || card.cardId.trim().length === 0) {
+      return;
+    }
+
+    setShowAddCardForm(false);
+    setAddCardError("");
+    setAddCardMessage("");
+    setAddCardFieldErrors(createEmptyCardFieldErrors());
+    setAddCardForm(createEmptyCardForm());
+    setDeleteTargetCardId("");
+    setEditingCardId(card.cardId);
+    setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+    setEditCardForm({
+      cardholderName:
+        typeof card.cardholderName === "string" ? card.cardholderName.trim() : "",
+      expMonth:
+        Number.isFinite(Number(card.expMonth)) && Number(card.expMonth) > 0
+          ? String(card.expMonth)
+          : "",
+      expYear:
+        Number.isFinite(Number(card.expYear)) && Number(card.expYear) > 0
+          ? String(card.expYear)
+          : ""
+    });
+  };
+
+  const handleCancelEditCard = () => {
+    setEditingCardId("");
+    setEditCardForm(createEmptyEditCardForm());
+    setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+    setAddCardError("");
+  };
+
+  const handleEditCardFieldChange = (key) => (event) => {
+    const value = typeof event?.target?.value === "string" ? event.target.value : "";
+    setAddCardMessage("");
+    setAddCardError("");
+    setEditCardFieldErrors((previous) => ({
+      ...previous,
+      [key]: ""
+    }));
+
+    setEditCardForm((previous) => {
+      if (key === "expMonth") {
+        return {
+          ...previous,
+          expMonth: value.replace(/\D/g, "").slice(0, 2)
+        };
+      }
+
+      if (key === "expYear") {
+        return {
+          ...previous,
+          expYear: value.replace(/\D/g, "").slice(0, 4)
+        };
+      }
+
+      return {
+        ...previous,
+        [key]: value
+      };
+    });
+  };
+
+  const handleUpdateCard = async (event) => {
+    event.preventDefault();
+    setAddCardMessage("");
+    setAddCardError("");
+    setAddCardFieldErrors(createEmptyCardFieldErrors());
+    const normalizedCardId = typeof editingCardId === "string" ? editingCardId.trim() : "";
+
+    if (!currentUser) {
+      setAddCardError("Please sign in to update a card.");
+      return;
+    }
+
+    if (normalizedCardId.length === 0) {
+      setAddCardError("Select a valid card to update.");
+      return;
+    }
+
+    const nextFieldErrors = createEmptyEditCardFieldErrors();
+    const cardholderName = editCardForm.cardholderName.trim();
+    const expMonthValue = editCardForm.expMonth.trim();
+    const expYearValue = editCardForm.expYear.trim();
+
+    if (cardholderName.length === 0) {
+      nextFieldErrors.cardholderName = "Card holder name is required.";
+    }
+
+    if (expMonthValue.length === 0) {
+      nextFieldErrors.expMonth = "Expiry month is required.";
+    }
+
+    if (expYearValue.length === 0) {
+      nextFieldErrors.expYear = "Expiry year is required.";
+    }
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      setEditCardFieldErrors(nextFieldErrors);
+      return;
+    }
+
+    setEditCardSaving(true);
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await updateSavedCardRequest(
+        normalizedCardId,
+        {
+          cardholderName,
+          expMonth: Number(expMonthValue),
+          expYear: Number(expYearValue)
+        },
+        token
+      );
+      const cards = Array.isArray(response?.cards) ? response.cards : [];
+
+      setSavedCards(cards);
+      setMaxCardsAllowed(toMaxCardsAllowed(response?.maxCardsAllowed));
+      setSavedCardsError("");
+      setEditingCardId("");
+      setEditCardForm(createEmptyEditCardForm());
+      setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+      setAddCardFieldErrors(createEmptyCardFieldErrors());
+      setAddCardMessage("Card updated successfully.");
+    } catch (updateCardError) {
+      const message = getCardErrorMessage(updateCardError);
+      const field = mapPaymentMessageToField(message);
+
+      if (field && Object.prototype.hasOwnProperty.call(createEmptyEditCardFieldErrors(), field)) {
+        setEditCardFieldErrors({
+          ...createEmptyEditCardFieldErrors(),
+          [field]: message
+        });
+        setAddCardError("");
+      } else {
+        setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+        setAddCardError(message);
+      }
+    } finally {
+      setEditCardSaving(false);
+    }
+  };
+
+  const handleDeleteCard = async (cardIdOverride = deleteTargetCardId) => {
+    const normalizedCardId =
+      typeof cardIdOverride === "string" ? cardIdOverride.trim() : "";
+
+    if (!currentUser) {
+      setAddCardError("Please sign in to delete a card.");
+      setDeleteTargetCardId("");
+      return;
+    }
+
+    if (normalizedCardId.length === 0) {
+      setAddCardError("Select a valid card to delete.");
+      setDeleteTargetCardId("");
+      return;
+    }
+
+    setDeleteCardSaving(true);
+    setAddCardMessage("");
+    setAddCardError("");
+    setAddCardFieldErrors(createEmptyCardFieldErrors());
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await deleteSavedCardRequest(normalizedCardId, token);
+      const cards = Array.isArray(response?.cards) ? response.cards : [];
+
+      setSavedCards(cards);
+      setMaxCardsAllowed(toMaxCardsAllowed(response?.maxCardsAllowed));
+      setSavedCardsError("");
+      setDeleteTargetCardId("");
+      setEditingCardId((previous) =>
+        previous === normalizedCardId ? "" : previous
+      );
+      setEditCardForm(createEmptyEditCardForm());
+      setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+      setAddCardFieldErrors(createEmptyCardFieldErrors());
+      setAddCardMessage(
+        cards.length === 0 ? "Card deleted. No saved cards found." : "Card deleted successfully."
+      );
+    } catch (deleteCardError) {
+      setAddCardError(getCardErrorMessage(deleteCardError));
+    } finally {
+      setDeleteCardSaving(false);
+    }
+  };
+
   return (
     <div className={styles.pageShell}>
       <div className={styles.backgroundGlow} />
@@ -443,6 +1045,259 @@ export default function ProfilePage() {
                         <p className={styles.dataValue}>{toDisplayValue(addressText)}</p>
                       </div>
                     </div>
+
+                    <section className={styles.savedCardsSection}>
+                      <div className={styles.savedCardsHeader}>
+                        <h3 className={styles.savedCardsTitle}>Saved Cards</h3>
+                        <p className={styles.savedCardsCount}>
+                          {savedCards.length}/{maxCardsAllowed} saved
+                        </p>
+                      </div>
+
+                      <div className={styles.savedCardsToolbar}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={showAddCardForm ? "outline" : "default"}
+                          onClick={handleToggleAddCard}
+                          disabled={
+                            savedCardsLoading ||
+                            addCardSaving ||
+                            editCardSaving ||
+                            deleteCardSaving ||
+                            (!showAddCardForm && !canAddMoreCards)
+                          }
+                        >
+                          {showAddCardForm ? "Cancel Add Card" : "Add Card"}
+                        </Button>
+                      </div>
+
+                      {addCardMessage ? (
+                        <p className={styles.savedCardsSuccess}>{addCardMessage}</p>
+                      ) : null}
+                      {addCardError ? (
+                        <p className={styles.savedCardsError}>{addCardError}</p>
+                      ) : null}
+                      {!canAddMoreCards && !showAddCardForm ? (
+                        <p className={styles.savedCardsHint}>
+                          You can save up to {maxCardsAllowed} cards only.
+                        </p>
+                      ) : null}
+
+                      {showAddCardForm ? (
+                        <form onSubmit={handleSaveCard} className={styles.addCardForm}>
+                          <div className={styles.gridTwo}>
+                            <div className={styles.field}>
+                              <Label htmlFor="profile-cardholder">Card Holder Name</Label>
+                              <Input
+                                id="profile-cardholder"
+                                value={addCardForm.cardholderName}
+                                onChange={handleAddCardFieldChange("cardholderName")}
+                                placeholder="Name on card"
+                                autoComplete="cc-name"
+                              />
+                              {addCardFieldErrors.cardholderName ? (
+                                <p className={styles.savedCardFieldError}>
+                                  {addCardFieldErrors.cardholderName}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className={styles.field}>
+                              <Label htmlFor="profile-card-number">Card Number</Label>
+                              <Input
+                                id="profile-card-number"
+                                value={addCardForm.cardNumber}
+                                onChange={handleAddCardFieldChange("cardNumber")}
+                                placeholder="4242 4242 4242 4242"
+                                autoComplete="cc-number"
+                                inputMode="numeric"
+                              />
+                              {addCardFieldErrors.cardNumber ? (
+                                <p className={styles.savedCardFieldError}>
+                                  {addCardFieldErrors.cardNumber}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className={styles.field}>
+                              <Label htmlFor="profile-card-exp-month">Expiry Month</Label>
+                              <Input
+                                id="profile-card-exp-month"
+                                value={addCardForm.expMonth}
+                                onChange={handleAddCardFieldChange("expMonth")}
+                                placeholder="MM"
+                                autoComplete="cc-exp-month"
+                                inputMode="numeric"
+                              />
+                              {addCardFieldErrors.expMonth ? (
+                                <p className={styles.savedCardFieldError}>
+                                  {addCardFieldErrors.expMonth}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className={styles.field}>
+                              <Label htmlFor="profile-card-cvv">CVV</Label>
+                              <Input
+                                id="profile-card-cvv"
+                                value={addCardForm.cvv}
+                                onChange={handleAddCardFieldChange("cvv")}
+                                placeholder="123"
+                                autoComplete="cc-csc"
+                                inputMode="numeric"
+                              />
+                              {addCardFieldErrors.cvv ? (
+                                <p className={styles.savedCardFieldError}>{addCardFieldErrors.cvv}</p>
+                              ) : null}
+                            </div>
+                            <div className={styles.field}>
+                              <Label htmlFor="profile-card-exp-year">Expiry Year</Label>
+                              <Input
+                                id="profile-card-exp-year"
+                                value={addCardForm.expYear}
+                                onChange={handleAddCardFieldChange("expYear")}
+                                placeholder="YYYY"
+                                autoComplete="cc-exp-year"
+                                inputMode="numeric"
+                              />
+                              {addCardFieldErrors.expYear ? (
+                                <p className={styles.savedCardFieldError}>
+                                  {addCardFieldErrors.expYear}
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className={styles.savedCardsToolbar}>
+                            <Button
+                              type="submit"
+                              size="sm"
+                              disabled={addCardSaving || editCardSaving || deleteCardSaving}
+                            >
+                              {addCardSaving ? "Saving..." : "Save Card"}
+                            </Button>
+                          </div>
+                        </form>
+                      ) : null}
+
+                      {savedCardsLoading ? (
+                        <p className={styles.savedCardsHint}>Loading saved cards...</p>
+                      ) : savedCardsError ? (
+                        <p className={styles.savedCardsError}>{savedCardsError}</p>
+                      ) : savedCards.length === 0 ? (
+                        <p className={styles.savedCardsHint}>No saved cards found.</p>
+                      ) : (
+                        <div className={styles.savedCardsGrid}>
+                          {savedCards.map((card) => (
+                            <article key={card.cardId} className={styles.savedCardItem}>
+                              <div className={styles.savedCardTopRow}>
+                                <p className={styles.savedCardBrand}>
+                                  {card.brand || "Card"} •••• {card.last4 || "0000"}
+                                </p>
+                                <div className={styles.savedCardActions}>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleStartEditCard(card)}
+                                    disabled={addCardSaving || editCardSaving || deleteCardSaving}
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setDeleteTargetCardId(card.cardId)}
+                                    disabled={addCardSaving || editCardSaving || deleteCardSaving}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              </div>
+                              <p className={styles.savedCardMeta}>
+                                Cardholder: {toDisplayValue(card.cardholderName)}
+                              </p>
+                              <p className={styles.savedCardMeta}>
+                                Expires {formatCardExpiry(card.expMonth, card.expYear)}
+                              </p>
+
+                              {editingCardId === card.cardId ? (
+                                <form onSubmit={handleUpdateCard} className={styles.savedCardEditForm}>
+                                  <div className={styles.savedCardEditGrid}>
+                                    <div className={styles.field}>
+                                      <Label htmlFor={`profile-edit-cardholder-${card.cardId}`}>
+                                        Card Holder Name
+                                      </Label>
+                                      <Input
+                                        id={`profile-edit-cardholder-${card.cardId}`}
+                                        value={editCardForm.cardholderName}
+                                        onChange={handleEditCardFieldChange("cardholderName")}
+                                        placeholder="Name on card"
+                                        autoComplete="cc-name"
+                                      />
+                                      {editCardFieldErrors.cardholderName ? (
+                                        <p className={styles.savedCardFieldError}>
+                                          {editCardFieldErrors.cardholderName}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                    <div className={styles.field}>
+                                      <Label htmlFor={`profile-edit-exp-month-${card.cardId}`}>
+                                        Expiry Month
+                                      </Label>
+                                      <Input
+                                        id={`profile-edit-exp-month-${card.cardId}`}
+                                        value={editCardForm.expMonth}
+                                        onChange={handleEditCardFieldChange("expMonth")}
+                                        placeholder="MM"
+                                        autoComplete="cc-exp-month"
+                                        inputMode="numeric"
+                                      />
+                                      {editCardFieldErrors.expMonth ? (
+                                        <p className={styles.savedCardFieldError}>
+                                          {editCardFieldErrors.expMonth}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                    <div className={styles.field}>
+                                      <Label htmlFor={`profile-edit-exp-year-${card.cardId}`}>
+                                        Expiry Year
+                                      </Label>
+                                      <Input
+                                        id={`profile-edit-exp-year-${card.cardId}`}
+                                        value={editCardForm.expYear}
+                                        onChange={handleEditCardFieldChange("expYear")}
+                                        placeholder="YYYY"
+                                        autoComplete="cc-exp-year"
+                                        inputMode="numeric"
+                                      />
+                                      {editCardFieldErrors.expYear ? (
+                                        <p className={styles.savedCardFieldError}>
+                                          {editCardFieldErrors.expYear}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                  <div className={styles.savedCardsToolbar}>
+                                    <Button type="submit" size="sm" disabled={editCardSaving || deleteCardSaving}>
+                                      {editCardSaving ? "Updating..." : "Update Card"}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={handleCancelEditCard}
+                                      disabled={editCardSaving || deleteCardSaving}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </form>
+                              ) : null}
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </section>
                   </section>
                 </div>
               ) : (
@@ -643,6 +1498,37 @@ export default function ProfilePage() {
             </div>
           </section>
         ) : null}
+
+        <AlertDialog
+          open={deleteTargetCardId.length > 0}
+          onOpenChange={(open) => {
+            if (!open && !deleteCardSaving) {
+              setDeleteTargetCardId("");
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Saved Card</AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteTargetCard
+                  ? `Are you sure you want to delete ${deleteTargetCard.brand || "Card"} ending in ${deleteTargetCard.last4}?`
+                  : "Are you sure you want to delete this saved card?"}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteCardSaving}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={deleteCardSaving}
+                onClick={() => {
+                  void handleDeleteCard(deleteTargetCardId);
+                }}
+              >
+                {deleteCardSaving ? "Deleting..." : "Confirm"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

@@ -205,3 +205,75 @@
 .securityHint {
   @apply mt-3 text-sm text-muted-foreground;
 }
+
+.savedCardsSection {
+  @apply mt-4 rounded-2xl border border-border/80 bg-card/70 p-4;
+}
+
+.savedCardsHeader {
+  @apply mb-3 flex items-center justify-between gap-2;
+}
+
+.savedCardsToolbar {
+  @apply mb-3 flex flex-wrap items-center gap-2;
+}
+
+.savedCardsTitle {
+  @apply text-sm font-black uppercase tracking-[0.12em] text-foreground;
+}
+
+.savedCardsCount {
+  @apply text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground;
+}
+
+.savedCardsHint {
+  @apply text-sm text-muted-foreground;
+}
+
+.savedCardsError {
+  @apply rounded-lg border border-red-400/35 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200;
+}
+
+.savedCardsSuccess {
+  @apply rounded-lg border border-emerald-400/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-200;
+}
+
+.addCardForm {
+  @apply mb-3 rounded-xl border border-border/80 bg-background px-3 py-3;
+}
+
+.savedCardFieldError {
+  @apply text-xs font-medium text-destructive;
+}
+
+.savedCardsGrid {
+  @apply grid gap-2 sm:grid-cols-2;
+}
+
+.savedCardItem {
+  @apply rounded-xl border border-border/80 bg-background px-3 py-3;
+}
+
+.savedCardTopRow {
+  @apply flex flex-wrap items-center justify-between gap-2;
+}
+
+.savedCardActions {
+  @apply flex flex-wrap gap-2;
+}
+
+.savedCardBrand {
+  @apply text-sm font-semibold text-foreground;
+}
+
+.savedCardMeta {
+  @apply mt-1 text-xs font-medium text-muted-foreground;
+}
+
+.savedCardEditForm {
+  @apply mt-3 rounded-lg border border-border/80 bg-card px-3 py-3;
+}
+
+.savedCardEditGrid {
+  @apply grid gap-3 sm:grid-cols-2;
+}

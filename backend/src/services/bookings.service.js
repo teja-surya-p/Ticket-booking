@@ -89,6 +89,49 @@ class BookingsService {
     };
   }
 
+  async updateCard(cardId, payload, authorization) {
+    const normalizedCardId = this.normalizePaymentCardId(cardId);
+    const { customerEmail, customerUid } = await this.requireAuthenticatedCustomer(
+      payload,
+      authorization
+    );
+    const existingCards = await this.findCardDocsForCustomer(customerEmail, customerUid);
+    const existingCard = existingCards.find(
+      (card) =>
+        card.id === normalizedCardId ||
+        (typeof card.data?.cardId === "string" && card.data.cardId === normalizedCardId)
+    );
+
+    if (!existingCard) {
+      throw new BadRequestException("Saved card not found.");
+    }
+
+    const normalizedCardUpdate = this.validateAndNormalizeCardUpdatePayload(payload);
+    const now = new Date().toISOString();
+    const existingData = existingCard.data ?? {};
+    const updatedCardRecord = {
+      ...existingData,
+      cardId: normalizedCardId,
+      customerUid,
+      customerEmail,
+      cardholderName: normalizedCardUpdate.cardholderName,
+      expMonth: normalizedCardUpdate.expMonth,
+      expYear: normalizedCardUpdate.expYear,
+      updatedAt: now
+    };
+
+    await this.cardCollection().doc(normalizedCardId).set(updatedCardRecord, { merge: true });
+    const cards = await this.findCardsForCustomer(customerEmail, customerUid);
+
+    return {
+      customerUid,
+      customerEmail,
+      cards,
+      updatedCardId: normalizedCardId,
+      maxCardsAllowed: 3
+    };
+  }
+
   async deleteCard(cardId, authorization) {
     const normalizedCardId = this.normalizePaymentCardId(cardId);
     const { customerEmail, customerUid } = await this.requireAuthenticatedCustomer(
@@ -509,6 +552,41 @@ class BookingsService {
       cardNumber,
       last4: cardNumber.slice(-4),
       brand: this.detectCardBrand(cardNumber),
+      expMonth: rawMonth,
+      expYear
+    };
+  }
+
+  validateAndNormalizeCardUpdatePayload(payload) {
+    const cardholderName =
+      typeof payload?.cardholderName === "string" ? payload.cardholderName.trim() : "";
+    if (cardholderName.length === 0) {
+      throw new BadRequestException("cardholderName is required");
+    }
+
+    const rawMonth = Number(payload?.expMonth);
+    const rawYear = Number(payload?.expYear);
+    if (!Number.isInteger(rawMonth) || rawMonth < 1 || rawMonth > 12) {
+      throw new BadRequestException("expMonth must be a number between 1 and 12");
+    }
+
+    if (!Number.isInteger(rawYear)) {
+      throw new BadRequestException("expYear must be a valid year");
+    }
+
+    const expYear = rawYear < 100 ? 2000 + rawYear : rawYear;
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+    const currentMonth = now.getUTCMonth() + 1;
+    if (
+      expYear < currentYear ||
+      (expYear === currentYear && rawMonth < currentMonth)
+    ) {
+      throw new BadRequestException("Card expiry date is in the past");
+    }
+
+    return {
+      cardholderName,
       expMonth: rawMonth,
       expYear
     };

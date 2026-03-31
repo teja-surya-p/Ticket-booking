@@ -84,7 +84,7 @@ const registerDefaults = {
 const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_PASSWORD = "admin";
 const VERIFICATION_REQUIRED_POPUP_MESSAGE =
-  "Please verify your account to login. If you did not find the verification link in your email then check spam.";
+  "Account is not verified. Please check your email to verify your account.";
 
 const pageShellStyle = {
   minHeight: "100vh",
@@ -591,6 +591,7 @@ export default function LoginPage() {
             </div>
           ) : null}
 
+          {/* Google sign-in is temporarily disabled.
           <div style={{ display: "grid", gap: "8px" }}>
             <Button
               type="button"
@@ -604,6 +605,7 @@ export default function LoginPage() {
               <p style={{ margin: 0, color: "#f8fafc", fontSize: "0.92rem" }}>{socialState.message}</p>
             ) : null}
           </div>
+          */}
 
           {mode === "login" ? (
             <Form {...loginForm}>

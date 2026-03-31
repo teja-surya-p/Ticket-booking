@@ -6,7 +6,8 @@ import {
   fetchSavedCards,
   getMeaningfulErrorMessage,
   isAPICallError,
-  savePaymentCard
+  savePaymentCard,
+  updateSavedCard as updateSavedCardRequest
 } from "@/services";
 import {
   BOOKING_SEAT_COLS,
@@ -36,6 +37,22 @@ function createEmptyCardFieldErrors() {
     cardholderName: "",
     cardNumber: "",
     cvv: "",
+    expMonth: "",
+    expYear: ""
+  };
+}
+
+function createEmptyEditCardForm() {
+  return {
+    cardholderName: "",
+    expMonth: "",
+    expYear: ""
+  };
+}
+
+function createEmptyEditCardFieldErrors() {
+  return {
+    cardholderName: "",
     expMonth: "",
     expYear: ""
   };
@@ -151,6 +168,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const [paymentInfo, setPaymentInfo] = useState(null);
   const [maxCardsAllowed, setMaxCardsAllowed] = useState(3);
   const [isPaymentStep, setIsPaymentStep] = useState(false);
+  const [editingCardId, setEditingCardId] = useState("");
+  const [editCardForm, setEditCardForm] = useState(createEmptyEditCardForm());
+  const [editCardFieldErrors, setEditCardFieldErrors] = useState(createEmptyEditCardFieldErrors());
+  const [isUpdatingCard, setIsUpdatingCard] = useState(false);
 
   const currentItem = isOpen ? items[currentIndex] ?? null : null;
   const totalSteps = items.length;
@@ -216,6 +237,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setSavedCards(cards);
     setMaxCardsAllowed(maxAllowed);
     setCardFieldErrors(createEmptyCardFieldErrors());
+    setEditingCardId("");
+    setEditCardForm(createEmptyEditCardForm());
+    setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+    setIsUpdatingCard(false);
     setSelectedCardId((previous) => {
       if (cards.some((card) => card.cardId === previous)) {
         return previous;
@@ -240,6 +265,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
       setMaxCardsAllowed(3);
       setShowCardForm(false);
       setCardFieldErrors(createEmptyCardFieldErrors());
+      setEditingCardId("");
+      setEditCardForm(createEmptyEditCardForm());
+      setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+      setIsUpdatingCard(false);
       if (!silent) {
         setPaymentError(
           "Please sign in to load your saved cards."
@@ -267,6 +296,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
       setSelectedCardId("");
       setShowCardForm(false);
       setCardFieldErrors(createEmptyCardFieldErrors());
+      setEditingCardId("");
+      setEditCardForm(createEmptyEditCardForm());
+      setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+      setIsUpdatingCard(false);
       setPaymentError(getPaymentErrorMessage(error));
     } finally {
       setIsCheckingCards(false);
@@ -293,6 +326,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
       setMaxCardsAllowed(3);
       setShowCardForm(false);
       setCardFieldErrors(createEmptyCardFieldErrors());
+      setEditingCardId("");
+      setEditCardForm(createEmptyEditCardForm());
+      setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+      setIsUpdatingCard(false);
       return;
     }
 
@@ -328,6 +365,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setPaymentInfo(null);
     setMaxCardsAllowed(3);
     setIsPaymentStep(false);
+    setEditingCardId("");
+    setEditCardForm(createEmptyEditCardForm());
+    setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+    setIsUpdatingCard(false);
   };
 
   const openDialog = () => {
@@ -359,6 +400,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setPaymentInfo(null);
     setMaxCardsAllowed(3);
     setIsPaymentStep(false);
+    setEditingCardId("");
+    setEditCardForm(createEmptyEditCardForm());
+    setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+    setIsUpdatingCard(false);
     setIsOpen(true);
   };
 
@@ -399,6 +444,9 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     if (isPaymentStep) {
       setIsPaymentStep(false);
       setCardFieldErrors(createEmptyCardFieldErrors());
+      setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+      setEditingCardId("");
+      setEditCardForm(createEmptyEditCardForm());
       setPaymentError(null);
       return;
     }
@@ -411,6 +459,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const handleSelectCard = (cardId) => {
     setSelectedCardId(cardId);
     setCardFieldErrors(createEmptyCardFieldErrors());
+    setEditCardFieldErrors(createEmptyEditCardFieldErrors());
     setPaymentError(null);
   };
 
@@ -498,6 +547,9 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     }
 
     setIsSavingCard(true);
+    setEditingCardId("");
+    setEditCardForm(createEmptyEditCardForm());
+    setEditCardFieldErrors(createEmptyEditCardFieldErrors());
     setPaymentError(null);
     setPaymentInfo(null);
 
@@ -571,6 +623,11 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
 
         return cards[0]?.cardId ?? "";
       });
+      setEditingCardId((previous) =>
+        previous && cards.some((card) => card.cardId === previous) ? previous : ""
+      );
+      setEditCardForm(createEmptyEditCardForm());
+      setEditCardFieldErrors(createEmptyEditCardFieldErrors());
       setShowCardForm(cards.length === 0);
       setPaymentInfo(
         cards.length === 0
@@ -581,6 +638,146 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
       setPaymentError(getPaymentErrorMessage(error));
     } finally {
       setIsDeletingCard(false);
+    }
+  };
+
+  const startEditingCard = (card) => {
+    if (!card || typeof card.cardId !== "string" || card.cardId.trim().length === 0) {
+      return;
+    }
+
+    setShowCardForm(false);
+    setEditingCardId(card.cardId);
+    setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+    setCardFieldErrors(createEmptyCardFieldErrors());
+    setPaymentError(null);
+    setPaymentInfo(null);
+    setEditCardForm({
+      cardholderName:
+        typeof card.cardholderName === "string" ? card.cardholderName.trim() : "",
+      expMonth:
+        Number.isFinite(Number(card.expMonth)) && Number(card.expMonth) > 0
+          ? String(card.expMonth)
+          : "",
+      expYear:
+        Number.isFinite(Number(card.expYear)) && Number(card.expYear) > 0
+          ? String(card.expYear)
+          : ""
+    });
+  };
+
+  const cancelEditingCard = () => {
+    setEditingCardId("");
+    setEditCardForm(createEmptyEditCardForm());
+    setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+    setPaymentError(null);
+  };
+
+  const handleEditCardFieldChange = (field, value) => {
+    const nextValue = typeof value === "string" ? value : "";
+    setEditCardFieldErrors((previous) => ({
+      ...previous,
+      [field]: ""
+    }));
+    setPaymentError(null);
+
+    setEditCardForm((previous) => {
+      if (field === "expMonth") {
+        return {
+          ...previous,
+          expMonth: nextValue.replace(/\D/g, "").slice(0, 2)
+        };
+      }
+
+      if (field === "expYear") {
+        return {
+          ...previous,
+          expYear: nextValue.replace(/\D/g, "").slice(0, 4)
+        };
+      }
+
+      return {
+        ...previous,
+        [field]: nextValue
+      };
+    });
+  };
+
+  const updateSavedCardById = async () => {
+    const normalizedCardId = typeof editingCardId === "string" ? editingCardId.trim() : "";
+    if (normalizedCardId.length === 0) {
+      setPaymentError("Select a valid card to update.");
+      return;
+    }
+
+    const nextFieldErrors = createEmptyEditCardFieldErrors();
+    const cardholderName = editCardForm.cardholderName.trim();
+    const expMonthValue = editCardForm.expMonth.trim();
+    const expYearValue = editCardForm.expYear.trim();
+
+    if (cardholderName.length === 0) {
+      nextFieldErrors.cardholderName = "Card holder name is required.";
+    }
+
+    if (expMonthValue.length === 0) {
+      nextFieldErrors.expMonth = "Expiry month is required.";
+    }
+
+    if (expYearValue.length === 0) {
+      nextFieldErrors.expYear = "Expiry year is required.";
+    }
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      setEditCardFieldErrors(nextFieldErrors);
+      return;
+    }
+
+    setIsUpdatingCard(true);
+    setPaymentError(null);
+    setPaymentInfo(null);
+
+    try {
+      const token = await getAuthToken();
+      const response = await updateSavedCardRequest(
+        normalizedCardId,
+        {
+          cardholderName,
+          expMonth: Number(expMonthValue),
+          expYear: Number(expYearValue)
+        },
+        token
+      );
+
+      const cards = Array.isArray(response?.cards) ? response.cards : [];
+      setSavedCards(cards);
+      setMaxCardsAllowed(toMaxCardsAllowed(response?.maxCardsAllowed));
+      setSelectedCardId((previous) => {
+        if (cards.some((card) => card.cardId === previous)) {
+          return previous;
+        }
+
+        return cards[0]?.cardId ?? "";
+      });
+      setEditingCardId("");
+      setEditCardForm(createEmptyEditCardForm());
+      setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+      setPaymentInfo("Card updated successfully.");
+    } catch (error) {
+      const message = getPaymentErrorMessage(error);
+      const field = mapPaymentMessageToField(message);
+
+      if (field && Object.prototype.hasOwnProperty.call(createEmptyEditCardFieldErrors(), field)) {
+        setEditCardFieldErrors({
+          ...createEmptyEditCardFieldErrors(),
+          [field]: message
+        });
+        setPaymentError(null);
+      } else {
+        setEditCardFieldErrors(createEmptyEditCardFieldErrors());
+        setPaymentError(message);
+      }
+    } finally {
+      setIsUpdatingCard(false);
     }
   };
 
@@ -736,7 +933,11 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     isCheckingCards,
     isSavingCard,
     isDeletingCard,
+    isUpdatingCard,
     cardFieldErrors,
+    editingCardId,
+    editCardForm,
+    editCardFieldErrors,
     paymentError,
     paymentInfo,
     canAddMoreCards,
@@ -748,8 +949,12 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     formatSeatLabel,
     handleSelectCard,
     handleCardFieldChange,
+    startEditingCard,
+    cancelEditingCard,
+    handleEditCardFieldChange,
     setShowCardForm,
     saveCardForEmail,
+    updateSavedCardById,
     deleteSavedCardById,
     openDialog,
     closeDialog,

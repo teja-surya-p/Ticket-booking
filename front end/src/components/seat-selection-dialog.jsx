@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Armchair, Loader2, MonitorPlay, Trash2 } from "lucide-react";
+import { Armchair, Loader2, MonitorPlay, PencilLine, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +40,11 @@ export function SeatSelectionDialog({
   isCheckingCards,
   isSavingCard,
   isDeletingCard,
+  isUpdatingCard,
   cardFieldErrors,
+  editingCardId,
+  editCardForm,
+  editCardFieldErrors,
   paymentError,
   paymentInfo,
   canAddMoreCards,
@@ -56,8 +60,12 @@ export function SeatSelectionDialog({
   formatSeatLabel,
   onSelectCard,
   onCardFieldChange,
+  onStartEditCard,
+  onCancelEditCard,
+  onEditCardFieldChange,
   onToggleAddCard,
   onSaveCard,
+  onUpdateCard,
   onDeleteCard,
   onClose,
   onToggleSeat,
@@ -81,7 +89,7 @@ export function SeatSelectionDialog({
       : "Continue";
   const actionDescription = showPaymentStep
     ? canCheckoutWithPayment
-      ? "Card selected. Confirm checkout to finish."
+      ? "Confirm checkout to finish."
       : "Select a saved card or add one to continue."
     : remainingSeats === 0
       ? currentIndex === totalSteps - 1
@@ -97,6 +105,7 @@ export function SeatSelectionDialog({
     (_, index) => index + leftColumns.length
   );
   const inlineCardErrors = cardFieldErrors ?? {};
+  const inlineEditErrors = editCardFieldErrors ?? {};
   const getCardholderFirstName = (value) => {
     if (typeof value !== "string") {
       return "Cardholder";
@@ -111,8 +120,15 @@ export function SeatSelectionDialog({
     Object.values(inlineCardErrors).some(
       (value) => typeof value === "string" && value.trim().length > 0
     );
+  const hasInlineEditErrors =
+    showPaymentStep &&
+    typeof editingCardId === "string" &&
+    editingCardId.length > 0 &&
+    Object.values(inlineEditErrors).some(
+      (value) => typeof value === "string" && value.trim().length > 0
+    );
   const visibleError = showPaymentStep
-    ? hasInlineCardErrors
+    ? hasInlineCardErrors || hasInlineEditErrors
       ? null
       : paymentError
     : loadError || selectionError;
@@ -315,9 +331,7 @@ export function SeatSelectionDialog({
               <div className={styles["seat-dialog-class-43"]}>
                 <div className={styles["seat-dialog-class-44"]}>
                   <p className={styles["seat-dialog-class-35"]}>Payment Card</p>
-                  {selectedCardId ? (
-                    <span className={styles["seat-dialog-class-45"]}>Card selected</span>
-                  ) : (
+                  {selectedCardId ? null : (
                     <span className={styles["seat-dialog-class-38"]}>
                       Select a saved card or add one.
                     </span>
@@ -349,37 +363,138 @@ export function SeatSelectionDialog({
                             .filter(Boolean)
                             .join(" ")}
                         >
-                          <button
-                            type="button"
-                            onClick={() => onSelectCard(card.cardId)}
-                            className={styles["seat-dialog-class-61"]}
-                            disabled={isSubmitting || isDeletingCard}
-                          >
-                            <span className={styles["seat-dialog-class-56"]}>
-                              <span className={styles["seat-dialog-class-57"]}>
-                                {card.brand || "Card"} •••• {card.last4}
-                              </span>
-                              <span className={styles["seat-dialog-class-38"]}>
-                                Expires {String(card.expMonth).padStart(2, "0")}/{card.expYear}
-                              </span>
-                            </span>
-                          </button>
-                          <div className={styles["seat-dialog-class-62"]}>
-                            <span className={styles["seat-dialog-class-65"]}>
-                              {getCardholderFirstName(card.cardholderName)}
-                            </span>
-                            <Button
+                          <div className={styles["seat-dialog-class-69"]}>
+                            <button
                               type="button"
-                              size="icon-sm"
-                              variant="ghost"
-                              className={styles["seat-dialog-class-63"]}
-                              onClick={() => setDeleteTargetCardId(card.cardId)}
-                              aria-label={`Delete saved card ending ${card.last4}`}
-                              disabled={isSubmitting || isSavingCard || isDeletingCard}
+                              onClick={() => onSelectCard(card.cardId)}
+                              className={styles["seat-dialog-class-61"]}
+                              disabled={isSubmitting || isDeletingCard || isUpdatingCard}
                             >
-                              <Trash2 className={styles["seat-dialog-class-64"]} />
-                            </Button>
+                              <span className={styles["seat-dialog-class-56"]}>
+                                <span className={styles["seat-dialog-class-57"]}>
+                                  {card.brand || "Card"} •••• {card.last4}
+                                </span>
+                                <span className={styles["seat-dialog-class-38"]}>
+                                  Expires {String(card.expMonth).padStart(2, "0")}/{card.expYear}
+                                </span>
+                              </span>
+                            </button>
+                            <div className={styles["seat-dialog-class-62"]}>
+                              <span className={styles["seat-dialog-class-65"]}>
+                                {getCardholderFirstName(card.cardholderName)}
+                              </span>
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="ghost"
+                                className={styles["seat-dialog-class-63"]}
+                                onClick={() => onStartEditCard(card)}
+                                aria-label={`Edit saved card ending ${card.last4}`}
+                                disabled={isSubmitting || isSavingCard || isDeletingCard || isUpdatingCard}
+                              >
+                                <PencilLine className={styles["seat-dialog-class-64"]} />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="ghost"
+                                className={styles["seat-dialog-class-63"]}
+                                onClick={() => setDeleteTargetCardId(card.cardId)}
+                                aria-label={`Delete saved card ending ${card.last4}`}
+                                disabled={isSubmitting || isSavingCard || isDeletingCard}
+                              >
+                                <Trash2 className={styles["seat-dialog-class-64"]} />
+                              </Button>
+                            </div>
                           </div>
+                          {editingCardId === card.cardId && (
+                            <div className={styles["seat-dialog-class-66"]}>
+                              <div className={styles["seat-dialog-class-47"]}>
+                                <Label htmlFor={`checkout-edit-cardholder-${card.cardId}`}>
+                                  Card Holder Name
+                                </Label>
+                                <Input
+                                  id={`checkout-edit-cardholder-${card.cardId}`}
+                                  value={editCardForm.cardholderName}
+                                  onChange={(event) =>
+                                    onEditCardFieldChange("cardholderName", event.target.value)
+                                  }
+                                  placeholder="Name on card"
+                                  autoComplete="cc-name"
+                                />
+                                {inlineEditErrors.cardholderName ? (
+                                  <p className={styles["seat-dialog-class-60"]}>
+                                    {inlineEditErrors.cardholderName}
+                                  </p>
+                                ) : null}
+                              </div>
+
+                              <div className={styles["seat-dialog-class-67"]}>
+                                <div className={styles["seat-dialog-class-47"]}>
+                                  <Label htmlFor={`checkout-edit-exp-month-${card.cardId}`}>
+                                    Expiry Month
+                                  </Label>
+                                  <Input
+                                    id={`checkout-edit-exp-month-${card.cardId}`}
+                                    value={editCardForm.expMonth}
+                                    onChange={(event) =>
+                                      onEditCardFieldChange("expMonth", event.target.value)
+                                    }
+                                    placeholder="MM"
+                                    autoComplete="cc-exp-month"
+                                    inputMode="numeric"
+                                  />
+                                  {inlineEditErrors.expMonth ? (
+                                    <p className={styles["seat-dialog-class-60"]}>
+                                      {inlineEditErrors.expMonth}
+                                    </p>
+                                  ) : null}
+                                </div>
+                                <div className={styles["seat-dialog-class-47"]}>
+                                  <Label htmlFor={`checkout-edit-exp-year-${card.cardId}`}>
+                                    Expiry Year
+                                  </Label>
+                                  <Input
+                                    id={`checkout-edit-exp-year-${card.cardId}`}
+                                    value={editCardForm.expYear}
+                                    onChange={(event) =>
+                                      onEditCardFieldChange("expYear", event.target.value)
+                                    }
+                                    placeholder="YYYY"
+                                    autoComplete="cc-exp-year"
+                                    inputMode="numeric"
+                                  />
+                                  {inlineEditErrors.expYear ? (
+                                    <p className={styles["seat-dialog-class-60"]}>
+                                      {inlineEditErrors.expYear}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </div>
+
+                              <div className={styles["seat-dialog-class-68"]}>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => {
+                                    void onUpdateCard();
+                                  }}
+                                  disabled={isUpdatingCard || isSubmitting || isDeletingCard}
+                                >
+                                  {isUpdatingCard ? "Updating..." : "Update Card"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={onCancelEditCard}
+                                  disabled={isUpdatingCard || isSubmitting || isDeletingCard}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -390,8 +505,13 @@ export function SeatSelectionDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => onToggleAddCard(!showCardForm)}
-                    disabled={isSubmitting || !canAddMoreCards}
+                    onClick={() => {
+                      if (editingCardId) {
+                        onCancelEditCard();
+                      }
+                      onToggleAddCard(!showCardForm);
+                    }}
+                    disabled={isSubmitting || isUpdatingCard || !canAddMoreCards}
                   >
                     {showCardForm ? "Cancel Add Card" : "Add Card"}
                   </Button>

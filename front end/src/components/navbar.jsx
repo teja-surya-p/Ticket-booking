@@ -45,6 +45,8 @@ export function Navbar({
 }) {
   const { theme, setTheme } = useTheme();
   const userLabel = resolveUserLabel(currentUserProfile, currentUser);
+  const showSignOut = Boolean(currentUser) || isAdmin;
+  const showProfileButton = Boolean(currentUser) && !isAdmin;
 
   return (
     <header className={styles["navbar-class-1"]}>
@@ -68,17 +70,17 @@ export function Navbar({
         </div>
 
         <div className={styles["navbar-class-10"]}>
-          {currentUser ? (
+          {showProfileButton ? (
             <Button variant="outline" size="sm" asChild>
               <Link href="/profile">{userLabel}</Link>
             </Button>
-          ) : (
+          ) : !showSignOut ? (
             <Button variant="ghost" size="sm" asChild>
               <Link href="/login">Login / Register</Link>
             </Button>
-          )}
+          ) : null}
 
-          {currentUser ? (
+          {showSignOut ? (
             <Button variant="outline" size="sm" onClick={onSignOut} disabled={authBusy}>
               {authBusy ? "Working..." : "Sign Out"}
             </Button>

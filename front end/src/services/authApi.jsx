@@ -21,7 +21,7 @@ const firebaseAuth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 const EMAIL_VERIFICATION_REQUIRED_MESSAGE =
-  "Please verify your account to login. If you did not find the verification link in your email then check spam.";
+  "Account is not verified. Please check your email to verify your account.";
 const UNVERIFIED_ACCOUNT_BACKEND_CODE = "UNVERIFIED_ACCOUNT";
 
 function isUnverifiedAccountError(error) {

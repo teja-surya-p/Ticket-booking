@@ -60,6 +60,16 @@ export function savePaymentCard(payload, token) {
   });
 }
 
+export function updateSavedCard(cardId, payload, token) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.cardById(encodeURIComponent(cardId)),
+    method: "PATCH",
+    operation: "Update saved card",
+    body: payload,
+    token
+  });
+}
+
 export function deleteSavedCard(cardId, token) {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.cardById(encodeURIComponent(cardId)),
