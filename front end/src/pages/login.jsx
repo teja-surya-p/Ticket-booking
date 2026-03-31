@@ -9,6 +9,15 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -74,6 +83,8 @@ const registerDefaults = {
 
 const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_PASSWORD = "admin";
+const VERIFICATION_REQUIRED_POPUP_MESSAGE =
+  "Please verify your account to login. If you did not find the verification link in your email then check spam.";
 
 const pageShellStyle = {
   minHeight: "100vh",
@@ -186,6 +197,7 @@ export default function LoginPage() {
     message: "",
     isError: false
   });
+  const [verificationPopupOpen, setVerificationPopupOpen] = useState(false);
 
   const loginForm = useForm({
     resolver: zodResolver(loginSchema),
@@ -237,11 +249,13 @@ export default function LoginPage() {
       message: "",
       isError: false
     });
+    setVerificationPopupOpen(false);
   };
 
   const handleEmailLogin = async (values) => {
     setFormError("");
     setStatusMessage("");
+    setVerificationPopupOpen(false);
     setSocialState({
       loading: false,
       message: ""
@@ -270,6 +284,11 @@ export default function LoginPage() {
 
     const result = await signInWithEmailPassword(values);
     if (!result.ok) {
+      if (result.requiresVerification) {
+        setVerificationPopupOpen(true);
+        return;
+      }
+
       setFormError(result.message || "Unable to sign in right now.");
       return;
     }
@@ -481,6 +500,17 @@ export default function LoginPage() {
 
   return (
     <div style={pageShellStyle}>
+      <AlertDialog open={verificationPopupOpen} onOpenChange={setVerificationPopupOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Verify Your Account</AlertDialogTitle>
+            <AlertDialogDescription>{VERIFICATION_REQUIRED_POPUP_MESSAGE}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setVerificationPopupOpen(false)}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Card style={cardStyle}>
         <CardHeader>
           <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
@@ -777,16 +807,38 @@ export default function LoginPage() {
                   control={registerForm.control}
                   name="promotionsOptIn"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem
+                      style={{
+                        padding: "14px",
+                        border: "1px solid rgba(244, 63, 94, 0.55)",
+                        borderRadius: "12px",
+                        background:
+                          "linear-gradient(135deg, rgba(127, 29, 29, 0.18), rgba(15, 23, 42, 0.55))"
+                      }}
+                    >
                       <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
                         <FormControl>
                           <Checkbox
+                            id="promotionsOptIn"
                             checked={field.value}
                             onCheckedChange={(checked) => field.onChange(Boolean(checked))}
+                            style={{
+                              width: "22px",
+                              height: "22px",
+                              border: "2px solid #f43f5e",
+                              background: "rgba(15, 23, 42, 0.9)",
+                              borderRadius: "6px",
+                              marginTop: "1px"
+                            }}
                           />
                         </FormControl>
                         <div style={{ display: "grid", gap: "6px" }}>
-                          <FormLabel style={{ margin: 0 }}>Send me promotions and release updates</FormLabel>
+                          <FormLabel htmlFor="promotionsOptIn" style={{ margin: 0, color: "#ffe4e6", fontWeight: 600 }}>
+                            Subscribe for promotions
+                          </FormLabel>
+                          <p style={{ margin: 0, color: "rgba(255,228,230,0.82)", fontSize: "0.86rem" }}>
+                            Get offers and movie release updates by email.
+                          </p>
                         </div>
                       </div>
                       <FormMessage />

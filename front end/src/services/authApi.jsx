@@ -20,6 +20,17 @@ import { firebaseApp } from "./firebaseConfig";
 const firebaseAuth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
+const EMAIL_VERIFICATION_REQUIRED_MESSAGE =
+  "Please verify your account to login. If you did not find the verification link in your email then check spam.";
+const UNVERIFIED_ACCOUNT_BACKEND_CODE = "UNVERIFIED_ACCOUNT";
+
+function isUnverifiedAccountError(error) {
+  const errorCode = typeof error?.code === "string" ? error.code.trim().toUpperCase() : "";
+  const errorMessage =
+    typeof error?.message === "string" ? error.message.trim().toLowerCase() : "";
+
+  return errorCode === UNVERIFIED_ACCOUNT_BACKEND_CODE || errorMessage === "unverified";
+}
 
 function getCurrentUser() {
   return firebaseAuth.currentUser;
@@ -39,6 +50,10 @@ async function syncProfileAfterSignIn(token, fallbackProfile) {
       syncWarning: ""
     };
   } catch (error) {
+    if (isUnverifiedAccountError(error)) {
+      throw error;
+    }
+
     return {
       profile: fallbackProfile,
       syncWarning: mapAuthErrorToMessage(error)
@@ -88,6 +103,10 @@ export function mapAuthErrorToMessage(error) {
       return "Network connection lost. Check your internet connection and try again.";
     case "auth/too-many-requests":
       return "Too many attempts were made. Please wait a bit and try again.";
+    case "UNVERIFIED_ACCOUNT":
+    case "UNVERIFIED":
+    case "auth/email-not-verified":
+      return EMAIL_VERIFICATION_REQUIRED_MESSAGE;
     case "auth/popup-closed-by-user":
       return "Google sign-in popup was closed before completing sign-in.";
     case "auth/popup-blocked":
@@ -319,6 +338,18 @@ export async function signInWithEmailPassword(credentials) {
       syncWarning
     };
   } catch (error) {
+    if (isUnverifiedAccountError(error)) {
+      await signOut(firebaseAuth);
+
+      return {
+        ok: false,
+        code: UNVERIFIED_ACCOUNT_BACKEND_CODE,
+        message: EMAIL_VERIFICATION_REQUIRED_MESSAGE,
+        requiresVerification: true,
+        error
+      };
+    }
+
     return {
       ok: false,
       message: mapAuthErrorToMessage(error),

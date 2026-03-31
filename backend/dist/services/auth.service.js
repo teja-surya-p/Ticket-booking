@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   UnauthorizedException
@@ -25,7 +26,21 @@ class AuthService {
 
   async syncVerification(authorization) {
     const userRecord = await this.getFirebaseUserFromAuthorizationHeader(authorization);
-    return await this.upsertUserProfile(userRecord);
+    const profile = await this.upsertUserProfile(userRecord);
+
+    if (
+      !profile.emailVerified ||
+      String(profile.status).trim().toLowerCase() !== USER_ACCOUNT_STATUSES.active.toLowerCase()
+    ) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: "UNVERIFIED_ACCOUNT",
+        message: "unverified",
+        error: "Forbidden"
+      });
+    }
+
+    return profile;
   }
 
   async getProfile(authorization) {
