@@ -5,12 +5,12 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import "./input-group.module.css";
+import styles from "./input-group.module.css";
 function InputGroup({
   className,
   ...props
 }) {
-  return <div data-slot="input-group" role="group" className={cn("input-group-class-1", "input-group-class-2", "input-group-class-3", "input-group-class-4", "input-group-class-5", "input-group-class-6", "input-group-class-7", "input-group-class-8", className)} {...props} />;
+  return <div data-slot="input-group" role="group" className={cn(styles["input-group-class-1"], styles["input-group-class-2"], styles["input-group-class-3"], styles["input-group-class-4"], styles["input-group-class-5"], styles["input-group-class-6"], styles["input-group-class-7"], styles["input-group-class-8"], className)} {...props} />;
 }
 const inputGroupAddonVariants = cva("text-muted-foreground flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium select-none [&>svg:not([class*='size-'])]:size-4 [&>kbd]:rounded-[calc(var(--radius)-5px)] group-data-[disabled=true]/input-group:opacity-50", {
   variants: {
@@ -67,18 +67,18 @@ function InputGroupText({
   className,
   ...props
 }) {
-  return <span className={cn("input-group-class-9", className)} {...props} />;
+  return <span className={cn(styles["input-group-class-9"], className)} {...props} />;
 }
 function InputGroupInput({
   className,
   ...props
 }) {
-  return <Input data-slot="input-group-control" className={cn("input-group-class-10", className)} {...props} />;
+  return <Input data-slot="input-group-control" className={cn(styles["input-group-class-10"], className)} {...props} />;
 }
 function InputGroupTextarea({
   className,
   ...props
 }) {
-  return <Textarea data-slot="input-group-control" className={cn("input-group-class-11", className)} {...props} />;
+  return <Textarea data-slot="input-group-control" className={cn(styles["input-group-class-11"], className)} {...props} />;
 }
 export { InputGroup, InputGroupAddon, InputGroupButton, InputGroupText, InputGroupInput, InputGroupTextarea };

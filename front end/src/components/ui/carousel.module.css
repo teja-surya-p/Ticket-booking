@@ -1,58 +1,58 @@
 @reference "../../pages/globals.css";
 
-:global(.carousel-class-1) {
+.carousel-class-1 {
   @apply relative;
 }
 
-:global(.carousel-class-2) {
+.carousel-class-2 {
   @apply overflow-hidden;
 }
 
-:global(.carousel-class-3) {
+.carousel-class-3 {
   @apply flex;
 }
 
-:global(.carousel-class-4) {
+.carousel-class-4 {
   @apply -ml-4;
 }
 
-:global(.carousel-class-5) {
+.carousel-class-5 {
   @apply -mt-4 flex-col;
 }
 
-:global(.carousel-class-6) {
+.carousel-class-6 {
   @apply min-w-0 shrink-0 grow-0 basis-full;
 }
 
-:global(.carousel-class-7) {
+.carousel-class-7 {
   @apply pl-4;
 }
 
-:global(.carousel-class-8) {
+.carousel-class-8 {
   @apply pt-4;
 }
 
-:global(.carousel-class-9) {
+.carousel-class-9 {
   @apply absolute size-8 rounded-full;
 }
 
-:global(.carousel-class-10) {
+.carousel-class-10 {
   @apply top-1/2 -left-12 -translate-y-1/2;
 }
 
-:global(.carousel-class-11) {
+.carousel-class-11 {
   @apply -top-12 left-1/2 -translate-x-1/2 rotate-90;
 }
 
-:global(.carousel-class-12) {
+.carousel-class-12 {
   @apply sr-only;
 }
 
-:global(.carousel-class-13) {
+.carousel-class-13 {
   @apply top-1/2 -right-12 -translate-y-1/2;
 }
 
-:global(.carousel-class-14) {
+.carousel-class-14 {
   @apply -bottom-12 left-1/2 -translate-x-1/2 rotate-90;
 }
 

@@ -3,18 +3,18 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import "./item.module.css";
+import styles from "./item.module.css";
 function ItemGroup({
   className,
   ...props
 }) {
-  return <div role="list" data-slot="item-group" className={cn("item-class-1", className)} {...props} />;
+  return <div role="list" data-slot="item-group" className={cn(styles["item-class-1"], className)} {...props} />;
 }
 function ItemSeparator({
   className,
   ...props
 }) {
-  return <Separator data-slot="item-separator" orientation="horizontal" className={cn("item-class-2", className)} {...props} />;
+  return <Separator data-slot="item-separator" orientation="horizontal" className={cn(styles["item-class-2"], className)} {...props} />;
 }
 const itemVariants = cva('group/item flex items-center border border-transparent text-sm rounded-md transition-colors [a&]:hover:bg-accent/50 [a&]:transition-colors duration-100 flex-wrap outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]', {
   variants: {
@@ -73,36 +73,36 @@ function ItemContent({
   className,
   ...props
 }) {
-  return <div data-slot="item-content" className={cn("item-class-3", className)} {...props} />;
+  return <div data-slot="item-content" className={cn(styles["item-class-3"], className)} {...props} />;
 }
 function ItemTitle({
   className,
   ...props
 }) {
-  return <div data-slot="item-title" className={cn("item-class-4", className)} {...props} />;
+  return <div data-slot="item-title" className={cn(styles["item-class-4"], className)} {...props} />;
 }
 function ItemDescription({
   className,
   ...props
 }) {
-  return <p data-slot="item-description" className={cn("item-class-5", "item-class-6", className)} {...props} />;
+  return <p data-slot="item-description" className={cn(styles["item-class-5"], styles["item-class-6"], className)} {...props} />;
 }
 function ItemActions({
   className,
   ...props
 }) {
-  return <div data-slot="item-actions" className={cn("item-class-7", className)} {...props} />;
+  return <div data-slot="item-actions" className={cn(styles["item-class-7"], className)} {...props} />;
 }
 function ItemHeader({
   className,
   ...props
 }) {
-  return <div data-slot="item-header" className={cn("item-class-8", className)} {...props} />;
+  return <div data-slot="item-header" className={cn(styles["item-class-8"], className)} {...props} />;
 }
 function ItemFooter({
   className,
   ...props
 }) {
-  return <div data-slot="item-footer" className={cn("item-class-8", className)} {...props} />;
+  return <div data-slot="item-footer" className={cn(styles["item-class-8"], className)} {...props} />;
 }
 export { Item, ItemMedia, ItemContent, ItemActions, ItemGroup, ItemSeparator, ItemTitle, ItemDescription, ItemHeader, ItemFooter };

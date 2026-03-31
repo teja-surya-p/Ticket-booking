@@ -1,82 +1,81 @@
 @reference "../pages/globals.css";
 
-:global(.navbar-class-1) {
+.navbar-class-1 {
   @apply sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-md;
 }
 
-:global(.navbar-class-2) {
+.navbar-class-2 {
   @apply mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6;
 }
 
-:global(.navbar-class-3) {
+.navbar-class-3 {
   @apply flex items-center gap-2 transition-opacity hover:opacity-80;
 }
 
-:global(.navbar-class-4) {
+.navbar-class-4 {
   @apply size-6 text-primary;
 }
 
-:global(.navbar-class-5) {
+.navbar-class-5 {
   @apply text-lg font-bold tracking-tight text-foreground;
 }
 
-:global(.navbar-class-6) {
+.navbar-class-6 {
   @apply hidden flex-1 items-center justify-center px-8 md:flex;
 }
 
-:global(.navbar-class-7) {
+.navbar-class-7 {
   @apply relative w-full max-w-md;
 }
 
-:global(.navbar-class-8) {
+.navbar-class-8 {
   @apply absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground;
 }
 
-:global(.navbar-class-9) {
+.navbar-class-9 {
   @apply h-9 pl-9 bg-secondary border-border text-foreground placeholder:text-muted-foreground;
 }
 
-:global(.navbar-class-10) {
+.navbar-class-10 {
   @apply flex items-center gap-2;
 }
 
-:global(.navbar-class-11) {
+.navbar-class-11 {
   @apply size-9 text-muted-foreground hover:text-foreground;
 }
 
-:global(.navbar-class-12) {
+.navbar-class-12 {
   @apply size-4 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0;
 }
 
-:global(.navbar-class-13) {
+.navbar-class-13 {
   @apply absolute size-4 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100;
 }
 
-:global(.navbar-class-14) {
+.navbar-class-14 {
   @apply relative gap-1.5;
 }
 
-:global(.navbar-class-15) {
+.navbar-class-15 {
   @apply size-4;
 }
 
-:global(.navbar-class-16) {
+.navbar-class-16 {
   @apply hidden sm:inline;
 }
 
-:global(.navbar-class-17) {
+.navbar-class-17 {
   @apply inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground;
 }
 
-:global(.navbar-class-18) {
-  @apply gap-1.5;
+.navbar-class-18 {
+  @apply relative gap-1.5;
 }
 
-:global(.navbar-class-19) {
+.navbar-class-19 {
   @apply flex items-center px-4 pb-3 md:hidden;
 }
 
-:global(.navbar-class-20) {
+.navbar-class-20 {
   @apply relative w-full;
 }
-

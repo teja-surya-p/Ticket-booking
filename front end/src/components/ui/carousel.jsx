@@ -5,7 +5,7 @@ import useEmblaCarousel from 'embla-carousel-react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import "./carousel.module.css";
+import styles from "./carousel.module.css";
 const CarouselContext = React.createContext(null);
 function useCarousel() {
   const context = React.useContext(CarouselContext);
@@ -72,7 +72,7 @@ function Carousel({
     canScrollPrev,
     canScrollNext
   }}>
-      <div onKeyDownCapture={handleKeyDown} className={cn("carousel-class-1", className)} role="region" aria-roledescription="carousel" data-slot="carousel" {...props}>
+      <div onKeyDownCapture={handleKeyDown} className={cn(styles["carousel-class-1"], className)} role="region" aria-roledescription="carousel" data-slot="carousel" {...props}>
         {children}
       </div>
     </CarouselContext.Provider>;
@@ -85,8 +85,8 @@ function CarouselContent({
     carouselRef,
     orientation
   } = useCarousel();
-  return <div ref={carouselRef} className={"carousel-class-2"} data-slot="carousel-content">
-      <div className={cn("carousel-class-3", orientation === 'horizontal' ? "carousel-class-4" : "carousel-class-5", className)} {...props} />
+  return <div ref={carouselRef} className={styles["carousel-class-2"]} data-slot="carousel-content">
+      <div className={cn(styles["carousel-class-3"], orientation === 'horizontal' ? styles["carousel-class-4"] : styles["carousel-class-5"], className)} {...props} />
     </div>;
 }
 function CarouselItem({
@@ -96,7 +96,7 @@ function CarouselItem({
   const {
     orientation
   } = useCarousel();
-  return <div role="group" aria-roledescription="slide" data-slot="carousel-item" className={cn("carousel-class-6", orientation === 'horizontal' ? "carousel-class-7" : "carousel-class-8", className)} {...props} />;
+  return <div role="group" aria-roledescription="slide" data-slot="carousel-item" className={cn(styles["carousel-class-6"], orientation === 'horizontal' ? styles["carousel-class-7"] : styles["carousel-class-8"], className)} {...props} />;
 }
 function CarouselPrevious({
   className,
@@ -109,9 +109,9 @@ function CarouselPrevious({
     scrollPrev,
     canScrollPrev
   } = useCarousel();
-  return <Button data-slot="carousel-previous" variant={variant} size={size} className={cn("carousel-class-9", orientation === 'horizontal' ? "carousel-class-10" : "carousel-class-11", className)} disabled={!canScrollPrev} onClick={scrollPrev} {...props}>
+  return <Button data-slot="carousel-previous" variant={variant} size={size} className={cn(styles["carousel-class-9"], orientation === 'horizontal' ? styles["carousel-class-10"] : styles["carousel-class-11"], className)} disabled={!canScrollPrev} onClick={scrollPrev} {...props}>
       <ArrowLeft />
-      <span className={"carousel-class-12"}>Previous slide</span>
+      <span className={styles["carousel-class-12"]}>Previous slide</span>
     </Button>;
 }
 function CarouselNext({
@@ -125,9 +125,9 @@ function CarouselNext({
     scrollNext,
     canScrollNext
   } = useCarousel();
-  return <Button data-slot="carousel-next" variant={variant} size={size} className={cn("carousel-class-9", orientation === 'horizontal' ? "carousel-class-13" : "carousel-class-14", className)} disabled={!canScrollNext} onClick={scrollNext} {...props}>
+  return <Button data-slot="carousel-next" variant={variant} size={size} className={cn(styles["carousel-class-9"], orientation === 'horizontal' ? styles["carousel-class-13"] : styles["carousel-class-14"], className)} disabled={!canScrollNext} onClick={scrollNext} {...props}>
       <ArrowRight />
-      <span className={"carousel-class-12"}>Next slide</span>
+      <span className={styles["carousel-class-12"]}>Next slide</span>
     </Button>;
 }
 export { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext };

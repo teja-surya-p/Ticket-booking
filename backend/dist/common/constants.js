@@ -3,7 +3,14 @@ export const API_PREFIX = "api/v1";
 export const FIRESTORE_COLLECTIONS = {
   movies: "movies",
   bookings: "booking",
-  paymentCards: "payment_cards"
+  paymentCards: "payment_cards",
+  favorites: "favorites",
+  users: "users"
+};
+
+export const USER_ACCOUNT_STATUSES = {
+  active: "Active",
+  inactive: "Inactive"
 };
 
 export const TICKET_PRICING = {

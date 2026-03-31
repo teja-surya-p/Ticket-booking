@@ -1,6 +1,6 @@
 @reference "../../pages/globals.css";
 
-:global(.spinner-class-1) {
+.spinner-class-1 {
   @apply size-4 animate-spin;
 }
 

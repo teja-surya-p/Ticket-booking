@@ -1,5 +1,5 @@
 import "./constants.module.css";
-const DEFAULT_API_BASE = "http://localhost:3000";
+const DEFAULT_API_BASE = "";
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE;
 export const API_VERSION = "v1";
 export const API_PREFIX = `/api/${API_VERSION}`;
@@ -7,7 +7,9 @@ const withPrefix = path => `${API_PREFIX}${path.startsWith("/") ? path : `/${pat
 export const API_ROUTES = {
   movies: withPrefix("/movies"),
   bookings: withPrefix("/bookings"),
-  admin: withPrefix("/admin")
+  admin: withPrefix("/admin"),
+  auth: withPrefix("/auth"),
+  favorites: withPrefix("/favorites")
 };
 export const API_ENDPOINTS = {
   movies: {
@@ -20,10 +22,22 @@ export const API_ENDPOINTS = {
     pricing: `${API_ROUTES.bookings}/pricing`,
     quote: `${API_ROUTES.bookings}/quote`,
     create: API_ROUTES.bookings,
-    card: `${API_ROUTES.bookings}/card`
+    card: `${API_ROUTES.bookings}/card`,
+    cardById: cardId => `${API_ROUTES.bookings}/card/${cardId}`
   },
   admin: {
     stats: `${API_ROUTES.admin}/stats`
+  },
+  auth: {
+    register: `${API_ROUTES.auth}/register`,
+    syncVerification: `${API_ROUTES.auth}/sync-verification`,
+    profile: `${API_ROUTES.auth}/profile`,
+    passwordChanged: `${API_ROUTES.auth}/password-changed`
+  },
+  favorites: {
+    list: API_ROUTES.favorites,
+    add: API_ROUTES.favorites,
+    remove: (movieId) => `${API_ROUTES.favorites}/${movieId}`
   }
 };
 export const QUERY_KEYS = {

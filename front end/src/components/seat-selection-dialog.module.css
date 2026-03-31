@@ -1,97 +1,97 @@
 @reference "../pages/globals.css";
 
-:global(.seat-dialog-class-1) {
+.seat-dialog-class-1 {
   width: min(64rem, calc(100vw - 1rem));
   @apply p-0;
 }
 
-:global(.seat-dialog-class-1[data-slot="dialog-content"]) {
+.seat-dialog-class-1[data-slot="dialog-content"] {
   max-height: calc(100vh - 1rem);
   @apply flex flex-col overflow-hidden rounded-[1.3rem] border border-border bg-background p-0 shadow-[0_24px_72px_rgba(15,23,42,0.16)];
 }
 
-:global(.seat-dialog-class-2) {
+.seat-dialog-class-2 {
   @apply border-b border-border px-4 py-4 sm:px-5;
 }
 
-:global(.seat-dialog-class-3) {
+.seat-dialog-class-3 {
   @apply flex items-start justify-between gap-3;
 }
 
-:global(.seat-dialog-class-4) {
+.seat-dialog-class-4 {
   @apply mt-1 text-sm text-muted-foreground;
 }
 
-:global(.seat-dialog-class-5) {
+.seat-dialog-class-5 {
   @apply mt-2 text-sm text-muted-foreground;
 }
 
-:global(.seat-dialog-class-6) {
+.seat-dialog-class-6 {
   @apply flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5;
 }
 
-:global(.seat-dialog-class-7) {
+.seat-dialog-class-7 {
   @apply mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3;
 }
 
-:global(.seat-dialog-class-8) {
+.seat-dialog-class-8 {
   @apply flex flex-wrap items-center gap-3;
 }
 
-:global(.seat-dialog-class-9) {
+.seat-dialog-class-9 {
   @apply text-sm font-semibold text-foreground;
 }
 
-:global(.seat-dialog-class-10) {
+.seat-dialog-class-10 {
   @apply text-sm font-medium text-muted-foreground;
 }
 
-:global(.seat-dialog-class-11) {
+.seat-dialog-class-11 {
   color: rgb(22 163 74);
 }
 
-:global(.seat-dialog-class-12) {
+.seat-dialog-class-12 {
   @apply flex flex-wrap items-center gap-3;
 }
 
-:global(.seat-dialog-class-13) {
+.seat-dialog-class-13 {
   @apply inline-flex items-center gap-2 text-xs font-medium text-muted-foreground;
 }
 
-:global(.seat-dialog-class-14) {
+.seat-dialog-class-14 {
   @apply block h-3.5 w-3.5 rounded-[0.35rem] border border-border bg-card;
 }
 
-:global(.seat-dialog-class-15) {
+.seat-dialog-class-15 {
   @apply rounded-[1.1rem] border border-border bg-card p-4;
 }
 
-:global(.seat-dialog-class-16) {
+.seat-dialog-class-16 {
   @apply mb-5;
 }
 
-:global(.seat-dialog-class-17) {
+.seat-dialog-class-17 {
   @apply mx-auto h-2.5 w-[78%] rounded-full bg-primary/20;
 }
 
-:global(.seat-dialog-class-18) {
+.seat-dialog-class-18 {
   @apply mt-3 flex items-center justify-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-foreground;
 }
 
-:global(.seat-dialog-class-19) {
+.seat-dialog-class-19 {
   @apply size-4 text-primary;
 }
 
-:global(.seat-dialog-class-20) {
+.seat-dialog-class-20 {
   min-height: 20rem;
   @apply flex items-center justify-center gap-3 rounded-[0.95rem] border border-border bg-muted/20 text-sm text-muted-foreground;
 }
 
-:global(.seat-dialog-class-21) {
+.seat-dialog-class-21 {
   @apply size-4 animate-spin;
 }
 
-:global(.seat-dialog-class-22) {
+.seat-dialog-class-22 {
   --seat-size: 3.35rem;
   --seat-gap: 0.5rem;
   --label-width: 1.85rem;
@@ -99,7 +99,7 @@
   @apply overflow-x-auto rounded-[1rem] border border-border bg-background p-3;
 }
 
-:global(.seat-dialog-class-29) {
+.seat-dialog-class-29 {
   display: grid;
   grid-template-columns: var(--label-width) repeat(5, var(--seat-size)) var(--aisle-width) repeat(5, var(--seat-size));
   gap: var(--seat-gap);
@@ -107,208 +107,228 @@
   min-width: max-content;
 }
 
-:global(.seat-dialog-class-29 + .seat-dialog-class-29) {
+.seat-dialog-class-29 + .seat-dialog-class-29 {
   @apply mt-2;
 }
 
-:global(.seat-dialog-class-30) {
+.seat-dialog-class-30 {
   @apply inline-flex items-center justify-center text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground;
 }
 
-:global(.seat-dialog-class-31) {
+.seat-dialog-class-31 {
   display: contents;
 }
 
-:global(.seat-dialog-class-32) {
+.seat-dialog-class-32 {
   @apply inline-flex h-7 items-center justify-center rounded-full bg-muted text-[0.72rem] font-bold text-muted-foreground;
 }
 
-:global(.seat-dialog-class-33) {
+.seat-dialog-class-33 {
   @apply block;
 }
 
-:global(.seat-dialog-class-23) {
+.seat-dialog-class-23 {
   height: 3.2rem;
   @apply flex items-center justify-center gap-1 rounded-[1rem] border border-border bg-card px-1.5 text-foreground transition-all duration-150;
 }
 
-:global(.seat-dialog-class-23:hover:not(:disabled)) {
+.seat-dialog-class-23:hover:not(:disabled) {
   @apply border-primary/40 bg-primary/5;
   transform: translateY(-1px);
 }
 
-:global(.seat-dialog-class-23:focus-visible) {
+.seat-dialog-class-23:focus-visible {
   @apply outline-none ring-2 ring-primary/50 ring-offset-2 ring-offset-background;
 }
 
-:global(.seat-dialog-class-24) {
+.seat-dialog-class-24 {
   @apply cursor-not-allowed border-border bg-muted text-muted-foreground opacity-70;
 }
 
-:global(.seat-dialog-class-25) {
+.seat-dialog-class-25 {
   @apply border-primary bg-primary text-primary-foreground shadow-[0_10px_22px_rgba(15,23,42,0.12)];
 }
 
-:global(.seat-dialog-class-26) {
+.seat-dialog-class-26 {
   @apply border-border bg-card text-foreground shadow-[0_4px_14px_rgba(15,23,42,0.05)];
 }
 
-:global(.seat-dialog-class-27) {
+.seat-dialog-class-27 {
   @apply size-4 shrink-0;
 }
 
-:global(.seat-dialog-class-28) {
+.seat-dialog-class-28 {
   @apply text-[0.66rem] font-bold uppercase leading-none tracking-[0.08em];
 }
 
-:global(.seat-dialog-class-34) {
+.seat-dialog-class-34 {
   @apply mt-4 rounded-2xl border border-border bg-card px-4 py-3;
 }
 
-:global(.seat-dialog-class-35) {
+.seat-dialog-class-35 {
   @apply text-sm font-semibold text-foreground;
 }
 
-:global(.seat-dialog-class-36) {
+.seat-dialog-class-36 {
   @apply mt-3 flex min-h-[3rem] flex-wrap gap-2;
 }
 
-:global(.seat-dialog-class-37) {
+.seat-dialog-class-37 {
   @apply inline-flex items-center rounded-full bg-secondary px-3 py-1.5 text-sm font-semibold text-secondary-foreground;
 }
 
-:global(.seat-dialog-class-38) {
+.seat-dialog-class-38 {
   @apply text-sm text-muted-foreground;
 }
 
-:global(.seat-dialog-class-39) {
+.seat-dialog-class-39 {
   @apply mt-4 rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-3 text-sm text-destructive;
 }
 
-:global(.seat-dialog-class-40) {
+.seat-dialog-class-40 {
   @apply sticky bottom-0 mt-auto border-t border-border bg-background/95 px-4 py-4 backdrop-blur sm:px-5;
 }
 
-:global(.seat-dialog-class-41) {
+.seat-dialog-class-41 {
   @apply mb-3 text-sm text-muted-foreground sm:mb-0;
 }
 
-:global(.seat-dialog-class-42) {
+.seat-dialog-class-42 {
   @apply flex flex-col-reverse gap-2 sm:flex-row sm:justify-end;
 }
 
-:global(.seat-dialog-class-43) {
+.seat-dialog-class-43 {
   @apply mt-4 rounded-2xl border border-border bg-card px-4 py-4;
 }
 
-:global(.seat-dialog-class-44) {
+.seat-dialog-class-44 {
   @apply mb-3 flex flex-wrap items-center justify-between gap-2;
 }
 
-:global(.seat-dialog-class-45) {
+.seat-dialog-class-45 {
   @apply text-sm font-medium text-foreground;
 }
 
-:global(.seat-dialog-class-46) {
+.seat-dialog-class-46 {
   @apply flex flex-col gap-3 sm:flex-row sm:items-end;
 }
 
-:global(.seat-dialog-class-47) {
+.seat-dialog-class-47 {
   @apply flex-1 space-y-1.5;
 }
 
-:global(.seat-dialog-class-48) {
+.seat-dialog-class-48 {
   @apply mt-3 rounded-xl border border-border bg-background px-3 py-2;
 }
 
-:global(.seat-dialog-class-49) {
+.seat-dialog-class-49 {
   @apply text-sm font-semibold text-foreground;
 }
 
-:global(.seat-dialog-class-50) {
+.seat-dialog-class-50 {
   @apply mt-3 space-y-3 rounded-xl border border-border bg-background p-3;
 }
 
-:global(.seat-dialog-class-51) {
+.seat-dialog-class-51 {
   @apply grid grid-cols-1 gap-3 sm:grid-cols-3;
 }
 
-:global(.seat-dialog-class-52) {
+.seat-dialog-class-52 {
   @apply mt-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-foreground;
 }
 
-:global(.seat-dialog-class-53) {
+.seat-dialog-class-53 {
   @apply space-y-2;
 }
 
-:global(.seat-dialog-class-54) {
+.seat-dialog-class-54 {
   @apply flex w-full items-center justify-between rounded-xl border border-border bg-background px-3 py-2 text-left transition-colors;
 }
 
-:global(.seat-dialog-class-54:hover) {
+.seat-dialog-class-54:hover {
   @apply border-primary/40 bg-primary/5;
 }
 
-:global(.seat-dialog-class-55) {
+.seat-dialog-class-55 {
   @apply border-primary bg-primary/10;
 }
 
-:global(.seat-dialog-class-56) {
+.seat-dialog-class-56 {
   @apply flex flex-col gap-0.5;
 }
 
-:global(.seat-dialog-class-57) {
+.seat-dialog-class-57 {
   @apply text-sm font-semibold text-foreground;
 }
 
-:global(.seat-dialog-class-58) {
+.seat-dialog-class-58 {
   @apply text-xs font-semibold uppercase tracking-[0.1em] text-primary;
 }
 
-:global(.seat-dialog-class-59) {
+.seat-dialog-class-59 {
   @apply mt-3 flex flex-wrap items-center justify-between gap-2;
 }
 
+.seat-dialog-class-60 {
+  @apply text-xs font-medium text-destructive;
+}
+
+.seat-dialog-class-61 {
+  @apply flex min-w-0 flex-1 items-center rounded-lg bg-transparent text-left outline-none;
+}
+
+.seat-dialog-class-62 {
+  @apply flex items-center gap-1.5;
+}
+
+.seat-dialog-class-63 {
+  @apply text-destructive hover:bg-destructive/10;
+}
+
+.seat-dialog-class-64 {
+  @apply size-4;
+}
+
 @media (max-width: 900px) {
-  :global(.seat-dialog-class-22) {
+  .seat-dialog-class-22 {
     --seat-size: 2.9rem;
     --seat-gap: 0.34rem;
     --label-width: 1.4rem;
     --aisle-width: 0.8rem;
   }
 
-  :global(.seat-dialog-class-23) {
+  .seat-dialog-class-23 {
     height: 2.9rem;
   }
 
-  :global(.seat-dialog-class-28) {
+  .seat-dialog-class-28 {
     @apply text-[0.58rem];
   }
 }
 
 @media (max-width: 640px) {
-  :global(.seat-dialog-class-1) {
+  .seat-dialog-class-1 {
     width: calc(100vw - 0.5rem);
   }
 
-  :global(.seat-dialog-class-1[data-slot="dialog-content"]) {
+  .seat-dialog-class-1[data-slot="dialog-content"] {
     max-height: calc(100vh - 0.5rem);
     @apply rounded-[1rem];
   }
 
-  :global(.seat-dialog-class-2) {
+  .seat-dialog-class-2 {
     @apply px-3 py-3;
   }
 
-  :global(.seat-dialog-class-6) {
+  .seat-dialog-class-6 {
     @apply px-3 py-3;
   }
 
-  :global(.seat-dialog-class-7) {
+  .seat-dialog-class-7 {
     @apply items-start;
   }
 
-  :global(.seat-dialog-class-22) {
+  .seat-dialog-class-22 {
     --seat-size: 2.45rem;
     --seat-gap: 0.22rem;
     --label-width: 1rem;
@@ -316,28 +336,28 @@
     @apply p-2;
   }
 
-  :global(.seat-dialog-class-23) {
+  .seat-dialog-class-23 {
     height: 2.45rem;
     @apply gap-0.5 rounded-[0.78rem] px-0.5;
   }
 
-  :global(.seat-dialog-class-27) {
+  .seat-dialog-class-27 {
     @apply size-3;
   }
 
-  :global(.seat-dialog-class-28) {
+  .seat-dialog-class-28 {
     @apply text-[0.46rem];
   }
 
-  :global(.seat-dialog-class-32) {
+  .seat-dialog-class-32 {
     @apply text-[0.56rem];
   }
 
-  :global(.seat-dialog-class-30) {
+  .seat-dialog-class-30 {
     @apply text-[0.56rem];
   }
 
-  :global(.seat-dialog-class-40) {
+  .seat-dialog-class-40 {
     @apply px-3 py-3;
   }
 
@@ -347,26 +367,26 @@
 }
 
 @media (max-width: 420px) {
-  :global(.seat-dialog-class-22) {
+  .seat-dialog-class-22 {
     --seat-size: 2.15rem;
     --seat-gap: 0.18rem;
     --label-width: 0.9rem;
     --aisle-width: 0.3rem;
   }
 
-  :global(.seat-dialog-class-23) {
+  .seat-dialog-class-23 {
     height: 2.15rem;
   }
 
-  :global(.seat-dialog-class-28) {
+  .seat-dialog-class-28 {
     @apply text-[0.4rem];
   }
 
-  :global(.seat-dialog-class-32) {
+  .seat-dialog-class-32 {
     @apply text-[0.48rem];
   }
 
-  :global(.seat-dialog-class-30) {
+  .seat-dialog-class-30 {
     @apply text-[0.48rem];
   }
 }

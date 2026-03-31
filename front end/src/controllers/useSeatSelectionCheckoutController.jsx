@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   createBooking,
+  deleteSavedCard as deleteSavedCardRequest,
   fetchReservedSeats,
   fetchSavedCards,
   getMeaningfulErrorMessage,
+  isAPICallError,
   savePaymentCard
 } from "@/services";
 import {
@@ -29,6 +31,16 @@ function createEmptyCardForm() {
   };
 }
 
+function createEmptyCardFieldErrors() {
+  return {
+    cardholderName: "",
+    cardNumber: "",
+    cvv: "",
+    expMonth: "",
+    expYear: ""
+  };
+}
+
 function normalizeEmail(value) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
@@ -42,15 +54,81 @@ function toMaxCardsAllowed(value) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 3;
 }
 
-const DEFAULT_CHECKOUT_CUSTOMER_EMAIL = normalizeEmail(
-  process.env.NEXT_PUBLIC_CHECKOUT_CUSTOMER_EMAIL ?? ""
-);
-const DEFAULT_CHECKOUT_CUSTOMER_NAME =
-  typeof process.env.NEXT_PUBLIC_CHECKOUT_CUSTOMER_NAME === "string"
-    ? process.env.NEXT_PUBLIC_CHECKOUT_CUSTOMER_NAME.trim()
-    : "";
+function getCustomerNameFromUser(user) {
+  if (typeof user?.displayName === "string" && user.displayName.trim().length > 0) {
+    return user.displayName.trim();
+  }
 
-export function useSeatSelectionCheckoutController({ items, onCheckout }) {
+  if (typeof user?.email === "string" && user.email.includes("@")) {
+    return user.email.split("@")[0];
+  }
+
+  return "";
+}
+
+function getPaymentErrorMessage(error) {
+  if (isAPICallError(error)) {
+    const serverMessage = typeof error?.message === "string" ? error.message.trim() : "";
+    if (serverMessage.length > 0) {
+      if (
+        /cardnumber|card number/i.test(serverMessage) &&
+        /invalid|not valid|failed/i.test(serverMessage)
+      ) {
+        return "Invalid card number.";
+      }
+      return serverMessage;
+    }
+  }
+
+  return getMeaningfulErrorMessage(error, "user");
+}
+
+function mapPaymentMessageToField(message) {
+  const normalizedMessage = typeof message === "string" ? message.trim() : "";
+  const lowerMessage = normalizedMessage.toLowerCase();
+
+  if (!normalizedMessage) {
+    return null;
+  }
+
+  if (lowerMessage.includes("cardnumber") || lowerMessage.includes("card number")) {
+    return "cardNumber";
+  }
+
+  if (
+    lowerMessage.includes("cardholdername") ||
+    lowerMessage.includes("card holder") ||
+    lowerMessage.includes("cardholder")
+  ) {
+    return "cardholderName";
+  }
+
+  if (lowerMessage.includes("cvv")) {
+    return "cvv";
+  }
+
+  if (
+    lowerMessage.includes("expmonth") ||
+    lowerMessage.includes("expiry month") ||
+    lowerMessage.includes("expiration month")
+  ) {
+    return "expMonth";
+  }
+
+  if (
+    lowerMessage.includes("expyear") ||
+    lowerMessage.includes("expiry year") ||
+    lowerMessage.includes("expiration year") ||
+    lowerMessage.includes("expiry date") ||
+    lowerMessage.includes("expiration date")
+  ) {
+    return "expYear";
+  }
+
+  return null;
+}
+
+export function useSeatSelectionCheckoutController({ items, onCheckout, currentUser }) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [seatSelections, setSeatSelections] = useState({});
@@ -59,14 +137,16 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [selectionError, setSelectionError] = useState(null);
-  const [customerEmail, setCustomerEmail] = useState(DEFAULT_CHECKOUT_CUSTOMER_EMAIL);
-  const [customerName, setCustomerName] = useState(DEFAULT_CHECKOUT_CUSTOMER_NAME);
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerName, setCustomerName] = useState("");
   const [savedCards, setSavedCards] = useState([]);
   const [selectedCardId, setSelectedCardId] = useState("");
   const [cardForm, setCardForm] = useState(createEmptyCardForm());
   const [showCardForm, setShowCardForm] = useState(false);
   const [isCheckingCards, setIsCheckingCards] = useState(false);
   const [isSavingCard, setIsSavingCard] = useState(false);
+  const [isDeletingCard, setIsDeletingCard] = useState(false);
+  const [cardFieldErrors, setCardFieldErrors] = useState(createEmptyCardFieldErrors());
   const [paymentError, setPaymentError] = useState(null);
   const [paymentInfo, setPaymentInfo] = useState(null);
   const [maxCardsAllowed, setMaxCardsAllowed] = useState(3);
@@ -74,6 +154,20 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
 
   const currentItem = isOpen ? items[currentIndex] ?? null : null;
   const totalSteps = items.length;
+  const customerUid =
+    typeof currentUser?.uid === "string" && currentUser.uid.trim().length > 0
+      ? currentUser.uid.trim()
+      : "";
+  const resolvedUserEmail = normalizeEmail(currentUser?.email ?? "");
+  const resolvedUserName = getCustomerNameFromUser(currentUser);
+
+  const getAuthToken = async () => {
+    if (typeof currentUser?.getIdToken !== "function") {
+      throw new Error("Please sign in to continue checkout.");
+    }
+
+    return await currentUser.getIdToken();
+  };
 
   const selectedSeatIds = useMemo(
     () => (currentItem ? [...(seatSelections[currentItem.id] ?? [])].sort() : []),
@@ -90,6 +184,11 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
   const canCheckoutWithPayment = Boolean(
     selectedCardId && selectedCard && isValidEmail(normalizedCustomerEmail)
   );
+
+  useEffect(() => {
+    setCustomerEmail(resolvedUserEmail);
+    setCustomerName(resolvedUserName);
+  }, [resolvedUserEmail, resolvedUserName]);
 
   const loadReservedSeatsForItem = async (item) => {
     if (!item) {
@@ -116,6 +215,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
     const maxAllowed = toMaxCardsAllowed(response?.maxCardsAllowed);
     setSavedCards(cards);
     setMaxCardsAllowed(maxAllowed);
+    setCardFieldErrors(createEmptyCardFieldErrors());
     setSelectedCardId((previous) => {
       if (cards.some((card) => card.cardId === previous)) {
         return previous;
@@ -139,9 +239,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
       setSelectedCardId("");
       setMaxCardsAllowed(3);
       setShowCardForm(false);
+      setCardFieldErrors(createEmptyCardFieldErrors());
       if (!silent) {
         setPaymentError(
-          "Checkout email is not configured. Set NEXT_PUBLIC_CHECKOUT_CUSTOMER_EMAIL in front end/.env."
+          "Please sign in to load your saved cards."
         );
       }
       return;
@@ -154,13 +255,19 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
     }
 
     try {
-      const response = await fetchSavedCards(normalizedEmail);
+      const token = await getAuthToken();
+      const response = await fetchSavedCards(
+        normalizedEmail,
+        customerUid || undefined,
+        token
+      );
       applySavedCardsPayload(response);
     } catch (error) {
       setSavedCards([]);
       setSelectedCardId("");
       setShowCardForm(false);
-      setPaymentError(getMeaningfulErrorMessage(error, "user"));
+      setCardFieldErrors(createEmptyCardFieldErrors());
+      setPaymentError(getPaymentErrorMessage(error));
     } finally {
       setIsCheckingCards(false);
     }
@@ -185,6 +292,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
       setSelectedCardId("");
       setMaxCardsAllowed(3);
       setShowCardForm(false);
+      setCardFieldErrors(createEmptyCardFieldErrors());
       return;
     }
 
@@ -195,7 +303,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [customerEmail, isOpen, isPaymentStep]);
+  }, [customerEmail, isOpen, isPaymentStep, customerUid]);
 
   const closeDialog = () => {
     setIsOpen(false);
@@ -206,14 +314,16 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
     setIsSubmitting(false);
     setLoadError(null);
     setSelectionError(null);
-    setCustomerEmail(DEFAULT_CHECKOUT_CUSTOMER_EMAIL);
-    setCustomerName(DEFAULT_CHECKOUT_CUSTOMER_NAME);
+    setCustomerEmail(resolvedUserEmail);
+    setCustomerName(resolvedUserName);
     setSavedCards([]);
     setSelectedCardId("");
     setCardForm(createEmptyCardForm());
     setShowCardForm(false);
     setIsCheckingCards(false);
     setIsSavingCard(false);
+    setIsDeletingCard(false);
+    setCardFieldErrors(createEmptyCardFieldErrors());
     setPaymentError(null);
     setPaymentInfo(null);
     setMaxCardsAllowed(3);
@@ -235,14 +345,16 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
     setCurrentIndex(0);
     setLoadError(null);
     setSelectionError(null);
-    setCustomerEmail(DEFAULT_CHECKOUT_CUSTOMER_EMAIL);
-    setCustomerName(DEFAULT_CHECKOUT_CUSTOMER_NAME);
+    setCustomerEmail(resolvedUserEmail);
+    setCustomerName(resolvedUserName);
     setSavedCards([]);
     setSelectedCardId("");
     setCardForm(createEmptyCardForm());
     setShowCardForm(false);
     setIsCheckingCards(false);
     setIsSavingCard(false);
+    setIsDeletingCard(false);
+    setCardFieldErrors(createEmptyCardFieldErrors());
     setPaymentError(null);
     setPaymentInfo(null);
     setMaxCardsAllowed(3);
@@ -286,6 +398,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
   const goToPreviousItem = () => {
     if (isPaymentStep) {
       setIsPaymentStep(false);
+      setCardFieldErrors(createEmptyCardFieldErrors());
       setPaymentError(null);
       return;
     }
@@ -297,11 +410,16 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
 
   const handleSelectCard = (cardId) => {
     setSelectedCardId(cardId);
+    setCardFieldErrors(createEmptyCardFieldErrors());
     setPaymentError(null);
   };
 
   const handleCardFieldChange = (field, value) => {
     const nextValue = typeof value === "string" ? value : "";
+    setCardFieldErrors((previous) => ({
+      ...previous,
+      [field]: ""
+    }));
     setPaymentError(null);
 
     setCardForm((previous) => {
@@ -341,9 +459,12 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
   };
 
   const saveCardForEmail = async () => {
+    const nextFieldErrors = createEmptyCardFieldErrors();
+    setCardFieldErrors(createEmptyCardFieldErrors());
+
     if (!isValidEmail(normalizedCustomerEmail)) {
       setPaymentError(
-        "Checkout email is not configured. Set NEXT_PUBLIC_CHECKOUT_CUSTOMER_EMAIL in front end/.env."
+        "Please sign in to save a card."
       );
       return;
     }
@@ -355,12 +476,24 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
 
     const cardholderName = cardForm.cardholderName.trim() || customerName.trim();
     if (cardholderName.length === 0) {
-      setPaymentError("Card holder name is required.");
-      return;
+      nextFieldErrors.cardholderName = "Card holder name is required.";
     }
 
-    if (!cardForm.cardNumber || !cardForm.cvv || !cardForm.expMonth || !cardForm.expYear) {
-      setPaymentError("Card number, CVV, expiry month, and expiry year are required.");
+    if (!cardForm.cardNumber) {
+      nextFieldErrors.cardNumber = "Card number is required.";
+    }
+    if (!cardForm.cvv) {
+      nextFieldErrors.cvv = "CVV is required.";
+    }
+    if (!cardForm.expMonth) {
+      nextFieldErrors.expMonth = "Expiry month is required.";
+    }
+    if (!cardForm.expYear) {
+      nextFieldErrors.expYear = "Expiry year is required.";
+    }
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      setCardFieldErrors(nextFieldErrors);
       return;
     }
 
@@ -369,14 +502,16 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
     setPaymentInfo(null);
 
     try {
+      const token = await getAuthToken();
       const response = await savePaymentCard({
+        customerUid: customerUid || undefined,
         customerEmail: normalizedCustomerEmail,
         cardholderName,
         cardNumber: cardForm.cardNumber,
         cvv: cardForm.cvv,
         expMonth: Number(cardForm.expMonth),
         expYear: Number(cardForm.expYear)
-      });
+      }, token);
 
       const cards = Array.isArray(response?.cards) ? response.cards : [];
       setSavedCards(cards);
@@ -386,14 +521,66 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
           ? response.savedCardId
           : cards[0]?.cardId ?? ""
       );
+      setCardFieldErrors(createEmptyCardFieldErrors());
       setCustomerName(cardholderName);
       setShowCardForm(false);
       setCardForm(createEmptyCardForm());
       setPaymentInfo("Card saved successfully.");
     } catch (error) {
-      setPaymentError(getMeaningfulErrorMessage(error, "user"));
+      const message = getPaymentErrorMessage(error);
+      const field = mapPaymentMessageToField(message);
+
+      if (field) {
+        setCardFieldErrors({
+          ...createEmptyCardFieldErrors(),
+          [field]: message
+        });
+        setPaymentError(null);
+      } else {
+        setCardFieldErrors(createEmptyCardFieldErrors());
+        setPaymentError(message);
+      }
     } finally {
       setIsSavingCard(false);
+    }
+  };
+
+  const deleteSavedCardById = async (cardId) => {
+    if (typeof cardId !== "string" || cardId.trim().length === 0) {
+      setPaymentError("Select a valid card to delete.");
+      return;
+    }
+
+    setIsDeletingCard(true);
+    setPaymentError(null);
+    setPaymentInfo(null);
+
+    try {
+      const token = await getAuthToken();
+      const response = await deleteSavedCardRequest(cardId.trim(), token);
+      const cards = Array.isArray(response?.cards) ? response.cards : [];
+      const maxAllowed = toMaxCardsAllowed(response?.maxCardsAllowed);
+
+      setSavedCards(cards);
+      setMaxCardsAllowed(maxAllowed);
+      setCardFieldErrors(createEmptyCardFieldErrors());
+      setSelectedCardId((previous) => {
+        if (previous && previous !== cardId.trim() && cards.some((card) => card.cardId === previous)) {
+          return previous;
+        }
+
+        return cards[0]?.cardId ?? "";
+      });
+      setShowCardForm(cards.length === 0);
+      setPaymentInfo(
+        cards.length === 0
+          ? "Card deleted. No saved cards found."
+          : "Card deleted successfully."
+      );
+    } catch (error) {
+      setPaymentError(getPaymentErrorMessage(error));
+    } finally {
+      setIsDeletingCard(false);
     }
   };
 
@@ -409,6 +596,15 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
     setIsSubmitting(true);
     setSelectionError(null);
     setPaymentError(null);
+    let authToken = "";
+
+    try {
+      authToken = await getAuthToken();
+    } catch (error) {
+      setPaymentError(getPaymentErrorMessage(error));
+      setIsSubmitting(false);
+      return;
+    }
 
     for (let index = 0; index < items.length; index += 1) {
       const item = items[index];
@@ -427,6 +623,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
 
       try {
         const booking = await createBooking({
+          customerUid: customerUid || undefined,
           movieId: item.movie.id,
           showtime: item.showtime,
           seatIds: itemSeatIds,
@@ -434,7 +631,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
           customerEmail: normalizedCustomerEmail,
           customerName: customerName.trim() || selectedCard?.cardholderName,
           paymentCardId: selectedCardId
-        });
+        }, authToken);
 
         confirmedBookings.push({
           itemId: item.id,
@@ -489,7 +686,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
 
     if (!isValidEmail(normalizedCustomerEmail)) {
       setPaymentError(
-        "Checkout email is not configured. Set NEXT_PUBLIC_CHECKOUT_CUSTOMER_EMAIL in front end/.env."
+        "Please sign in to continue checkout."
       );
       return;
     }
@@ -538,6 +735,8 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
     showCardForm,
     isCheckingCards,
     isSavingCard,
+    isDeletingCard,
+    cardFieldErrors,
     paymentError,
     paymentInfo,
     canAddMoreCards,
@@ -551,6 +750,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout }) {
     handleCardFieldChange,
     setShowCardForm,
     saveCardForEmail,
+    deleteSavedCardById,
     openDialog,
     closeDialog,
     toggleSeat,

@@ -6,13 +6,13 @@ import { CartPage } from "@/components/cart-page";
 import { HomePage } from "@/pages/home-page";
 import { AdminPage } from "@/pages/admin-page";
 import { CheckoutPage } from "@/pages/checkout-page";
+import { FavoritesPage } from "@/pages/favorites-page";
 import { useCinemaAppController } from "@/controllers/useCinemaAppController";
-import "./app.module.css";
+import styles from "./app.module.css";
 
 export default function App() {
   const {
     isAdmin,
-    setIsAdmin,
     searchQuery,
     setSearchQuery,
     selectedGenre,
@@ -30,6 +30,14 @@ export default function App() {
     comingSoon,
     cartItems,
     cartCount,
+    currentUser,
+    currentUserProfile,
+    favoriteMovieIds,
+    favoriteMovies,
+    favoritePendingMovieIds,
+    favoritesLoading,
+    authBusy,
+    authMessage,
     handleMovieClick,
     handleWatchTrailer,
     handleAddToCart,
@@ -40,14 +48,30 @@ export default function App() {
     handleUpdateCartTickets,
     handleRemoveCartItem,
     handleCheckout,
-    navigateHome
+    handleToggleFavorite,
+    navigateHome,
+    navigateFavorites,
+    handleSignOut
   } = useCinemaAppController();
+  const detailMovieIdKey =
+    view.type === "detail"
+      ? typeof view.movie?.id === "number"
+        ? String(view.movie.id)
+        : typeof view.movie?.id === "string"
+          ? view.movie.id.trim()
+          : ""
+      : "";
+  const isDetailMovieFavorite =
+    detailMovieIdKey.length > 0 &&
+    favoriteMovieIds.some((movieId) => String(movieId).trim() === detailMovieIdKey);
+  const isDetailMovieFavoriteBusy =
+    detailMovieIdKey.length > 0 &&
+    favoritePendingMovieIds.some((movieId) => String(movieId).trim() === detailMovieIdKey);
 
   return (
-    <div className={"app-shell"}>
+    <div className={styles.appShell}>
       <Navbar
         isAdmin={isAdmin}
-        onToggleRole={() => setIsAdmin(!isAdmin)}
         searchQuery={searchQuery}
         onSearchChange={(value) => {
           setSearchQuery(value);
@@ -58,6 +82,14 @@ export default function App() {
         onNavigateHome={navigateHome}
         cartCount={cartCount}
         onNavigateCart={() => setView({ type: "cart" })}
+        onNavigateFavorites={navigateFavorites}
+        favoriteCount={favoriteMovies.length}
+        isFavoritesView={view.type === "favorites"}
+        currentUser={currentUser}
+        currentUserProfile={currentUserProfile}
+        authBusy={authBusy}
+        authMessage={authMessage}
+        onSignOut={handleSignOut}
       />
 
       <main>
@@ -85,6 +117,18 @@ export default function App() {
             onUpdateTickets={handleUpdateCartTickets}
             onRemoveItem={handleRemoveCartItem}
             onCheckout={handleCheckout}
+            currentUser={currentUser}
+          />
+        ) : view.type === "favorites" ? (
+          <FavoritesPage
+            movies={favoriteMovies}
+            favoritesLoading={favoritesLoading}
+            currentUser={currentUser}
+            onMovieClick={handleMovieClick}
+            onAddToCartFromCard={handleAddToCartFromCard}
+            onToggleFavorite={handleToggleFavorite}
+            favoriteMovieIds={favoriteMovieIds}
+            favoritePendingMovieIds={favoritePendingMovieIds}
           />
         ) : view.type === "detail" ? (
           <MovieDetail
@@ -92,6 +136,9 @@ export default function App() {
             initialShowTrailer={Boolean(view.autoOpenTrailer)}
             onBack={navigateHome}
             onSelectShowtime={handleAddToCart}
+            isFavorite={isDetailMovieFavorite}
+            isFavoriteBusy={isDetailMovieFavoriteBusy}
+            onToggleFavorite={handleToggleFavorite}
           />
         ) : (
           <HomePage
@@ -109,6 +156,9 @@ export default function App() {
             onMovieClick={handleMovieClick}
             onAddToCartFromCard={handleAddToCartFromCard}
             onWatchTrailer={handleWatchTrailer}
+            onToggleFavorite={handleToggleFavorite}
+            favoriteMovieIds={favoriteMovieIds}
+            favoritePendingMovieIds={favoritePendingMovieIds}
           />
         )}
       </main>

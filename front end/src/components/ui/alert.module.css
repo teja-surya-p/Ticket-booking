@@ -1,10 +1,10 @@
 @reference "../../pages/globals.css";
 
-:global(.alert-class-1) {
+.alert-class-1 {
   @apply col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight;
 }
 
-:global(.alert-class-2) {
+.alert-class-2 {
   @apply text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed;
 }
 

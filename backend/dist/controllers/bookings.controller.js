@@ -1,4 +1,4 @@
-import { Body, Controller, Get, ParseIntPipe, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Param, ParseIntPipe, Post, Query } from "@nestjs/common";
 import { decorateClass, decorateMethod, parameterDecorator } from "../common/nest-metadata.js";
 import { BookingsService } from "../services/bookings.service.js";
 
@@ -7,12 +7,19 @@ class BookingsController {
     this.bookingsService = bookingsService;
   }
 
-  async getSavedCard(customerEmail) {
-    return await this.bookingsService.getSavedCard({ customerEmail });
+  async getSavedCard(authorization, customerEmail, customerUid) {
+    return await this.bookingsService.getSavedCard(
+      { customerEmail, customerUid },
+      authorization
+    );
   }
 
-  async saveCard(body) {
-    return await this.bookingsService.saveCard(body);
+  async saveCard(authorization, body) {
+    return await this.bookingsService.saveCard(body, authorization);
+  }
+
+  async deleteCard(authorization, cardId) {
+    return await this.bookingsService.deleteCard(cardId, authorization);
   }
 
   async getReservedSeats(movieId, showtime) {
@@ -27,17 +34,22 @@ class BookingsController {
     return await this.bookingsService.getQuote(body);
   }
 
-  async createBooking(body) {
-    return await this.bookingsService.createBooking(body);
+  async createBooking(authorization, body) {
+    return await this.bookingsService.createBooking(body, authorization);
   }
 }
 
 decorateMethod(
   BookingsController.prototype,
   "getSavedCard",
-  [Get("card"), parameterDecorator(0, Query("customerEmail"))],
+  [
+    Get("card"),
+    parameterDecorator(0, Headers("authorization")),
+    parameterDecorator(1, Query("customerEmail")),
+    parameterDecorator(2, Query("customerUid"))
+  ],
   {
-    paramTypes: [String],
+    paramTypes: [String, String, String],
     returnType: Promise
   }
 );
@@ -45,9 +57,27 @@ decorateMethod(
 decorateMethod(
   BookingsController.prototype,
   "saveCard",
-  [Post("card"), parameterDecorator(0, Body())],
+  [
+    Post("card"),
+    parameterDecorator(0, Headers("authorization")),
+    parameterDecorator(1, Body())
+  ],
   {
-    paramTypes: [Object],
+    paramTypes: [String, Object],
+    returnType: Promise
+  }
+);
+
+decorateMethod(
+  BookingsController.prototype,
+  "deleteCard",
+  [
+    Delete("card/:cardId"),
+    parameterDecorator(0, Headers("authorization")),
+    parameterDecorator(1, Param("cardId"))
+  ],
+  {
+    paramTypes: [String, String],
     returnType: Promise
   }
 );
@@ -84,9 +114,9 @@ decorateMethod(
 decorateMethod(
   BookingsController.prototype,
   "createBooking",
-  [Post(), parameterDecorator(0, Body())],
+  [Post(), parameterDecorator(0, Headers("authorization")), parameterDecorator(1, Body())],
   {
-    paramTypes: [Object],
+    paramTypes: [String, Object],
     returnType: Promise
   }
 );

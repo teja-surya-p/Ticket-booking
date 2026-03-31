@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import "./alert.module.css";
+import styles from "./alert.module.css";
 const alertVariants = cva('relative w-full rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current', {
   variants: {
     variant: {
@@ -26,12 +26,12 @@ function AlertTitle({
   className,
   ...props
 }) {
-  return <div data-slot="alert-title" className={cn("alert-class-1", className)} {...props} />;
+  return <div data-slot="alert-title" className={cn(styles["alert-class-1"], className)} {...props} />;
 }
 function AlertDescription({
   className,
   ...props
 }) {
-  return <div data-slot="alert-description" className={cn("alert-class-2", className)} {...props} />;
+  return <div data-slot="alert-description" className={cn(styles["alert-class-2"], className)} {...props} />;
 }
 export { Alert, AlertTitle, AlertDescription };

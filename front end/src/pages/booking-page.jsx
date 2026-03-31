@@ -3,7 +3,7 @@
 import { ArrowLeft, Loader2, Minus, Plus, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBookingPageController } from "@/controllers/useBookingPageController";
-import "./booking-page.module.css";
+import styles from "./booking-page.module.css";
 export function BookingPage({
   movie,
   showtime,
@@ -38,46 +38,46 @@ export function BookingPage({
     showtime
   });
 
-  return <div className={"booking-page-class-1"}>
-      <Button variant="ghost" size="sm" onClick={onBack} className={"booking-page-class-2"}>
-        <ArrowLeft className={"booking-page-class-3"} />
+  return <div className={styles["booking-page-class-1"]}>
+      <Button variant="ghost" size="sm" onClick={onBack} className={styles["booking-page-class-2"]}>
+        <ArrowLeft className={styles["booking-page-class-3"]} />
         Back to Movie
       </Button>
 
-      <div className={"booking-page-class-4"}>
-        <h1 className={"booking-page-class-5"}>
+      <div className={styles["booking-page-class-4"]}>
+        <h1 className={styles["booking-page-class-5"]}>
           Book Tickets
         </h1>
-        <p className={"booking-page-class-6"}>
+        <p className={styles["booking-page-class-6"]}>
           {movie.title} &middot; {showtime}
         </p>
       </div>
 
-      {loadError && <div className={"booking-page-class-7"}>
+      {loadError && <div className={styles["booking-page-class-7"]}>
           {loadError}
         </div>}
 
-      <div className={"booking-page-class-8"}>
-        <div className={"booking-page-class-9"}>
-          <div className={"booking-page-class-10"}>
-            <div className={"booking-page-class-11"}>
-              <div className={"booking-page-class-12"} />
+      <div className={styles["booking-page-class-8"]}>
+        <div className={styles["booking-page-class-9"]}>
+          <div className={styles["booking-page-class-10"]}>
+            <div className={styles["booking-page-class-11"]}>
+              <div className={styles["booking-page-class-12"]} />
             </div>
-            <p className={"booking-page-class-13"}>
+            <p className={styles["booking-page-class-13"]}>
               Screen
             </p>
 
-            {isLoadingContext ? <div className={"booking-page-class-14"}>
-                <Loader2 className={"booking-page-class-15"} />
+            {isLoadingContext ? <div className={styles["booking-page-class-14"]}>
+                <Loader2 className={styles["booking-page-class-15"]} />
                 Loading seats...
-              </div> : <div className={"booking-page-class-16"}>
-                <div className={"booking-page-class-17"} style={{
+              </div> : <div className={styles["booking-page-class-16"]}>
+                <div className={styles["booking-page-class-17"]} style={{
               minWidth: "fit-content"
             }}>
                   {Array.from({
                 length: ROWS
-              }, (_, row) => <div key={row} className={"booking-page-class-18"}>
-                      <span className={"booking-page-class-19"}>
+              }, (_, row) => <div key={row} className={styles["booking-page-class-18"]}>
+                      <span className={styles["booking-page-class-19"]}>
                         {String.fromCharCode(65 + row)}
                       </span>
                       {Array.from({
@@ -86,7 +86,7 @@ export function BookingPage({
                   const seatId = `${row}-${col}`;
                   const isReserved = reservedSeats.has(seatId);
                   const isSelected = selectedSeats.has(seatId);
-                  return <button key={seatId} disabled={isReserved} onClick={() => toggleSeat(seatId)} className={["booking-page-class-20", isReserved ? "booking-page-class-21" : isSelected ? "booking-page-class-22" : "booking-page-class-23"].filter(Boolean).join(" ")} title={isReserved ? `Seat ${seatLabel(row, col)} - Reserved` : `Seat ${seatLabel(row, col)}`} aria-label={isReserved ? `Seat ${seatLabel(row, col)} reserved` : isSelected ? `Seat ${seatLabel(row, col)} selected` : `Select seat ${seatLabel(row, col)}`}>
+                  return <button key={seatId} disabled={isReserved} onClick={() => toggleSeat(seatId)} className={[styles["booking-page-class-20"], isReserved ? styles["booking-page-class-21"] : isSelected ? styles["booking-page-class-22"] : styles["booking-page-class-23"]].filter(Boolean).join(" ")} title={isReserved ? `Seat ${seatLabel(row, col)} - Reserved` : `Seat ${seatLabel(row, col)}`} aria-label={isReserved ? `Seat ${seatLabel(row, col)} reserved` : isSelected ? `Seat ${seatLabel(row, col)} selected` : `Select seat ${seatLabel(row, col)}`}>
                             {col + 1}
                           </button>;
                 })}
@@ -94,32 +94,32 @@ export function BookingPage({
                 </div>
               </div>}
 
-            <div className={"booking-page-class-24"}>
-              <div className={"booking-page-class-25"}>
-                <div className={"booking-page-class-26"} />
+            <div className={styles["booking-page-class-24"]}>
+              <div className={styles["booking-page-class-25"]}>
+                <div className={styles["booking-page-class-26"]} />
                 Available
               </div>
-              <div className={"booking-page-class-25"}>
-                <div className={"booking-page-class-27"} />
+              <div className={styles["booking-page-class-25"]}>
+                <div className={styles["booking-page-class-27"]} />
                 Selected
               </div>
-              <div className={"booking-page-class-25"}>
-                <div className={"booking-page-class-28"} />
+              <div className={styles["booking-page-class-25"]}>
+                <div className={styles["booking-page-class-28"]} />
                 Reserved
               </div>
             </div>
           </div>
         </div>
 
-        <div className={"booking-page-class-29"}>
-          <div className={"booking-page-class-10"}>
-            <div className={"booking-page-class-30"}>
-              <Ticket className={"booking-page-class-31"} />
-              <h2 className={"booking-page-class-32"}>Order Summary</h2>
+        <div className={styles["booking-page-class-29"]}>
+          <div className={styles["booking-page-class-10"]}>
+            <div className={styles["booking-page-class-30"]}>
+              <Ticket className={styles["booking-page-class-31"]} />
+              <h2 className={styles["booking-page-class-32"]}>Order Summary</h2>
             </div>
 
-            <div className={"booking-page-class-33"}>
-              <p className={"booking-page-class-34"}>{movie.title}</p>
+            <div className={styles["booking-page-class-33"]}>
+              <p className={styles["booking-page-class-34"]}>{movie.title}</p>
               <p>Showtime: {showtime}</p>
               {selectedSeats.size > 0 && <p>
                   Seats:{" "}
@@ -130,75 +130,75 @@ export function BookingPage({
                 </p>}
             </div>
 
-            <div className={"booking-page-class-35"} />
+            <div className={styles["booking-page-class-35"]} />
 
-            <h3 className={"booking-page-class-36"}>
+            <h3 className={styles["booking-page-class-36"]}>
               Tickets
             </h3>
 
-            {ticketTypes.map(type => <div key={type} className={"booking-page-class-37"}>
+            {ticketTypes.map(type => <div key={type} className={styles["booking-page-class-37"]}>
                 <div>
-                  <p className={"booking-page-class-38"}>
+                  <p className={styles["booking-page-class-38"]}>
                     {type}
                   </p>
-                  <p className={"booking-page-class-39"}>
+                  <p className={styles["booking-page-class-39"]}>
                     ${pricing[type].toFixed(2)}
                   </p>
                 </div>
-                <div className={"booking-page-class-40"}>
+                <div className={styles["booking-page-class-40"]}>
                   <Button variant="outline" size="icon-sm" onClick={() => updateTicket(type, -1)} aria-label={`Decrease ${type} tickets`}>
-                    <Minus className={"booking-page-class-41"} />
+                    <Minus className={styles["booking-page-class-41"]} />
                   </Button>
-                  <span className={"booking-page-class-42"}>
+                  <span className={styles["booking-page-class-42"]}>
                     {tickets[type]}
                   </span>
                   <Button variant="outline" size="icon-sm" onClick={() => updateTicket(type, 1)} aria-label={`Increase ${type} tickets`}>
-                    <Plus className={"booking-page-class-41"} />
+                    <Plus className={styles["booking-page-class-41"]} />
                   </Button>
                 </div>
               </div>)}
 
-            <div className={"booking-page-class-35"} />
+            <div className={styles["booking-page-class-35"]} />
 
-            <div className={"booking-page-class-43"}>
-              <span className={"booking-page-class-44"}>
+            <div className={styles["booking-page-class-43"]}>
+              <span className={styles["booking-page-class-44"]}>
                 Subtotal
               </span>
-              <span className={"booking-page-class-45"}>
+              <span className={styles["booking-page-class-45"]}>
                 ${subtotal.toFixed(2)}
               </span>
             </div>
 
-            <div className={"booking-page-class-46"}>
+            <div className={styles["booking-page-class-46"]}>
               <span>Service fee</span>
               <span>${serviceFee.toFixed(2)}</span>
             </div>
 
-            <div className={"booking-page-class-47"}>
+            <div className={styles["booking-page-class-47"]}>
               <span>Total</span>
               <span>${total.toFixed(2)}</span>
             </div>
 
-            <div className={"booking-page-class-48"}>
+            <div className={styles["booking-page-class-48"]}>
               <span>Total tickets: {totalTickets}</span>
               <span>Seats selected: {selectedSeats.size}</span>
             </div>
 
-            {quoteError && <p className={"booking-page-class-49"}>{quoteError}</p>}
-            {checkoutError && <p className={"booking-page-class-49"}>{checkoutError}</p>}
-            {checkoutSuccess && <p className={"booking-page-class-50"}>{checkoutSuccess}</p>}
+            {quoteError && <p className={styles["booking-page-class-49"]}>{quoteError}</p>}
+            {checkoutError && <p className={styles["booking-page-class-49"]}>{checkoutError}</p>}
+            {checkoutSuccess && <p className={styles["booking-page-class-50"]}>{checkoutSuccess}</p>}
 
-            <Button className={"booking-page-class-51"} onClick={handleCheckout} disabled={isSubmitting || isLoadingContext || totalTickets <= 0 || selectedSeatIds.length !== totalTickets}>
+            <Button className={styles["booking-page-class-51"]} onClick={handleCheckout} disabled={isSubmitting || isLoadingContext || totalTickets <= 0 || selectedSeatIds.length !== totalTickets}>
               {isSubmitting ? <>
-                  <Loader2 className={"booking-page-class-15"} />
+                  <Loader2 className={styles["booking-page-class-15"]} />
                   Confirming...
                 </> : isLoadingQuote ? <>
-                  <Loader2 className={"booking-page-class-15"} />
+                  <Loader2 className={styles["booking-page-class-15"]} />
                   Calculating...
                 </> : "Proceed to Checkout"}
             </Button>
 
-            <p className={"booking-page-class-52"}>
+            <p className={styles["booking-page-class-52"]}>
               Select tickets and matching seats to complete booking.
             </p>
           </div>

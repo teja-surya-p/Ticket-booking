@@ -1,0 +1,207 @@
+@reference "./globals.css";
+
+.pageShell {
+  @apply relative min-h-screen overflow-hidden px-4 py-8 sm:px-6 lg:px-8;
+}
+
+.backgroundGlow {
+  background:
+    radial-gradient(circle at 10% 8%, color-mix(in oklch, var(--primary) 16%, transparent), transparent 30%),
+    radial-gradient(circle at 84% 90%, color-mix(in oklch, var(--primary) 11%, transparent), transparent 35%),
+    linear-gradient(180deg, color-mix(in oklch, var(--background) 96%, white 4%), var(--background));
+  @apply pointer-events-none absolute inset-0;
+}
+
+.pageLayout {
+  @apply relative mx-auto grid w-full max-w-5xl gap-5;
+}
+
+.hero {
+  @apply flex flex-wrap items-start justify-between gap-4 rounded-3xl border border-border/80 bg-card/90 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-6;
+}
+
+.identityWrap {
+  @apply flex items-center gap-4;
+}
+
+.avatar {
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--primary) 85%, white 15%),
+    color-mix(in oklch, var(--primary) 65%, black 12%)
+  );
+  @apply flex size-14 items-center justify-center rounded-2xl text-xl font-black text-primary-foreground shadow-[0_10px_25px_color-mix(in_oklch,var(--primary)_35%,transparent)];
+}
+
+.heroCopy {
+  @apply grid gap-1;
+}
+
+.title {
+  @apply text-2xl font-black tracking-tight text-foreground sm:text-3xl;
+}
+
+.subtitle {
+  @apply text-sm leading-6 text-muted-foreground;
+}
+
+.heroMeta {
+  @apply text-xs font-medium uppercase tracking-[0.13em] text-muted-foreground;
+}
+
+.heroActions {
+  @apply flex items-center;
+}
+
+.panel {
+  @apply rounded-3xl border border-border/80 bg-card/90 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-6;
+}
+
+.stack {
+  @apply grid gap-4;
+}
+
+.loadingText {
+  @apply rounded-xl border border-border/80 bg-background/70 px-4 py-3 text-sm text-muted-foreground;
+}
+
+.note {
+  @apply rounded-xl border px-4 py-3 text-sm leading-relaxed;
+}
+
+.noteInfo {
+  @apply border-sky-400/45 bg-sky-500/10 text-sky-700 dark:text-sky-200;
+}
+
+.noteError {
+  @apply border-red-400/40 bg-red-500/10 text-red-700 dark:text-red-200;
+}
+
+.noteSuccess {
+  @apply border-emerald-400/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200;
+}
+
+.noteWarning {
+  @apply border-amber-400/45 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+}
+
+.readOnlyLayout {
+  @apply grid gap-4 lg:grid-cols-[minmax(240px,300px)_1fr];
+}
+
+.summaryCard {
+  @apply grid content-start gap-3 rounded-2xl border border-border/80 bg-background/70 p-4;
+}
+
+.summaryLabel {
+  @apply text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground;
+}
+
+.summaryValue {
+  @apply text-4xl font-black text-foreground;
+}
+
+.progressTrack {
+  @apply h-2 overflow-hidden rounded-full bg-secondary;
+}
+
+.progressFill {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--primary) 70%, white 10%),
+    color-mix(in oklch, var(--primary) 80%, black 8%)
+  );
+  @apply block h-full rounded-full transition-[width] duration-500;
+}
+
+.summaryHint {
+  @apply text-sm leading-6 text-muted-foreground;
+}
+
+.metaList {
+  @apply grid gap-2;
+}
+
+.metaRow {
+  @apply grid gap-1 rounded-xl border border-border/70 bg-card px-3 py-2;
+}
+
+.metaLabel {
+  @apply text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground;
+}
+
+.metaValue {
+  @apply text-sm font-medium text-foreground;
+}
+
+.statusBadge {
+  @apply inline-flex w-fit rounded-full px-2.5 py-0.5 text-xs font-semibold;
+}
+
+.statusPending {
+  @apply bg-amber-500/15 text-amber-700 dark:text-amber-200;
+}
+
+.statusComplete {
+  @apply bg-emerald-500/15 text-emerald-700 dark:text-emerald-200;
+}
+
+.detailsCard {
+  @apply rounded-2xl border border-border/80 bg-background/70 p-4 sm:p-5;
+}
+
+.sectionHeading {
+  @apply mb-4 text-lg font-black text-foreground;
+}
+
+.dataGrid {
+  @apply grid gap-3 sm:grid-cols-2;
+}
+
+.dataCard {
+  @apply rounded-xl border border-border/80 bg-card px-4 py-3;
+}
+
+.dataCardWide {
+  @apply sm:col-span-2;
+}
+
+.dataLabel {
+  @apply text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground;
+}
+
+.dataValue {
+  @apply mt-1 break-words text-sm font-medium text-foreground;
+}
+
+.form {
+  @apply grid gap-4;
+}
+
+.section {
+  @apply rounded-2xl border border-border/80 bg-background/70 p-4 sm:p-5;
+}
+
+.sectionTitle {
+  @apply mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground;
+}
+
+.gridTwo {
+  @apply grid gap-3 sm:grid-cols-2;
+}
+
+.field {
+  @apply grid gap-1.5;
+}
+
+.checkboxRow {
+  @apply flex items-start gap-3;
+}
+
+.actionsRow {
+  @apply flex flex-wrap gap-2;
+}
+
+.securityHint {
+  @apply mt-3 text-sm text-muted-foreground;
+}

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { cn } from '@/lib/utils';
-import "./tooltip.module.css";
+import styles from "./tooltip.module.css";
 function TooltipProvider({
   delayDuration = 0,
   ...props
@@ -29,9 +29,9 @@ function TooltipContent({
   ...props
 }) {
   return <TooltipPrimitive.Portal>
-      <TooltipPrimitive.Content data-slot="tooltip-content" sideOffset={sideOffset} className={cn("tooltip-class-1", className)} {...props}>
+      <TooltipPrimitive.Content data-slot="tooltip-content" sideOffset={sideOffset} className={cn(styles["tooltip-class-1"], className)} {...props}>
         {children}
-        <TooltipPrimitive.Arrow className={"tooltip-class-2"} />
+        <TooltipPrimitive.Arrow className={styles["tooltip-class-2"]} />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>;
 }

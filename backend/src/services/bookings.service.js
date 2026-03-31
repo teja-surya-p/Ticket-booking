@@ -1,7 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
-  Injectable
+  Injectable,
+  UnauthorizedException
 } from "@nestjs/common";
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -22,23 +23,31 @@ class BookingsService {
     this.moviesService = moviesService;
   }
 
-  async getSavedCard(query) {
-    const customerEmail = this.normalizeCustomerEmail(query?.customerEmail);
-    const cards = await this.findCardsByEmail(customerEmail);
+  async getSavedCard(query, authorization) {
+    const { customerEmail, customerUid } = await this.requireAuthenticatedCustomer(
+      query,
+      authorization
+    );
+    const cards = await this.findCardsForCustomer(customerEmail, customerUid);
 
     return {
+      customerUid,
       customerEmail,
       cards,
       maxCardsAllowed: 3
     };
   }
 
-  async saveCard(payload) {
-    const customerEmail = this.normalizeCustomerEmail(payload?.customerEmail);
+  async saveCard(payload, authorization) {
+    const { customerEmail, customerUid } = await this.requireAuthenticatedCustomer(
+      payload,
+      authorization
+    );
     const normalizedCard = this.validateAndNormalizeCardPayload(payload);
-    const existingCards = await this.findCardDocsByEmail(customerEmail);
+    const existingCards = await this.findCardDocsForCustomer(customerEmail, customerUid);
     const now = new Date().toISOString();
-    const cardFingerprint = this.buildCardFingerprint(customerEmail, normalizedCard.cardNumber);
+    const customerFingerprintKey = customerUid ?? customerEmail;
+    const cardFingerprint = this.buildCardFingerprint(customerFingerprintKey, normalizedCard.cardNumber);
     const existingMatchingCard = existingCards.find(
       (card) => card.data.cardFingerprint === cardFingerprint
     );
@@ -52,6 +61,7 @@ class BookingsService {
 
     const cardRecord = {
       cardId: cardDocId,
+      customerUid,
       customerEmail,
       cardholderName: normalizedCard.cardholderName,
       brand: normalizedCard.brand,
@@ -68,12 +78,38 @@ class BookingsService {
     };
 
     await this.cardCollection().doc(cardDocId).set(cardRecord);
-    const cards = await this.findCardsByEmail(customerEmail);
+    const cards = await this.findCardsForCustomer(customerEmail, customerUid);
 
     return {
+      customerUid,
       customerEmail,
       cards,
       savedCardId: cardDocId,
+      maxCardsAllowed: 3
+    };
+  }
+
+  async deleteCard(cardId, authorization) {
+    const normalizedCardId = this.normalizePaymentCardId(cardId);
+    const { customerEmail, customerUid } = await this.requireAuthenticatedCustomer(
+      {},
+      authorization
+    );
+    const cards = await this.findCardsForCustomer(customerEmail, customerUid);
+    const targetCard = cards.find((card) => card.cardId === normalizedCardId);
+
+    if (!targetCard) {
+      throw new BadRequestException("Saved card not found.");
+    }
+
+    await this.cardCollection().doc(targetCard.cardId).delete();
+    const updatedCards = await this.findCardsForCustomer(customerEmail, customerUid);
+
+    return {
+      customerUid,
+      customerEmail,
+      cards: updatedCards,
+      deletedCardId: targetCard.cardId,
       maxCardsAllowed: 3
     };
   }
@@ -123,12 +159,15 @@ class BookingsService {
     };
   }
 
-  async createBooking(payload) {
-    const customerEmail = this.normalizeCustomerEmail(payload?.customerEmail);
+  async createBooking(payload, authorization) {
+    const { customerEmail, customerUid } = await this.requireAuthenticatedCustomer(
+      payload,
+      authorization
+    );
     const customerName = this.normalizeCustomerName(payload?.customerName);
     const paymentCardId = this.normalizePaymentCardId(payload?.paymentCardId);
     await this.validateAndNormalizePayload(payload);
-    const savedCard = await this.requireSavedCard(customerEmail, paymentCardId);
+    const savedCard = await this.requireSavedCard(customerEmail, paymentCardId, customerUid);
     const uniqueSeatIds = Array.from(new Set(payload.seatIds));
     const existingReservedSeats = new Set(
       (
@@ -151,6 +190,7 @@ class BookingsService {
       showtime: payload.showtime,
       seatIds: uniqueSeatIds,
       tickets: payload.tickets,
+      customerUid,
       customerName: customerName ?? savedCard.cardholderName,
       customerEmail,
       paymentCard: {
@@ -193,16 +233,63 @@ class BookingsService {
     return this.firestoreService.db().collection(FIRESTORE_COLLECTIONS.paymentCards);
   }
 
-  async findCardDocsByEmail(customerEmail) {
-    const snapshot = await this.cardCollection().where("customerEmail", "==", customerEmail).get();
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      data: doc.data()
-    }));
+  async findCardDocsForCustomer(customerEmail, customerUid) {
+    const normalizedUid = this.normalizeCustomerUid(customerUid);
+    const [uidSnapshot, emailSnapshot] = await Promise.all([
+      normalizedUid
+        ? this.cardCollection().where("customerUid", "==", normalizedUid).get()
+        : Promise.resolve(null),
+      this.cardCollection().where("customerEmail", "==", customerEmail).get()
+    ]);
+
+    const docsById = new Map();
+    const attachDoc = (doc) => {
+      docsById.set(doc.id, {
+        id: doc.id,
+        data: doc.data()
+      });
+    };
+
+    if (uidSnapshot) {
+      uidSnapshot.docs.forEach(attachDoc);
+    }
+    emailSnapshot.docs.forEach(attachDoc);
+
+    if (normalizedUid) {
+      const legacyEmailOnlyDocs = emailSnapshot.docs.filter((doc) => {
+        const existingUid = this.normalizeCustomerUid(doc.data()?.customerUid);
+        return !existingUid;
+      });
+
+      if (legacyEmailOnlyDocs.length > 0) {
+        await Promise.all(
+          legacyEmailOnlyDocs.map((doc) =>
+            this.cardCollection().doc(doc.id).set({ customerUid: normalizedUid }, { merge: true })
+          )
+        );
+
+        legacyEmailOnlyDocs.forEach((doc) => {
+          const existing = docsById.get(doc.id);
+          if (!existing) {
+            return;
+          }
+
+          docsById.set(doc.id, {
+            ...existing,
+            data: {
+              ...existing.data,
+              customerUid: normalizedUid
+            }
+          });
+        });
+      }
+    }
+
+    return Array.from(docsById.values());
   }
 
-  async findCardsByEmail(customerEmail) {
-    const docs = await this.findCardDocsByEmail(customerEmail);
+  async findCardsForCustomer(customerEmail, customerUid) {
+    const docs = await this.findCardDocsForCustomer(customerEmail, customerUid);
     return docs
       .map((item) => this.toSavedCardEntity(item.data, item.id))
       .sort((a, b) => {
@@ -212,8 +299,8 @@ class BookingsService {
       });
   }
 
-  async requireSavedCard(customerEmail, paymentCardId) {
-    const cards = await this.findCardsByEmail(customerEmail);
+  async requireSavedCard(customerEmail, paymentCardId, customerUid) {
+    const cards = await this.findCardsForCustomer(customerEmail, customerUid);
     if (cards.length === 0) {
       throw new BadRequestException(
         "No saved card found for this email. Save a card before checkout."
@@ -234,6 +321,10 @@ class BookingsService {
         typeof data?.cardId === "string" && data.cardId.trim().length > 0
           ? data.cardId
           : fallbackCardId,
+      customerUid:
+        typeof data?.customerUid === "string" && data.customerUid.trim().length > 0
+          ? data.customerUid.trim()
+          : null,
       customerEmail: this.normalizeCustomerEmail(data?.customerEmail),
       cardholderName:
         typeof data?.cardholderName === "string" && data.cardholderName.trim().length > 0
@@ -273,6 +364,23 @@ class BookingsService {
     return email;
   }
 
+  normalizeOptionalCustomerEmail(value) {
+    if (typeof value !== "string" || value.trim().length === 0) {
+      return null;
+    }
+
+    return this.normalizeCustomerEmail(value);
+  }
+
+  normalizeCustomerUid(value) {
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    const customerUid = value.trim();
+    return customerUid.length > 0 ? customerUid : null;
+  }
+
   normalizeCustomerName(value) {
     if (typeof value !== "string") {
       return null;
@@ -290,6 +398,68 @@ class BookingsService {
     return value.trim();
   }
 
+  extractBearerToken(authorization) {
+    if (typeof authorization !== "string") {
+      throw new UnauthorizedException("Missing Authorization header");
+    }
+
+    const [scheme, token] = authorization.trim().split(/\s+/);
+    if (scheme !== "Bearer" || !token) {
+      throw new UnauthorizedException("Authorization header must use the Bearer scheme");
+    }
+
+    return token;
+  }
+
+  async requireAuthenticatedCustomer(payload, authorization) {
+    const token = this.extractBearerToken(authorization);
+    let decodedToken;
+
+    try {
+      decodedToken = await this.firestoreService.auth().verifyIdToken(token);
+    } catch (error) {
+      throw new UnauthorizedException(
+        error instanceof Error ? error.message : "Invalid or expired Firebase ID token"
+      );
+    }
+
+    const authenticatedUid = this.normalizeCustomerUid(decodedToken?.uid);
+    if (!authenticatedUid) {
+      throw new UnauthorizedException("Authenticated user uid is missing");
+    }
+
+    let authenticatedEmail = this.normalizeOptionalCustomerEmail(decodedToken?.email);
+    if (!authenticatedEmail) {
+      try {
+        const userRecord = await this.firestoreService.auth().getUser(authenticatedUid);
+        authenticatedEmail = this.normalizeOptionalCustomerEmail(userRecord?.email);
+      } catch (error) {
+        throw new UnauthorizedException(
+          error instanceof Error ? error.message : "Unable to load authenticated user profile"
+        );
+      }
+    }
+
+    if (!authenticatedEmail) {
+      throw new UnauthorizedException("Authenticated user email is missing");
+    }
+
+    const requestedUid = this.normalizeCustomerUid(payload?.customerUid);
+    if (requestedUid && requestedUid !== authenticatedUid) {
+      throw new UnauthorizedException("customerUid does not match authenticated user");
+    }
+
+    const requestedEmail = this.normalizeOptionalCustomerEmail(payload?.customerEmail);
+    if (requestedEmail && requestedEmail !== authenticatedEmail) {
+      throw new UnauthorizedException("customerEmail does not match authenticated user");
+    }
+
+    return {
+      customerUid: authenticatedUid,
+      customerEmail: authenticatedEmail
+    };
+  }
+
   validateAndNormalizeCardPayload(payload) {
     const cardholderName =
       typeof payload?.cardholderName === "string" ? payload.cardholderName.trim() : "";
@@ -304,9 +474,7 @@ class BookingsService {
     }
 
     if (!this.passesLuhn(cardNumber)) {
-      throw new BadRequestException(
-        "cardNumber is invalid. Use a valid card number (for testing: 4242 4242 4242 4242)."
-      );
+      throw new BadRequestException("Invalid card number.");
     }
 
     const cvvInput = typeof payload?.cvv === "string" ? payload.cvv : "";

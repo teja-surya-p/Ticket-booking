@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import "./sidebar.module.css";
+import styles from "./sidebar.module.css";
 const SIDEBAR_COOKIE_NAME = 'sidebar_state';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = '16rem';
@@ -90,7 +90,7 @@ function SidebarProvider({
         '--sidebar-width': SIDEBAR_WIDTH,
         '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
         ...style
-      }} className={cn("sidebar-class-1", className)} {...props}>
+      }} className={cn(styles["sidebar-class-1"], className)} {...props}>
           {children}
         </div>
       </TooltipProvider>
@@ -111,28 +111,28 @@ function Sidebar({
     setOpenMobile
   } = useSidebar();
   if (collapsible === 'none') {
-    return <div data-slot="sidebar" className={cn("sidebar-class-2", className)} {...props}>
+    return <div data-slot="sidebar" className={cn(styles["sidebar-class-2"], className)} {...props}>
         {children}
       </div>;
   }
   if (isMobile) {
     return <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-        <SheetContent data-sidebar="sidebar" data-slot="sidebar" data-mobile="true" className={"sidebar-class-3"} style={{
+        <SheetContent data-sidebar="sidebar" data-slot="sidebar" data-mobile="true" className={styles["sidebar-class-3"]} style={{
         '--sidebar-width': SIDEBAR_WIDTH_MOBILE
       }} side={side}>
-          <SheetHeader className={"sidebar-class-4"}>
+          <SheetHeader className={styles["sidebar-class-4"]}>
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          <div className={"sidebar-class-5"}>{children}</div>
+          <div className={styles["sidebar-class-5"]}>{children}</div>
         </SheetContent>
       </Sheet>;
   }
   return <div className={cn("group peer sidebar-class-6")} data-state={state} data-collapsible={state === 'collapsed' ? collapsible : ''} data-variant={variant} data-side={side} data-slot="sidebar">
       {/* This is what handles the sidebar gap on desktop */}
-      <div data-slot="sidebar-gap" className={cn("sidebar-class-7", "sidebar-class-8", "sidebar-class-9", variant === 'floating' || variant === 'inset' ? "sidebar-class-10" : "sidebar-class-11")} />
-      <div data-slot="sidebar-container" className={cn("sidebar-class-12", side === 'left' ? "sidebar-class-13" : "sidebar-class-14", variant === 'floating' || variant === 'inset' ? "sidebar-class-15" : "sidebar-class-16", className)} {...props}>
-        <div data-sidebar="sidebar" data-slot="sidebar-inner" className={"sidebar-class-17"}>
+      <div data-slot="sidebar-gap" className={cn(styles["sidebar-class-7"], styles["sidebar-class-8"], styles["sidebar-class-9"], variant === 'floating' || variant === 'inset' ? styles["sidebar-class-10"] : styles["sidebar-class-11"])} />
+      <div data-slot="sidebar-container" className={cn(styles["sidebar-class-12"], side === 'left' ? styles["sidebar-class-13"] : styles["sidebar-class-14"], variant === 'floating' || variant === 'inset' ? styles["sidebar-class-15"] : styles["sidebar-class-16"], className)} {...props}>
+        <div data-sidebar="sidebar" data-slot="sidebar-inner" className={styles["sidebar-class-17"]}>
           {children}
         </div>
       </div>
@@ -146,12 +146,12 @@ function SidebarTrigger({
   const {
     toggleSidebar
   } = useSidebar();
-  return <Button data-sidebar="trigger" data-slot="sidebar-trigger" variant="ghost" size="icon" className={cn("sidebar-class-18", className)} onClick={event => {
+  return <Button data-sidebar="trigger" data-slot="sidebar-trigger" variant="ghost" size="icon" className={cn(styles["sidebar-class-18"], className)} onClick={event => {
     onClick?.(event);
     toggleSidebar();
   }} {...props}>
       <PanelLeftIcon />
-      <span className={"sidebar-class-4"}>Toggle Sidebar</span>
+      <span className={styles["sidebar-class-4"]}>Toggle Sidebar</span>
     </Button>;
 }
 function SidebarRail({
@@ -161,49 +161,49 @@ function SidebarRail({
   const {
     toggleSidebar
   } = useSidebar();
-  return <button data-sidebar="rail" data-slot="sidebar-rail" aria-label="Toggle Sidebar" tabIndex={-1} onClick={toggleSidebar} title="Toggle Sidebar" className={cn("sidebar-class-19", "sidebar-class-20", "sidebar-class-21", "sidebar-class-22", "sidebar-class-23", "sidebar-class-24", className)} {...props} />;
+  return <button data-sidebar="rail" data-slot="sidebar-rail" aria-label="Toggle Sidebar" tabIndex={-1} onClick={toggleSidebar} title="Toggle Sidebar" className={cn(styles["sidebar-class-19"], styles["sidebar-class-20"], styles["sidebar-class-21"], styles["sidebar-class-22"], styles["sidebar-class-23"], styles["sidebar-class-24"], className)} {...props} />;
 }
 function SidebarInset({
   className,
   ...props
 }) {
-  return <main data-slot="sidebar-inset" className={cn("sidebar-class-25", "sidebar-class-26", className)} {...props} />;
+  return <main data-slot="sidebar-inset" className={cn(styles["sidebar-class-25"], styles["sidebar-class-26"], className)} {...props} />;
 }
 function SidebarInput({
   className,
   ...props
 }) {
-  return <Input data-slot="sidebar-input" data-sidebar="input" className={cn("sidebar-class-27", className)} {...props} />;
+  return <Input data-slot="sidebar-input" data-sidebar="input" className={cn(styles["sidebar-class-27"], className)} {...props} />;
 }
 function SidebarHeader({
   className,
   ...props
 }) {
-  return <div data-slot="sidebar-header" data-sidebar="header" className={cn("sidebar-class-28", className)} {...props} />;
+  return <div data-slot="sidebar-header" data-sidebar="header" className={cn(styles["sidebar-class-28"], className)} {...props} />;
 }
 function SidebarFooter({
   className,
   ...props
 }) {
-  return <div data-slot="sidebar-footer" data-sidebar="footer" className={cn("sidebar-class-28", className)} {...props} />;
+  return <div data-slot="sidebar-footer" data-sidebar="footer" className={cn(styles["sidebar-class-28"], className)} {...props} />;
 }
 function SidebarSeparator({
   className,
   ...props
 }) {
-  return <Separator data-slot="sidebar-separator" data-sidebar="separator" className={cn("sidebar-class-29", className)} {...props} />;
+  return <Separator data-slot="sidebar-separator" data-sidebar="separator" className={cn(styles["sidebar-class-29"], className)} {...props} />;
 }
 function SidebarContent({
   className,
   ...props
 }) {
-  return <div data-slot="sidebar-content" data-sidebar="content" className={cn("sidebar-class-30", className)} {...props} />;
+  return <div data-slot="sidebar-content" data-sidebar="content" className={cn(styles["sidebar-class-30"], className)} {...props} />;
 }
 function SidebarGroup({
   className,
   ...props
 }) {
-  return <div data-slot="sidebar-group" data-sidebar="group" className={cn("sidebar-class-31", className)} {...props} />;
+  return <div data-slot="sidebar-group" data-sidebar="group" className={cn(styles["sidebar-class-31"], className)} {...props} />;
 }
 function SidebarGroupLabel({
   className,
@@ -211,7 +211,7 @@ function SidebarGroupLabel({
   ...props
 }) {
   const Comp = asChild ? Slot : 'div';
-  return <Comp data-slot="sidebar-group-label" data-sidebar="group-label" className={cn("sidebar-class-32", "sidebar-class-33", className)} {...props} />;
+  return <Comp data-slot="sidebar-group-label" data-sidebar="group-label" className={cn(styles["sidebar-class-32"], styles["sidebar-class-33"], className)} {...props} />;
 }
 function SidebarGroupAction({
   className,
@@ -219,25 +219,25 @@ function SidebarGroupAction({
   ...props
 }) {
   const Comp = asChild ? Slot : 'button';
-  return <Comp data-slot="sidebar-group-action" data-sidebar="group-action" className={cn("sidebar-class-34", "sidebar-class-35", "sidebar-class-36", className)} {...props} />;
+  return <Comp data-slot="sidebar-group-action" data-sidebar="group-action" className={cn(styles["sidebar-class-34"], styles["sidebar-class-35"], styles["sidebar-class-36"], className)} {...props} />;
 }
 function SidebarGroupContent({
   className,
   ...props
 }) {
-  return <div data-slot="sidebar-group-content" data-sidebar="group-content" className={cn("sidebar-class-37", className)} {...props} />;
+  return <div data-slot="sidebar-group-content" data-sidebar="group-content" className={cn(styles["sidebar-class-37"], className)} {...props} />;
 }
 function SidebarMenu({
   className,
   ...props
 }) {
-  return <ul data-slot="sidebar-menu" data-sidebar="menu" className={cn("sidebar-class-38", className)} {...props} />;
+  return <ul data-slot="sidebar-menu" data-sidebar="menu" className={cn(styles["sidebar-class-38"], className)} {...props} />;
 }
 function SidebarMenuItem({
   className,
   ...props
 }) {
-  return <li data-slot="sidebar-menu-item" data-sidebar="menu-item" className={cn("sidebar-class-39", className)} {...props} />;
+  return <li data-slot="sidebar-menu-item" data-sidebar="menu-item" className={cn(styles["sidebar-class-39"], className)} {...props} />;
 }
 const sidebarMenuButtonVariants = cva('peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0', {
   variants: {
@@ -294,13 +294,13 @@ function SidebarMenuAction({
   ...props
 }) {
   const Comp = asChild ? Slot : 'button';
-  return <Comp data-slot="sidebar-menu-action" data-sidebar="menu-action" className={cn("sidebar-class-40", "sidebar-class-35", "sidebar-class-41", "sidebar-class-42", "sidebar-class-43", "sidebar-class-36", showOnHover && "sidebar-class-44", className)} {...props} />;
+  return <Comp data-slot="sidebar-menu-action" data-sidebar="menu-action" className={cn(styles["sidebar-class-40"], styles["sidebar-class-35"], styles["sidebar-class-41"], styles["sidebar-class-42"], styles["sidebar-class-43"], styles["sidebar-class-36"], showOnHover && styles["sidebar-class-44"], className)} {...props} />;
 }
 function SidebarMenuBadge({
   className,
   ...props
 }) {
-  return <div data-slot="sidebar-menu-badge" data-sidebar="menu-badge" className={cn("sidebar-class-45", "sidebar-class-46", "sidebar-class-41", "sidebar-class-42", "sidebar-class-43", "sidebar-class-36", className)} {...props} />;
+  return <div data-slot="sidebar-menu-badge" data-sidebar="menu-badge" className={cn(styles["sidebar-class-45"], styles["sidebar-class-46"], styles["sidebar-class-41"], styles["sidebar-class-42"], styles["sidebar-class-43"], styles["sidebar-class-36"], className)} {...props} />;
 }
 function SidebarMenuSkeleton({
   className,
@@ -311,9 +311,9 @@ function SidebarMenuSkeleton({
   const width = React.useMemo(() => {
     return `${Math.floor(Math.random() * 40) + 50}%`;
   }, []);
-  return <div data-slot="sidebar-menu-skeleton" data-sidebar="menu-skeleton" className={cn("sidebar-class-47", className)} {...props}>
-      {showIcon && <Skeleton className={"sidebar-class-48"} data-sidebar="menu-skeleton-icon" />}
-      <Skeleton className={"sidebar-class-49"} data-sidebar="menu-skeleton-text" style={{
+  return <div data-slot="sidebar-menu-skeleton" data-sidebar="menu-skeleton" className={cn(styles["sidebar-class-47"], className)} {...props}>
+      {showIcon && <Skeleton className={styles["sidebar-class-48"]} data-sidebar="menu-skeleton-icon" />}
+      <Skeleton className={styles["sidebar-class-49"]} data-sidebar="menu-skeleton-text" style={{
       '--skeleton-width': width
     }} />
     </div>;
@@ -322,13 +322,13 @@ function SidebarMenuSub({
   className,
   ...props
 }) {
-  return <ul data-slot="sidebar-menu-sub" data-sidebar="menu-sub" className={cn("sidebar-class-50", "sidebar-class-36", className)} {...props} />;
+  return <ul data-slot="sidebar-menu-sub" data-sidebar="menu-sub" className={cn(styles["sidebar-class-50"], styles["sidebar-class-36"], className)} {...props} />;
 }
 function SidebarMenuSubItem({
   className,
   ...props
 }) {
-  return <li data-slot="sidebar-menu-sub-item" data-sidebar="menu-sub-item" className={cn("sidebar-class-51", className)} {...props} />;
+  return <li data-slot="sidebar-menu-sub-item" data-sidebar="menu-sub-item" className={cn(styles["sidebar-class-51"], className)} {...props} />;
 }
 function SidebarMenuSubButton({
   asChild = false,
@@ -338,6 +338,6 @@ function SidebarMenuSubButton({
   ...props
 }) {
   const Comp = asChild ? Slot : 'a';
-  return <Comp data-slot="sidebar-menu-sub-button" data-sidebar="menu-sub-button" data-size={size} data-active={isActive} className={cn("sidebar-class-52", "sidebar-class-53", size === 'sm' && "sidebar-class-54", size === 'md' && "sidebar-class-55", "sidebar-class-36", className)} {...props} />;
+  return <Comp data-slot="sidebar-menu-sub-button" data-sidebar="menu-sub-button" data-size={size} data-active={isActive} className={cn(styles["sidebar-class-52"], styles["sidebar-class-53"], size === 'sm' && styles["sidebar-class-54"], size === 'md' && styles["sidebar-class-55"], styles["sidebar-class-36"], className)} {...props} />;
 }
 export { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInput, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, useSidebar };

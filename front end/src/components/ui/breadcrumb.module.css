@@ -1,34 +1,34 @@
 @reference "../../pages/globals.css";
 
-:global(.breadcrumb-class-1) {
+.breadcrumb-class-1 {
   @apply text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm break-words sm:gap-2.5;
 }
 
-:global(.breadcrumb-class-2) {
+.breadcrumb-class-2 {
   @apply inline-flex items-center gap-1.5;
 }
 
-:global(.breadcrumb-class-3) {
+.breadcrumb-class-3 {
   @apply hover:text-foreground transition-colors;
 }
 
-:global(.breadcrumb-class-4) {
+.breadcrumb-class-4 {
   @apply text-foreground font-normal;
 }
 
-:global(.breadcrumb-class-5) {
+.breadcrumb-class-5 {
   @apply [&>svg]:size-3.5;
 }
 
-:global(.breadcrumb-class-6) {
+.breadcrumb-class-6 {
   @apply flex size-9 items-center justify-center;
 }
 
-:global(.breadcrumb-class-7) {
+.breadcrumb-class-7 {
   @apply size-4;
 }
 
-:global(.breadcrumb-class-8) {
+.breadcrumb-class-8 {
   @apply sr-only;
 }
 

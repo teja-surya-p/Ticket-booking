@@ -2,7 +2,7 @@
 
 import { useToast } from '@/hooks/use-toast';
 import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from '@/components/ui/toast';
-import "./toaster.module.css";
+import styles from "./toaster.module.css";
 export function Toaster() {
   const {
     toasts
@@ -16,7 +16,7 @@ export function Toaster() {
       ...props
     }) {
       return <Toast key={id} {...props}>
-            <div className={"toaster-class-1"}>
+            <div className={styles["toaster-class-1"]}>
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && <ToastDescription>{description}</ToastDescription>}
             </div>

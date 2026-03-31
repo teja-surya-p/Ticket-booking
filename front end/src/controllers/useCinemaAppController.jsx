@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { createMovie, deleteMovie, fetchMovies, getMeaningfulErrorMessage, updateMovie } from "@/services";
+import {
+  addFavoriteMovie,
+  createMovie,
+  deleteMovie,
+  fetchFavorites,
+  fetchCurrentUserProfile,
+  fetchMovies,
+  getMeaningfulErrorMessage,
+  removeFavoriteMovie,
+  signOutCurrentUser,
+  subscribeToAuthState,
+  updateMovie
+} from "@/services";
 import {
   addMovieToCart,
   getCartCount,
@@ -13,6 +25,52 @@ import {
   splitMoviesByStatus
 } from "@/models/movie-model";
 
+function normalizeMovieIdKey(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
+  }
+
+  return "";
+}
+
+function addFavoriteId(movieIds, movieIdKey) {
+  const normalized = normalizeMovieIdKey(movieIdKey);
+  if (!normalized) {
+    return [];
+  }
+
+  const ids = Array.isArray(movieIds) ? movieIds : [];
+  const nextIds = ids.map((id) => normalizeMovieIdKey(id)).filter(Boolean);
+  if (nextIds.includes(normalized)) {
+    return nextIds;
+  }
+
+  return [...nextIds, normalized];
+}
+
+function removeFavoriteId(movieIds, movieIdKey) {
+  const normalized = normalizeMovieIdKey(movieIdKey);
+  return (Array.isArray(movieIds) ? movieIds : [])
+    .map((id) => normalizeMovieIdKey(id))
+    .filter((id) => id && id !== normalized);
+}
+
+function parseFavoriteMovieIds(payload) {
+  const candidateMovieIds = Array.isArray(payload?.movieIds)
+    ? payload.movieIds
+    : Array.isArray(payload?.favorites)
+      ? payload.favorites.map((favorite) => favorite?.movieId)
+      : [];
+
+  return Array.from(
+    new Set(candidateMovieIds.map((id) => normalizeMovieIdKey(id)).filter(Boolean))
+  );
+}
+
 export function useCinemaAppController() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -23,6 +81,21 @@ export function useCinemaAppController() {
   const [cartItems, setCartItems] = useState([]);
   const [moviesLoading, setMoviesLoading] = useState(true);
   const [moviesLoadError, setMoviesLoadError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authMessage, setAuthMessage] = useState("");
+  const [loadedCartKey, setLoadedCartKey] = useState("");
+  const [favoriteMovieIds, setFavoriteMovieIds] = useState([]);
+  const [favoritePendingMovieIds, setFavoritePendingMovieIds] = useState([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
+
+  const cartStorageKey = useMemo(
+    () => `cinebook:cart:${typeof currentUser?.uid === "string" ? currentUser.uid : "guest"}`,
+    [currentUser?.uid]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -53,6 +126,135 @@ export function useCinemaAppController() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedAdminState = window.localStorage.getItem("cinebook:admin") === "true";
+    setIsAdmin(storedAdminState);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthState((user) => {
+      setCurrentUser(user ?? null);
+      setAuthBusy(false);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadUserProfile = async () => {
+      if (!currentUser) {
+        setCurrentUserProfile(null);
+        setProfileError("");
+        setProfileLoading(false);
+        return;
+      }
+
+      setProfileLoading(true);
+      setProfileError("");
+
+      const result = await fetchCurrentUserProfile();
+      if (cancelled) {
+        return;
+      }
+
+      if (result.ok) {
+        setCurrentUserProfile(result.profile ?? null);
+        setProfileLoading(false);
+        return;
+      }
+
+      setProfileError(result.message || "Unable to load your profile details.");
+      setCurrentUserProfile({
+        uid: currentUser.uid ?? "",
+        email: currentUser.email ?? "",
+        displayName: currentUser.displayName ?? "",
+        firstName: "",
+        lastName: "",
+        phone: "",
+        phoneNumber: "",
+        address: null,
+        emailVerified: Boolean(currentUser.emailVerified),
+        status: currentUser.emailVerified ? "Active" : "Inactive"
+      });
+      setProfileLoading(false);
+    };
+
+    void loadUserProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.uid, currentUser]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadFavorites = async () => {
+      if (!currentUser || typeof currentUser.getIdToken !== "function") {
+        setFavoriteMovieIds([]);
+        setFavoritePendingMovieIds([]);
+        setFavoritesLoading(false);
+        return;
+      }
+
+      setFavoritesLoading(true);
+
+      try {
+        const token = await currentUser.getIdToken();
+        const response = await fetchFavorites(token);
+        if (!cancelled) {
+          setFavoriteMovieIds(parseFavoriteMovieIds(response));
+        }
+      } catch {
+        if (!cancelled) {
+          setFavoriteMovieIds([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setFavoritesLoading(false);
+        }
+      }
+    };
+
+    void loadFavorites();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.uid, currentUser]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(cartStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setCartItems(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setCartItems([]);
+    } finally {
+      setLoadedCartKey(cartStorageKey);
+    }
+  }, [cartStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || loadedCartKey !== cartStorageKey) {
+      return;
+    }
+
+    window.localStorage.setItem(cartStorageKey, JSON.stringify(cartItems));
+  }, [cartItems, cartStorageKey, loadedCartKey]);
+
   const filteredMovies = useMemo(
     () => filterMoviesBySearchAndGenre(movies, searchQuery, selectedGenre),
     [movies, searchQuery, selectedGenre]
@@ -63,6 +265,23 @@ export function useCinemaAppController() {
   const { currentlyRunning, comingSoon } = useMemo(
     () => splitMoviesByStatus(filteredMovies),
     [filteredMovies]
+  );
+  const favoriteMovieIdSet = useMemo(
+    () => new Set(favoriteMovieIds.map((movieId) => normalizeMovieIdKey(movieId)).filter(Boolean)),
+    [favoriteMovieIds]
+  );
+  const favoritePendingMovieIdSet = useMemo(
+    () =>
+      new Set(
+        favoritePendingMovieIds
+          .map((movieId) => normalizeMovieIdKey(movieId))
+          .filter(Boolean)
+      ),
+    [favoritePendingMovieIds]
+  );
+  const favoriteMovies = useMemo(
+    () => movies.filter((movie) => favoriteMovieIdSet.has(normalizeMovieIdKey(movie?.id))),
+    [movies, favoriteMovieIdSet]
   );
 
   const handleMovieClick = (movie) => {
@@ -81,6 +300,7 @@ export function useCinemaAppController() {
   };
 
   const handleAddToCart = (movie, showtime) => {
+    setAuthMessage("");
     setCartItems((previous) => addMovieToCart(previous, movie, showtime));
     setView({ type: "cart" });
   };
@@ -136,10 +356,12 @@ export function useCinemaAppController() {
   };
 
   const handleUpdateCartTickets = (itemId, type, delta) => {
+    setAuthMessage("");
     setCartItems((previous) => updateCartTickets(previous, itemId, type, delta));
   };
 
   const handleRemoveCartItem = (itemId) => {
+    setAuthMessage("");
     setCartItems((previous) => removeCartItem(previous, itemId));
   };
 
@@ -170,9 +392,77 @@ export function useCinemaAppController() {
     setView({ type: "home" });
   };
 
+  const navigateFavorites = () => {
+    setView({ type: "favorites" });
+  };
+
+  const handleToggleFavorite = async (movie) => {
+    const movieIdKey = normalizeMovieIdKey(movie?.id);
+    if (!movieIdKey) {
+      return;
+    }
+
+    if (!currentUser || typeof currentUser.getIdToken !== "function") {
+      setAuthMessage("Please sign in to save favorites.");
+      if (typeof window !== "undefined") {
+        window.location.assign("/login?mode=login");
+      }
+      return;
+    }
+
+    if (favoritePendingMovieIdSet.has(movieIdKey)) {
+      return;
+    }
+
+    const wasFavorite = favoriteMovieIdSet.has(movieIdKey);
+    setAuthMessage("");
+    setFavoritePendingMovieIds((previous) => addFavoriteId(previous, movieIdKey));
+    setFavoriteMovieIds((previous) =>
+      wasFavorite ? removeFavoriteId(previous, movieIdKey) : addFavoriteId(previous, movieIdKey)
+    );
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = wasFavorite
+        ? await removeFavoriteMovie(movieIdKey, token)
+        : await addFavoriteMovie(movieIdKey, token);
+      setFavoriteMovieIds(parseFavoriteMovieIds(response));
+    } catch (error) {
+      setFavoriteMovieIds((previous) =>
+        wasFavorite ? addFavoriteId(previous, movieIdKey) : removeFavoriteId(previous, movieIdKey)
+      );
+      setAuthMessage(getMeaningfulErrorMessage(error, "user"));
+    } finally {
+      setFavoritePendingMovieIds((previous) => removeFavoriteId(previous, movieIdKey));
+    }
+  };
+
+  const clearAdminMode = () => {
+    setIsAdmin(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("cinebook:admin");
+    }
+  };
+
+  const handleSignOut = async () => {
+    setAuthBusy(true);
+    const result = await signOutCurrentUser();
+    setAuthBusy(false);
+
+    if (!result.ok) {
+      setAuthMessage(result.message || "Sign-out failed.");
+      return;
+    }
+
+    clearAdminMode();
+    setFavoriteMovieIds([]);
+    setFavoritePendingMovieIds([]);
+    setFavoritesLoading(false);
+    setAuthMessage("Signed out.");
+  };
+
   return {
     isAdmin,
-    setIsAdmin,
     searchQuery,
     setSearchQuery,
     selectedGenre,
@@ -183,6 +473,16 @@ export function useCinemaAppController() {
     setView,
     movies,
     cartItems,
+    currentUser,
+    currentUserProfile,
+    favoriteMovieIds,
+    favoriteMovies,
+    favoritePendingMovieIds,
+    favoritesLoading,
+    profileLoading,
+    profileError,
+    authBusy,
+    authMessage,
     moviesLoading,
     moviesLoadError,
     filteredMovies,
@@ -200,6 +500,9 @@ export function useCinemaAppController() {
     handleUpdateCartTickets,
     handleRemoveCartItem,
     handleCheckout,
-    navigateHome
+    handleToggleFavorite,
+    navigateHome,
+    navigateFavorites,
+    handleSignOut
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Film, Search, Sparkles } from "lucide-react";
 import { HomeHeroCarousel } from "@/components/home-hero-carousel";
 import { MovieCard } from "@/components/movie-card";
@@ -14,7 +14,7 @@ import {
   DialogTitle
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import "./home-page.module.css";
+import styles from "./home-page.module.css";
 
 const NO_OP = () => {};
 
@@ -32,7 +32,10 @@ export function HomePage({
   onDateChange = NO_OP,
   onMovieClick = NO_OP,
   onAddToCartFromCard = NO_OP,
-  onWatchTrailer = NO_OP
+  onWatchTrailer = NO_OP,
+  onToggleFavorite = NO_OP,
+  favoriteMovieIds = [],
+  favoritePendingMovieIds = []
 }) {
   const normalizedSearchQuery = String(searchQuery || "").trim();
   const hasSearchQuery = normalizedSearchQuery.length > 0;
@@ -84,20 +87,50 @@ export function HomePage({
     : hasGenreFilter
       ? `Try another genre instead of "${selectedGenre}".`
       : "Try adjusting your search or filter criteria.";
+  const favoriteMovieIdSet = useMemo(
+    () =>
+      new Set(
+        (Array.isArray(favoriteMovieIds) ? favoriteMovieIds : [])
+          .map((movieId) =>
+            typeof movieId === "number"
+              ? String(movieId)
+              : typeof movieId === "string"
+                ? movieId.trim()
+                : ""
+          )
+          .filter(Boolean)
+      ),
+    [favoriteMovieIds]
+  );
+  const favoritePendingMovieIdSet = useMemo(
+    () =>
+      new Set(
+        (Array.isArray(favoritePendingMovieIds) ? favoritePendingMovieIds : [])
+          .map((movieId) =>
+            typeof movieId === "number"
+              ? String(movieId)
+              : typeof movieId === "string"
+                ? movieId.trim()
+                : ""
+          )
+          .filter(Boolean)
+      ),
+    [favoritePendingMovieIds]
+  );
 
   return (
-    <div className={"home-content"}>
-      {moviesLoadError && <div className={"home-banner"}>{moviesLoadError}</div>}
-      {moviesLoading && <div className={"home-banner"}>Loading movies...</div>}
+    <div className={styles["home-content"]}>
+      {moviesLoadError && <div className={styles["home-banner"]}>{moviesLoadError}</div>}
+      {moviesLoading && <div className={styles["home-banner"]}>Loading movies...</div>}
 
-      <section className={"home-toolbar"}>
+      <section className={styles["home-toolbar"]}>
         <div>
-          <div className={"home-title-row"}>
-            <Film className={"home-title-icon"} />
-            <span className={"home-eyebrow"}>{focusedEyebrow}</span>
+          <div className={styles["home-title-row"]}>
+            <Film className={styles["home-title-icon"]} />
+            <span className={styles["home-eyebrow"]}>{focusedEyebrow}</span>
           </div>
-          <h1 className={"home-title"}>{focusedTitle}</h1>
-          <p className={"home-subtitle"}>{focusedSubtitle}</p>
+          <h1 className={styles["home-title"]}>{focusedTitle}</h1>
+          <p className={styles["home-subtitle"]}>{focusedSubtitle}</p>
         </div>
         <MovieFilters
           selectedGenre={selectedGenre}
@@ -114,25 +147,28 @@ export function HomePage({
           onMovieClick={onMovieClick}
           onAddToCart={onAddToCartFromCard}
           onWatchTrailer={onWatchTrailer}
+          onToggleFavorite={onToggleFavorite}
+          favoriteMovieIds={favoriteMovieIds}
+          favoritePendingMovieIds={favoritePendingMovieIds}
         />
       )}
 
       {isFocusedMode && filteredMovies.length > 0 ? (
-        <section className={"home-search-shell"}>
-          <div className={"home-section-header"}>
+        <section className={styles["home-search-shell"]}>
+          <div className={styles["home-section-header"]}>
             <div>
-              <div className={"home-title-row"}>
-                <Search className={"home-section-icon"} />
-                <span className={"home-eyebrow"}>{resultEyebrow}</span>
+              <div className={styles["home-title-row"]}>
+                <Search className={styles["home-section-icon"]} />
+                <span className={styles["home-eyebrow"]}>{resultEyebrow}</span>
               </div>
-              <h2 className={"home-section-title"}>{resultTitle}</h2>
+              <h2 className={styles["home-section-title"]}>{resultTitle}</h2>
             </div>
           </div>
           <div
             className={
               filteredMovies.length === 1
-                ? "home-search-grid home-search-grid-single"
-                : "home-search-grid"
+                ? [styles["home-search-grid"], styles["home-search-grid-single"]].filter(Boolean).join(" ")
+                : styles["home-search-grid"]
             }
           >
             {filteredMovies.map((movie) => (
@@ -142,6 +178,9 @@ export function HomePage({
                 onClick={onMovieClick}
                 onAddToCart={onAddToCartFromCard}
                 onNotifyMe={setNotifyMovie}
+                isFavorite={favoriteMovieIdSet.has(String(movie.id))}
+                isFavoriteBusy={favoritePendingMovieIdSet.has(String(movie.id))}
+                onToggleFavorite={onToggleFavorite}
               />
             ))}
           </div>
@@ -149,17 +188,17 @@ export function HomePage({
       ) : null}
 
       {!isFocusedMode && comingSoon.length > 0 ? (
-        <section className={"home-section"}>
-          <div className={"home-section-header"}>
+        <section className={styles["home-section"]}>
+          <div className={styles["home-section-header"]}>
             <div>
-              <div className={"home-title-row"}>
-                <Sparkles className={"home-section-icon"} />
-                <span className={"home-eyebrow"}>Coming Soon</span>
+              <div className={styles["home-title-row"]}>
+                <Sparkles className={styles["home-section-icon"]} />
+                <span className={styles["home-eyebrow"]}>Coming Soon</span>
               </div>
-              <h2 className={"home-section-title"}>Upcoming releases</h2>
+              <h2 className={styles["home-section-title"]}>Upcoming releases</h2>
             </div>
           </div>
-          <div className={"home-movie-grid"}>
+          <div className={styles["home-movie-grid"]}>
             {comingSoon.map((movie) => (
               <MovieCard
                 key={movie.id}
@@ -167,6 +206,9 @@ export function HomePage({
                 onClick={onMovieClick}
                 onAddToCart={onAddToCartFromCard}
                 onNotifyMe={setNotifyMovie}
+                isFavorite={favoriteMovieIdSet.has(String(movie.id))}
+                isFavoriteBusy={favoritePendingMovieIdSet.has(String(movie.id))}
+                onToggleFavorite={onToggleFavorite}
               />
             ))}
           </div>
@@ -174,9 +216,9 @@ export function HomePage({
       ) : null}
 
       {!moviesLoading && filteredMovies.length === 0 && (
-        <div className={"home-empty-state"}>
-          <p className={"home-empty-title"}>{emptyTitle}</p>
-          <p className={"home-empty-subtitle"}>{emptySubtitle}</p>
+        <div className={styles["home-empty-state"]}>
+          <p className={styles["home-empty-title"]}>{emptyTitle}</p>
+          <p className={styles["home-empty-subtitle"]}>{emptySubtitle}</p>
         </div>
       )}
 
@@ -185,16 +227,16 @@ export function HomePage({
           setNotifyMovie(null);
         }
       }}>
-        <DialogContent className={"home-notify-dialog"}>
+        <DialogContent className={styles["home-notify-dialog"]}>
           <DialogHeader>
             <DialogTitle>Notification requested</DialogTitle>
-            <DialogDescription className={"home-notify-copy"}>
+            <DialogDescription className={styles["home-notify-copy"]}>
               {notifyMovie
                 ? `We will notify you when "${notifyMovie.title}" is released.`
                 : "We will notify you when the movie is released."}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className={"home-notify-actions"}>
+          <DialogFooter className={styles["home-notify-actions"]}>
             <Button type="button" onClick={() => setNotifyMovie(null)}>
               Close
             </Button>

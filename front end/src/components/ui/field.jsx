@@ -5,25 +5,25 @@ import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import "./field.module.css";
+import styles from "./field.module.css";
 function FieldSet({
   className,
   ...props
 }) {
-  return <fieldset data-slot="field-set" className={cn("field-class-1", "field-class-2", className)} {...props} />;
+  return <fieldset data-slot="field-set" className={cn(styles["field-class-1"], styles["field-class-2"], className)} {...props} />;
 }
 function FieldLegend({
   className,
   variant = 'legend',
   ...props
 }) {
-  return <legend data-slot="field-legend" data-variant={variant} className={cn("field-class-3", "field-class-4", "field-class-5", className)} {...props} />;
+  return <legend data-slot="field-legend" data-variant={variant} className={cn(styles["field-class-3"], styles["field-class-4"], styles["field-class-5"], className)} {...props} />;
 }
 function FieldGroup({
   className,
   ...props
 }) {
-  return <div data-slot="field-group" className={cn("field-class-6", className)} {...props} />;
+  return <div data-slot="field-group" className={cn(styles["field-class-6"], className)} {...props} />;
 }
 const fieldVariants = cva('group/field flex w-full gap-3 data-[invalid=true]:text-destructive', {
   variants: {
@@ -50,34 +50,34 @@ function FieldContent({
   className,
   ...props
 }) {
-  return <div data-slot="field-content" className={cn("field-class-7", className)} {...props} />;
+  return <div data-slot="field-content" className={cn(styles["field-class-7"], className)} {...props} />;
 }
 function FieldLabel({
   className,
   ...props
 }) {
-  return <Label data-slot="field-label" className={cn("field-class-8", "field-class-9", "field-class-10", className)} {...props} />;
+  return <Label data-slot="field-label" className={cn(styles["field-class-8"], styles["field-class-9"], styles["field-class-10"], className)} {...props} />;
 }
 function FieldTitle({
   className,
   ...props
 }) {
-  return <div data-slot="field-label" className={cn("field-class-11", className)} {...props} />;
+  return <div data-slot="field-label" className={cn(styles["field-class-11"], className)} {...props} />;
 }
 function FieldDescription({
   className,
   ...props
 }) {
-  return <p data-slot="field-description" className={cn("field-class-12", "field-class-13", "field-class-14", className)} {...props} />;
+  return <p data-slot="field-description" className={cn(styles["field-class-12"], styles["field-class-13"], styles["field-class-14"], className)} {...props} />;
 }
 function FieldSeparator({
   children,
   className,
   ...props
 }) {
-  return <div data-slot="field-separator" data-content={!!children} className={cn("field-class-15", className)} {...props}>
-      <Separator className={"field-class-16"} />
-      {children && <span className={"field-class-17"} data-slot="field-separator-content">
+  return <div data-slot="field-separator" data-content={!!children} className={cn(styles["field-class-15"], className)} {...props}>
+      <Separator className={styles["field-class-16"]} />
+      {children && <span className={styles["field-class-17"]} data-slot="field-separator-content">
           {children}
         </span>}
     </div>;
@@ -98,14 +98,14 @@ function FieldError({
     if (errors.length === 1 && errors[0]?.message) {
       return errors[0].message;
     }
-    return <ul className={"field-class-18"}>
+    return <ul className={styles["field-class-18"]}>
         {errors.map((error, index) => error?.message && <li key={index}>{error.message}</li>)}
       </ul>;
   }, [children, errors]);
   if (!content) {
     return null;
   }
-  return <div role="alert" data-slot="field-error" className={cn("field-class-19", className)} {...props}>
+  return <div role="alert" data-slot="field-error" className={cn(styles["field-class-19"], className)} {...props}>
       {content}
     </div>;
 }

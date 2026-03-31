@@ -1,6 +1,6 @@
 @reference "../../pages/globals.css";
 
-:global(.toaster-class-1) {
+.toaster-class-1 {
   @apply grid gap-1;
 }
 

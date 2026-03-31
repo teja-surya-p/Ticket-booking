@@ -1,22 +1,22 @@
 @reference "../../pages/globals.css";
 
-:global(.empty-class-1) {
+.empty-class-1 {
   @apply flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-lg border-dashed p-6 text-center text-balance md:p-12;
 }
 
-:global(.empty-class-2) {
+.empty-class-2 {
   @apply flex max-w-sm flex-col items-center gap-2 text-center;
 }
 
-:global(.empty-class-3) {
+.empty-class-3 {
   @apply text-lg font-medium tracking-tight;
 }
 
-:global(.empty-class-4) {
+.empty-class-4 {
   @apply text-muted-foreground [&>a:hover]:text-primary text-sm/relaxed [&>a]:underline [&>a]:underline-offset-4;
 }
 
-:global(.empty-class-5) {
+.empty-class-5 {
   @apply flex w-full max-w-sm min-w-0 flex-col items-center gap-4 text-sm text-balance;
 }
 

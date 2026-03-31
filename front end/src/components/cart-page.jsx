@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/router";
 import { ArrowLeft, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SeatSelectionDialog } from "@/components/seat-selection-dialog";
@@ -8,14 +9,16 @@ import { ticketPrices } from "@/lib/ticket-prices";
 import { MAX_TICKETS_PER_BOOKING } from "@/models/booking-model";
 import { getMoviePosterUrl } from "@/models/movie-media";
 import { getMovieGenreLabel } from "@/models/movie-model";
-import "./cart-page.module.css";
+import styles from "./cart-page.module.css";
 export function CartPage({
   items,
   onBack,
   onUpdateTickets,
   onRemoveItem,
-  onCheckout
+  onCheckout,
+  currentUser
 }) {
+  const router = useRouter();
   const {
     isOpen,
     currentItem,
@@ -35,6 +38,8 @@ export function CartPage({
     showCardForm,
     isCheckingCards,
     isSavingCard,
+    isDeletingCard,
+    cardFieldErrors,
     paymentError,
     paymentInfo,
     canAddMoreCards,
@@ -48,6 +53,7 @@ export function CartPage({
     handleCardFieldChange,
     setShowCardForm,
     saveCardForEmail,
+    deleteSavedCardById,
     openDialog,
     closeDialog,
     toggleSeat,
@@ -55,82 +61,94 @@ export function CartPage({
     goToPreviousItem
   } = useSeatSelectionCheckoutController({
     items,
-    onCheckout
+    onCheckout,
+    currentUser
   });
+  const isAuthenticatedForCheckout =
+    typeof currentUser?.uid === "string" && currentUser.uid.trim().length > 0;
+
+  const handleCheckoutClick = () => {
+    if (!isAuthenticatedForCheckout) {
+      void router.push("/login?mode=login");
+      return;
+    }
+
+    openDialog();
+  };
   const cartTotal = items.reduce((sum, item) => {
     return sum + item.tickets.adult * ticketPrices.adult + item.tickets.child * ticketPrices.child + item.tickets.senior * ticketPrices.senior;
   }, 0);
   const totalTickets = items.reduce((sum, item) => sum + item.tickets.adult + item.tickets.child + item.tickets.senior, 0);
-  return <div className={"cart-page-class-1"}>
-      <Button variant="ghost" size="sm" onClick={onBack} className={"cart-page-class-2"}>
-        <ArrowLeft className={"cart-page-class-3"} />
+  return <div className={styles["cart-page-class-1"]}>
+      <Button variant="ghost" size="sm" onClick={onBack} className={styles["cart-page-class-2"]}>
+        <ArrowLeft className={styles["cart-page-class-3"]} />
         Continue Browsing
       </Button>
 
-      <div className={"cart-page-class-4"}>
-        <ShoppingCart className={"cart-page-class-5"} />
-        <h1 className={"cart-page-class-6"}>
+      <div className={styles["cart-page-class-4"]}>
+        <ShoppingCart className={styles["cart-page-class-5"]} />
+        <h1 className={styles["cart-page-class-6"]}>
           Your Cart
         </h1>
       </div>
 
-      {items.length === 0 ? <div className={"cart-page-class-7"}>
-          <p className={"cart-page-class-8"}>Your cart is empty</p>
-          <p className={"cart-page-class-9"}>
+      {items.length === 0 ? <div className={styles["cart-page-class-7"]}>
+          <p className={styles["cart-page-class-8"]}>Your cart is empty</p>
+          <p className={styles["cart-page-class-9"]}>
             Add movies with showtimes to continue to checkout.
           </p>
-        </div> : <div className={"cart-page-class-10"}>
-          <div className={"cart-page-class-11"}>
+        </div> : <div className={styles["cart-page-class-10"]}>
+          <div className={styles["cart-page-class-11"]}>
             {items.map(item => {
           const itemTotal = item.tickets.adult * ticketPrices.adult + item.tickets.child * ticketPrices.child + item.tickets.senior * ticketPrices.senior;
           const posterUrl = getMoviePosterUrl(item.movie);
-          return <div key={item.id} className={"cart-page-class-12"}>
-                  <div className={"cart-page-class-13"}>
-                    <img src={posterUrl} alt={item.movie.title} className={"cart-page-class-14"} />
-                    <div className={"cart-page-class-15"}>
-                      <p className={"cart-page-class-16"}>
+          return <div key={item.id} className={styles["cart-page-class-12"]}>
+                  <div className={styles["cart-page-class-13"]}>
+                    <img src={posterUrl} alt={item.movie.title} className={styles["cart-page-class-14"]} />
+                    <div className={styles["cart-page-class-15"]}>
+                      <p className={styles["cart-page-class-16"]}>
                         {item.movie.title}
                       </p>
-                      <p className={"cart-page-class-17"}>
+                      <p className={styles["cart-page-class-17"]}>
                         Showtime: {item.showtime}
                       </p>
-                      <p className={"cart-page-class-18"}>
+                      <p className={styles["cart-page-class-18"]}>
                         Genre: {getMovieGenreLabel(item.movie)}
                       </p>
-                      <p className={"cart-page-class-17"}>
+                      <p className={styles["cart-page-class-17"]}>
                         Max {MAX_TICKETS_PER_BOOKING} tickets per booking
                       </p>
                     </div>
-                    <Button variant="ghost" size="icon-sm" onClick={() => onRemoveItem(item.id)} className={"cart-page-class-19"} aria-label={`Remove ${item.movie.title} from cart`}>
-                      <Trash2 className={"cart-page-class-3"} />
+                    <Button variant="ghost" size="icon-sm" onClick={() => onRemoveItem(item.id)} className={styles["cart-page-class-19"]} aria-label={`Remove ${item.movie.title} from cart`}>
+                      <Trash2 className={styles["cart-page-class-3"]} />
                     </Button>
                   </div>
 
-                  <div className={"cart-page-class-20"}>
-                    {["adult", "child", "senior"].map(type => <div key={type} className={"cart-page-class-21"}>
-                        <p className={"cart-page-class-22"}>
+                  <div className={styles["cart-page-class-20"]}>
+                    {["adult", "child", "senior"].map(type => <div key={type} className={styles["cart-page-class-21"]}>
+                        <p className={styles["cart-page-class-22"]}>
                           {type}
                         </p>
-                        <p className={"cart-page-class-17"}>
+                        <p className={styles["cart-page-class-17"]}>
                           ${ticketPrices[type].toFixed(2)}
                         </p>
-                        <div className={"cart-page-class-23"}>
+                        <div className={styles["cart-page-class-23"]}>
                           <Button variant="outline" size="icon-sm" onClick={() => onUpdateTickets(item.id, type, -1)} aria-label={`Decrease ${type} tickets`}>
-                            <Minus className={"cart-page-class-24"} />
+                            <Minus className={styles["cart-page-class-24"]} />
                           </Button>
-                          <span className={"cart-page-class-25"}>
+                          <span className={styles["cart-page-class-25"]}>
                             {item.tickets[type]}
                           </span>
                           <Button variant="outline" size="icon-sm" onClick={() => onUpdateTickets(item.id, type, 1)} aria-label={`Increase ${type} tickets`}>
-                            <Plus className={"cart-page-class-24"} />
+                            <Plus className={styles["cart-page-class-24"]} />
                           </Button>
                         </div>
                       </div>)}
                   </div>
 
-                  <div className={"cart-page-class-26"}>
-                    <span className={"cart-page-class-27"}>Item Total</span>
-                    <span className={"cart-page-class-28"}>
+                  <div className={styles["cart-page-class-26"]}>
+                    <span className={styles["cart-page-class-27"]}>Item Total</span>
+                    <span className={styles["cart-page-class-28"]}>
                       ${itemTotal.toFixed(2)}
                     </span>
                   </div>
@@ -138,33 +156,35 @@ export function CartPage({
         })}
           </div>
 
-          <div className={"cart-page-class-29"}>
-            <h2 className={"cart-page-class-30"}>Summary</h2>
-            <div className={"cart-page-class-31"}>
-              <div className={"cart-page-class-32"}>
+          <div className={styles["cart-page-class-29"]}>
+            <h2 className={styles["cart-page-class-30"]}>Summary</h2>
+            <div className={styles["cart-page-class-31"]}>
+              <div className={styles["cart-page-class-32"]}>
                 <span>Items</span>
                 <span>{items.length}</span>
               </div>
-              <div className={"cart-page-class-32"}>
+              <div className={styles["cart-page-class-32"]}>
                 <span>Total tickets</span>
                 <span>{totalTickets}</span>
               </div>
             </div>
 
-            <div className={"cart-page-class-33"} />
+            <div className={styles["cart-page-class-33"]} />
 
-            <div className={"cart-page-class-32"}>
-              <span className={"cart-page-class-34"}>Total</span>
-              <span className={"cart-page-class-35"}>
+            <div className={styles["cart-page-class-32"]}>
+              <span className={styles["cart-page-class-34"]}>Total</span>
+              <span className={styles["cart-page-class-35"]}>
                 ${cartTotal.toFixed(2)}
               </span>
             </div>
 
-            <Button className={"cart-page-class-36"} onClick={openDialog} disabled={items.length === 0}>
+            <Button className={styles["cart-page-class-36"]} onClick={handleCheckoutClick} disabled={items.length === 0}>
               Checkout
             </Button>
-            <p className={"cart-page-class-17"}>
-              Seat selection opens in the next step and must match the ticket count.
+            <p className={styles["cart-page-class-17"]}>
+              {isAuthenticatedForCheckout
+                ? "Seat selection opens in the next step and must match the ticket count."
+                : "Sign in to continue checkout and map cart, payments, and bookings to your account."}
             </p>
           </div>
         </div>}
@@ -184,6 +204,8 @@ export function CartPage({
         showCardForm={showCardForm}
         isCheckingCards={isCheckingCards}
         isSavingCard={isSavingCard}
+        isDeletingCard={isDeletingCard}
+        cardFieldErrors={cardFieldErrors}
         paymentError={paymentError}
         paymentInfo={paymentInfo}
         canAddMoreCards={canAddMoreCards}
@@ -201,6 +223,7 @@ export function CartPage({
         onCardFieldChange={handleCardFieldChange}
         onToggleAddCard={setShowCardForm}
         onSaveCard={saveCardForEmail}
+        onDeleteCard={deleteSavedCardById}
         onClose={closeDialog}
         onToggleSeat={toggleSeat}
         onContinue={continueCheckout}

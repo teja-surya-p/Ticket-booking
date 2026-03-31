@@ -5,7 +5,7 @@ import * as RechartsPrimitive from 'recharts';
 import { cn } from '@/lib/utils';
 
 // Format: { THEME_NAME: CSS_SELECTOR }
-import "./chart.module.css";
+import styles from "./chart.module.css";
 const THEMES = {
   light: '',
   dark: '.dark'
@@ -30,7 +30,7 @@ function ChartContainer({
   return <ChartContext.Provider value={{
     config
   }}>
-      <div data-slot="chart" data-chart={chartId} className={cn("chart-class-1", className)} {...props}>
+      <div data-slot="chart" data-chart={chartId} className={cn(styles["chart-class-1"], className)} {...props}>
         <ChartStyle id={chartId} config={config} />
         <RechartsPrimitive.ResponsiveContainer>
           {children}
@@ -85,45 +85,45 @@ function ChartTooltipContent({
     const itemConfig = getPayloadConfigFromPayload(config, item, key);
     const value = !labelKey && typeof label === 'string' ? config[label]?.label || label : itemConfig?.label;
     if (labelFormatter) {
-      return <div className={cn("chart-class-2", labelClassName)}>
+      return <div className={cn(styles["chart-class-2"], labelClassName)}>
           {labelFormatter(value, payload)}
         </div>;
     }
     if (!value) {
       return null;
     }
-    return <div className={cn("chart-class-2", labelClassName)}>{value}</div>;
+    return <div className={cn(styles["chart-class-2"], labelClassName)}>{value}</div>;
   }, [label, labelFormatter, payload, hideLabel, labelClassName, config, labelKey]);
   if (!active || !payload?.length) {
     return null;
   }
   const nestLabel = payload.length === 1 && indicator !== 'dot';
-  return <div className={cn("chart-class-3", className)}>
+  return <div className={cn(styles["chart-class-3"], className)}>
       {!nestLabel ? tooltipLabel : null}
-      <div className={"chart-class-4"}>
+      <div className={styles["chart-class-4"]}>
         {payload.map((item, index) => {
         const key = `${nameKey || item.name || item.dataKey || 'value'}`;
         const itemConfig = getPayloadConfigFromPayload(config, item, key);
         const indicatorColor = color || item.payload.fill || item.color;
-        return <div key={item.dataKey} className={cn("chart-class-5", indicator === 'dot' && "chart-class-6")}>
+        return <div key={item.dataKey} className={cn(styles["chart-class-5"], indicator === 'dot' && styles["chart-class-6"])}>
               {formatter && item?.value !== undefined && item.name ? formatter(item.value, item.name, item, index, item.payload) : <>
-                  {itemConfig?.icon ? <itemConfig.icon /> : !hideIndicator && <div className={cn("chart-class-7", {
-              ["chart-class-8"]: indicator === 'dot',
-              ["chart-class-9"]: indicator === 'line',
-              ["chart-class-10"]: indicator === 'dashed',
-              ["chart-class-11"]: nestLabel && indicator === 'dashed'
+                  {itemConfig?.icon ? <itemConfig.icon /> : !hideIndicator && <div className={cn(styles["chart-class-7"], {
+              [styles["chart-class-8"]]: indicator === 'dot',
+              [styles["chart-class-9"]]: indicator === 'line',
+              [styles["chart-class-10"]]: indicator === 'dashed',
+              [styles["chart-class-11"]]: nestLabel && indicator === 'dashed'
             })} style={{
               '--color-bg': indicatorColor,
               '--color-border': indicatorColor
             }} />}
-                  <div className={cn("chart-class-12", nestLabel ? "chart-class-13" : "chart-class-6")}>
-                    <div className={"chart-class-4"}>
+                  <div className={cn(styles["chart-class-12"], nestLabel ? styles["chart-class-13"] : styles["chart-class-6"])}>
+                    <div className={styles["chart-class-4"]}>
                       {nestLabel ? tooltipLabel : null}
-                      <span className={"chart-class-14"}>
+                      <span className={styles["chart-class-14"]}>
                         {itemConfig?.label || item.name}
                       </span>
                     </div>
-                    {item.value && <span className={"chart-class-15"}>
+                    {item.value && <span className={styles["chart-class-15"]}>
                         {item.value.toLocaleString()}
                       </span>}
                   </div>
@@ -147,12 +147,12 @@ function ChartLegendContent({
   if (!payload?.length) {
     return null;
   }
-  return <div className={cn("chart-class-16", verticalAlign === 'top' ? "chart-class-17" : "chart-class-18", className)}>
+  return <div className={cn(styles["chart-class-16"], verticalAlign === 'top' ? styles["chart-class-17"] : styles["chart-class-18"], className)}>
       {payload.map(item => {
       const key = `${nameKey || item.dataKey || 'value'}`;
       const itemConfig = getPayloadConfigFromPayload(config, item, key);
-      return <div key={item.value} className={"chart-class-19"}>
-            {itemConfig?.icon && !hideIcon ? <itemConfig.icon /> : <div className={"chart-class-20"} style={{
+      return <div key={item.value} className={styles["chart-class-19"]}>
+            {itemConfig?.icon && !hideIcon ? <itemConfig.icon /> : <div className={styles["chart-class-20"]} style={{
           backgroundColor: item.color
         }} />}
             {itemConfig?.label}

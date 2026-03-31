@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger } from "@nestjs/common";
 import { applicationDefault, cert, getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -9,6 +10,7 @@ class FirestoreService {
   constructor() {
     this.logger = new Logger(FirestoreService.name);
     this.app = this.initializeFirebaseApp();
+    this.authClient = getAuth(this.app);
     this.firestore = getFirestore(this.app);
   }
 
@@ -20,6 +22,17 @@ class FirestoreService {
     return this.firestore;
   }
 
+  auth() {
+    if (!this.authClient) {
+      throw new InternalServerErrorException("Firebase Auth is not initialized.");
+    }
+
+    return this.authClient;
+  }
+
+  isEnabled() {
+    return true;
+  }
   initializeFirebaseApp() {
     if (getApps().length > 0) {
       return getApp();

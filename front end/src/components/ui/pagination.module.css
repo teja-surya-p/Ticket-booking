@@ -1,42 +1,42 @@
 @reference "../../pages/globals.css";
 
-:global(.pagination-class-1) {
+.pagination-class-1 {
   @apply mx-auto flex w-full justify-center;
 }
 
-:global(.pagination-class-2) {
+.pagination-class-2 {
   @apply flex flex-row items-center gap-1;
 }
 
-:global(.pagination-class-3) {
+.pagination-class-3 {
   @apply outline;
 }
 
-:global(.pagination-class-4) {
+.pagination-class-4 {
   @apply ghost;
 }
 
-:global(.pagination-class-5) {
+.pagination-class-5 {
   @apply gap-1 px-2.5 sm:pl-2.5;
 }
 
-:global(.pagination-class-6) {
+.pagination-class-6 {
   @apply hidden sm:block;
 }
 
-:global(.pagination-class-7) {
+.pagination-class-7 {
   @apply gap-1 px-2.5 sm:pr-2.5;
 }
 
-:global(.pagination-class-8) {
+.pagination-class-8 {
   @apply flex size-9 items-center justify-center;
 }
 
-:global(.pagination-class-9) {
+.pagination-class-9 {
   @apply size-4;
 }
 
-:global(.pagination-class-10) {
+.pagination-class-10 {
   @apply sr-only;
 }
 

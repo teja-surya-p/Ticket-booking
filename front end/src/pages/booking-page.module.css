@@ -1,210 +1,210 @@
 @reference "../pages/globals.css";
 
-:global(.booking-page-class-1) {
+.booking-page-class-1 {
   @apply mx-auto max-w-5xl px-4 py-6 md:px-6;
 }
 
-:global(.booking-page-class-2) {
+.booking-page-class-2 {
   @apply mb-6 gap-1.5 text-muted-foreground hover:text-foreground;
 }
 
-:global(.booking-page-class-3) {
+.booking-page-class-3 {
   @apply size-4;
 }
 
-:global(.booking-page-class-4) {
+.booking-page-class-4 {
   @apply mb-6 flex flex-col gap-1;
 }
 
-:global(.booking-page-class-5) {
+.booking-page-class-5 {
   @apply text-xl font-bold text-foreground text-balance sm:text-2xl;
 }
 
-:global(.booking-page-class-6) {
+.booking-page-class-6 {
   @apply text-sm text-muted-foreground sm:text-base;
 }
 
-:global(.booking-page-class-7) {
+.booking-page-class-7 {
   @apply mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive;
 }
 
-:global(.booking-page-class-8) {
+.booking-page-class-8 {
   @apply flex flex-col gap-6 lg:flex-row lg:gap-8;
 }
 
-:global(.booking-page-class-9) {
+.booking-page-class-9 {
   @apply flex-1 min-w-0;
 }
 
-:global(.booking-page-class-10) {
+.booking-page-class-10 {
   @apply rounded-lg border border-border bg-card p-4 sm:p-6;
 }
 
-:global(.booking-page-class-11) {
+.booking-page-class-11 {
   @apply mb-4 flex justify-center sm:mb-6;
 }
 
-:global(.booking-page-class-12) {
+.booking-page-class-12 {
   @apply h-2 w-3/4 rounded-full bg-primary/30;
 }
 
-:global(.booking-page-class-13) {
+.booking-page-class-13 {
   @apply mb-3 text-center text-xs font-medium uppercase tracking-widest text-muted-foreground sm:mb-4;
 }
 
-:global(.booking-page-class-14) {
+.booking-page-class-14 {
   @apply flex items-center justify-center py-8 text-sm text-muted-foreground;
 }
 
-:global(.booking-page-class-15) {
+.booking-page-class-15 {
   @apply mr-2 size-4 animate-spin;
 }
 
-:global(.booking-page-class-16) {
+.booking-page-class-16 {
   @apply overflow-x-auto pb-2;
 }
 
-:global(.booking-page-class-17) {
+.booking-page-class-17 {
   @apply flex flex-col items-center gap-1.5 sm:gap-2;
 }
 
-:global(.booking-page-class-18) {
+.booking-page-class-18 {
   @apply flex items-center gap-1 sm:gap-1.5;
 }
 
-:global(.booking-page-class-19) {
+.booking-page-class-19 {
   @apply w-4 text-[10px] text-muted-foreground text-right sm:w-5 sm:text-xs;
 }
 
-:global(.booking-page-class-20) {
+.booking-page-class-20 {
   @apply flex size-6 items-center justify-center rounded text-[9px] font-medium transition-colors sm:size-7 sm:text-[10px] md:size-8 md:text-xs;
 }
 
-:global(.booking-page-class-21) {
+.booking-page-class-21 {
   @apply bg-muted text-muted-foreground/40 cursor-not-allowed;
 }
 
-:global(.booking-page-class-22) {
+.booking-page-class-22 {
   @apply bg-primary text-primary-foreground;
 }
 
-:global(.booking-page-class-23) {
+.booking-page-class-23 {
   @apply bg-secondary text-secondary-foreground hover:bg-primary/20;
 }
 
-:global(.booking-page-class-24) {
+.booking-page-class-24 {
   @apply mt-4 flex flex-wrap justify-center gap-4 text-xs text-muted-foreground sm:mt-6 sm:gap-6;
 }
 
-:global(.booking-page-class-25) {
+.booking-page-class-25 {
   @apply flex items-center gap-1.5;
 }
 
-:global(.booking-page-class-26) {
+.booking-page-class-26 {
   @apply size-3 rounded bg-secondary sm:size-4;
 }
 
-:global(.booking-page-class-27) {
+.booking-page-class-27 {
   @apply size-3 rounded bg-primary sm:size-4;
 }
 
-:global(.booking-page-class-28) {
+.booking-page-class-28 {
   @apply size-3 rounded bg-muted sm:size-4;
 }
 
-:global(.booking-page-class-29) {
+.booking-page-class-29 {
   @apply w-full lg:w-80;
 }
 
-:global(.booking-page-class-30) {
+.booking-page-class-30 {
   @apply mb-4 flex items-center gap-2;
 }
 
-:global(.booking-page-class-31) {
+.booking-page-class-31 {
   @apply size-5 text-primary;
 }
 
-:global(.booking-page-class-32) {
+.booking-page-class-32 {
   @apply text-lg font-semibold text-foreground;
 }
 
-:global(.booking-page-class-33) {
+.booking-page-class-33 {
   @apply space-y-1 text-sm text-muted-foreground;
 }
 
-:global(.booking-page-class-34) {
+.booking-page-class-34 {
   @apply text-foreground font-medium;
 }
 
-:global(.booking-page-class-35) {
+.booking-page-class-35 {
   @apply my-4 h-px bg-border;
 }
 
-:global(.booking-page-class-36) {
+.booking-page-class-36 {
   @apply mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground;
 }
 
-:global(.booking-page-class-37) {
+.booking-page-class-37 {
   @apply mb-3 flex items-center justify-between;
 }
 
-:global(.booking-page-class-38) {
+.booking-page-class-38 {
   @apply text-sm font-medium capitalize text-foreground;
 }
 
-:global(.booking-page-class-39) {
+.booking-page-class-39 {
   @apply text-xs text-muted-foreground;
 }
 
-:global(.booking-page-class-40) {
+.booking-page-class-40 {
   @apply flex items-center gap-2;
 }
 
-:global(.booking-page-class-41) {
+.booking-page-class-41 {
   @apply size-3;
 }
 
-:global(.booking-page-class-42) {
+.booking-page-class-42 {
   @apply w-6 text-center text-sm font-medium text-foreground;
 }
 
-:global(.booking-page-class-43) {
+.booking-page-class-43 {
   @apply flex items-center justify-between;
 }
 
-:global(.booking-page-class-44) {
+.booking-page-class-44 {
   @apply text-sm font-semibold text-foreground;
 }
 
-:global(.booking-page-class-45) {
+.booking-page-class-45 {
   @apply text-lg font-bold text-primary;
 }
 
-:global(.booking-page-class-46) {
+.booking-page-class-46 {
   @apply mt-1 flex items-center justify-between text-xs text-muted-foreground;
 }
 
-:global(.booking-page-class-47) {
+.booking-page-class-47 {
   @apply mt-1 flex items-center justify-between text-sm font-semibold text-foreground;
 }
 
-:global(.booking-page-class-48) {
+.booking-page-class-48 {
   @apply mt-2 flex items-center justify-between text-xs text-muted-foreground;
 }
 
-:global(.booking-page-class-49) {
+.booking-page-class-49 {
   @apply mt-3 text-xs text-destructive;
 }
 
-:global(.booking-page-class-50) {
+.booking-page-class-50 {
   @apply mt-3 text-xs text-green-600;
 }
 
-:global(.booking-page-class-51) {
+.booking-page-class-51 {
   @apply mt-6 w-full bg-primary text-primary-foreground hover:bg-primary/90;
 }
 
-:global(.booking-page-class-52) {
+.booking-page-class-52 {
   @apply mt-3 text-center text-xs text-muted-foreground;
 }
 
