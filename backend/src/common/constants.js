@@ -3,8 +3,16 @@ export const API_PREFIX = "api/v1";
 export const FIRESTORE_COLLECTIONS = {
   movies: "movies",
   bookings: "booking",
+  shows: "shows",
+  showrooms: "showrooms",
+  tickets: "tickets",
   paymentCards: "payment_cards",
   favorites: "favorites",
+  showSeats: "show_seats",
+  promotions: "promotions",
+  preferences: "preferences",
+  recommendations: "recommendations",
+  addresses: "addresses",
   users: "users"
 };
 

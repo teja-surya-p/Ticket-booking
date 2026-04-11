@@ -19,6 +19,13 @@ async function bootstrap() {
   ]);
 
   const app = await NestFactory.create(AppModule);
+  // Initialize default data (showrooms, movies, shows) if missing
+  try {
+    const { initData } = await import("./config/init-data.js");
+    await initData();
+  } catch (err) {
+    console.warn("DB init skipped or failed:", err?.message ?? err);
+  }
   const corsOrigins = appConfig.corsOrigin
     .split(",")
     .map((value) => value.trim())
