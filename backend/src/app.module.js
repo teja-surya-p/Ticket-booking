@@ -6,6 +6,7 @@ import { BookingsModule } from "./modules/bookings.module.js";
 import { FavoritesModule } from "./modules/favorites.module.js";
 import { FirestoreModule } from "./modules/firestore.module.js";
 import { MoviesModule } from "./modules/movies.module.js";
+import { ShowsModule } from "./modules/shows.module.js";
 
 class AppModule {}
 
@@ -13,7 +14,8 @@ decorateClass(AppModule, [
   Module({
     imports: [
       FirestoreModule,
-      MoviesModule,
+        MoviesModule,
+        ShowsModule,
       BookingsModule,
       FavoritesModule,
       AdminModule,
