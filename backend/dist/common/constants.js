@@ -5,7 +5,9 @@ export const FIRESTORE_COLLECTIONS = {
   bookings: "booking",
   paymentCards: "payment_cards",
   favorites: "favorites",
-  users: "users"
+  users: "users",
+  showrooms: "showrooms",
+  showtimes: "showtimes"
 };
 
 export const USER_ACCOUNT_STATUSES = {

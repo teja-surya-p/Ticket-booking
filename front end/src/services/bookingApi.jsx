@@ -80,3 +80,51 @@ export function deleteSavedCard(cardId, token) {
 }
 
 export const fetchSavedCard = fetchSavedCards;
+
+/**
+ * createDraftBooking
+ *
+ * POST /api/v1/bookings/draft
+ * Creates a draft booking for {movieId, showtime, tickets}.
+ * No auth required. Returns { bookingId } — store in sessionStorage
+ * so selection survives a login redirect (Sprint 3).
+ */
+export function createDraftBooking(payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.draft,
+    method: "POST",
+    operation: "Create draft booking",
+    body: payload
+  });
+}
+
+/**
+ * saveBookingSeats
+ *
+ * POST /api/v1/bookings/:bookingId/seats
+ * Saves selected seat IDs for a draft booking.
+ * Server validates seat count matches tickets and no conflicts exist.
+ */
+export function saveBookingSeats(bookingId, payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.bookingSeats(encodeURIComponent(bookingId)),
+    method: "POST",
+    operation: "Save booking seats",
+    body: payload
+  });
+}
+
+/**
+ * fetchBookingSummary
+ *
+ * GET /api/v1/bookings/:bookingId/summary
+ * Returns the full order summary. Requires Firebase Auth token (checkout step).
+ */
+export function fetchBookingSummary(bookingId, token) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.bookingSummary(encodeURIComponent(bookingId)),
+    method: "GET",
+    operation: "Fetch booking summary",
+    token
+  });
+}

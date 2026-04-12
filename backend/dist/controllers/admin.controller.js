@@ -1,5 +1,5 @@
-import { Controller, Get } from "@nestjs/common";
-import { decorateClass, decorateMethod } from "../common/nest-metadata.js";
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from "@nestjs/common";
+import { decorateClass, decorateMethod, parameterDecorator } from "../common/nest-metadata.js";
 import { AdminService } from "../services/admin.service.js";
 
 class AdminController {
@@ -10,12 +10,23 @@ class AdminController {
   async getStats() {
     return await this.adminService.getDashboardStats();
   }
+
+  async scheduleShowtime(body) {
+    return await this.adminService.scheduleShowtime(body);
+  }
 }
 
 decorateMethod(AdminController.prototype, "getStats", [Get("stats")], {
   paramTypes: [],
   returnType: Promise
 });
+
+decorateMethod(
+  AdminController.prototype,
+  "scheduleShowtime",
+  [Post("showtimes"), HttpCode(HttpStatus.CREATED), parameterDecorator(0, Body())],
+  { paramTypes: [Object], returnType: Promise }
+);
 
 decorateClass(AdminController, [Controller("admin")], [AdminService]);
 

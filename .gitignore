@@ -1,0 +1,22 @@
+# ── Secrets & credentials ─────────────────────────────────────────────────────
+**/.env
+**/.env.local
+**/.env*.local
+**/serviceAccountKey.json
+**/serviceaccount*.json
+**/*firebase-adminsdk*.json
+**/secrets/
+**/*secret*.json
+**/*private-key*.json
+**/google-credentials*.json
+
+# ── Dependencies ──────────────────────────────────────────────────────────────
+**/node_modules/
+
+# ── Build output ──────────────────────────────────────────────────────────────
+**/.next/
+**/dist/
+
+# ── OS / editor ───────────────────────────────────────────────────────────────
+**/.DS_Store
+**/*.local

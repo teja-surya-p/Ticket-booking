@@ -55,3 +55,17 @@ export function deleteMovie(movieId) {
     allowEmptyResponse: true
   });
 }
+
+/**
+ * fetchMovieShowtimes
+ *
+ * GET /api/v1/movies/:movieId/showtimes
+ * Returns scheduled showtimes for a movie (Sprint 3 — loaded from DB).
+ */
+export function fetchMovieShowtimes(movieId) {
+  return APICallHandler({
+    url: API_ENDPOINTS.movies.showtimes(movieId),
+    method: "GET",
+    operation: "Fetch movie showtimes"
+  });
+}

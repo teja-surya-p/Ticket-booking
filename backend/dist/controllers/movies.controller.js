@@ -13,10 +13,12 @@ import {
 } from "@nestjs/common";
 import { decorateClass, decorateMethod, parameterDecorator } from "../common/nest-metadata.js";
 import { MoviesService } from "../services/movies.service.js";
+import { ShowtimesService } from "../services/showtimes.service.js";
 
 class MoviesController {
-  constructor(moviesService) {
+  constructor(moviesService, showtimesService) {
     this.moviesService = moviesService;
+    this.showtimesService = showtimesService;
   }
 
   async getMovies(query) {
@@ -29,6 +31,11 @@ class MoviesController {
 
   async getMovieById(id) {
     return await this.moviesService.findById(id);
+  }
+
+  async getShowtimesForMovie(movieId) {
+    await this.moviesService.findById(movieId);
+    return await this.showtimesService.findByMovieId(movieId);
   }
 
   async createMovie(body) {
@@ -58,20 +65,21 @@ decorateMethod(
   MoviesController.prototype,
   "getMovieById",
   [Get(":id"), parameterDecorator(0, Param("id", ParseIntPipe))],
-  {
-    paramTypes: [Number],
-    returnType: Promise
-  }
+  { paramTypes: [Number], returnType: Promise }
+);
+
+decorateMethod(
+  MoviesController.prototype,
+  "getShowtimesForMovie",
+  [Get(":movieId/showtimes"), parameterDecorator(0, Param("movieId", ParseIntPipe))],
+  { paramTypes: [Number], returnType: Promise }
 );
 
 decorateMethod(
   MoviesController.prototype,
   "createMovie",
   [Post(), parameterDecorator(0, Body())],
-  {
-    paramTypes: [Object],
-    returnType: Promise
-  }
+  { paramTypes: [Object], returnType: Promise }
 );
 
 decorateMethod(
@@ -82,10 +90,7 @@ decorateMethod(
     parameterDecorator(0, Param("id", ParseIntPipe)),
     parameterDecorator(1, Body())
   ],
-  {
-    paramTypes: [Number, Object],
-    returnType: Promise
-  }
+  { paramTypes: [Number, Object], returnType: Promise }
 );
 
 decorateMethod(
@@ -96,12 +101,9 @@ decorateMethod(
     HttpCode(HttpStatus.NO_CONTENT),
     parameterDecorator(0, Param("id", ParseIntPipe))
   ],
-  {
-    paramTypes: [Number],
-    returnType: Promise
-  }
+  { paramTypes: [Number], returnType: Promise }
 );
 
-decorateClass(MoviesController, [Controller("movies")], [MoviesService]);
+decorateClass(MoviesController, [Controller("movies")], [MoviesService, ShowtimesService]);
 
 export { MoviesController };

@@ -9,24 +9,30 @@ export const API_ROUTES = {
   bookings: withPrefix("/bookings"),
   admin: withPrefix("/admin"),
   auth: withPrefix("/auth"),
-  favorites: withPrefix("/favorites")
+  favorites: withPrefix("/favorites"),
+  showrooms: withPrefix("/showrooms")
 };
 export const API_ENDPOINTS = {
   movies: {
     list: API_ROUTES.movies,
     detail: movieId => `${API_ROUTES.movies}/${movieId}`,
-    genres: `${API_ROUTES.movies}/genres`
+    genres: `${API_ROUTES.movies}/genres`,
+    showtimes: movieId => `${API_ROUTES.movies}/${movieId}/showtimes`
   },
   bookings: {
     seats: `${API_ROUTES.bookings}/seats`,
     pricing: `${API_ROUTES.bookings}/pricing`,
     quote: `${API_ROUTES.bookings}/quote`,
     create: API_ROUTES.bookings,
+    draft: `${API_ROUTES.bookings}/draft`,
+    bookingSeats: bookingId => `${API_ROUTES.bookings}/${bookingId}/seats`,
+    bookingSummary: bookingId => `${API_ROUTES.bookings}/${bookingId}/summary`,
     card: `${API_ROUTES.bookings}/card`,
     cardById: cardId => `${API_ROUTES.bookings}/card/${cardId}`
   },
   admin: {
-    stats: `${API_ROUTES.admin}/stats`
+    stats: `${API_ROUTES.admin}/stats`,
+    scheduleShowtime: `${API_ROUTES.admin}/showtimes`
   },
   auth: {
     register: `${API_ROUTES.auth}/register`,
@@ -38,6 +44,9 @@ export const API_ENDPOINTS = {
     list: API_ROUTES.favorites,
     add: API_ROUTES.favorites,
     remove: (movieId) => `${API_ROUTES.favorites}/${movieId}`
+  },
+  showrooms: {
+    list: API_ROUTES.showrooms
   }
 };
 export const QUERY_KEYS = {

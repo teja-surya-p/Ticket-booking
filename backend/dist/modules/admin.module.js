@@ -4,12 +4,13 @@ import { AdminController } from "../controllers/admin.controller.js";
 import { AdminService } from "../services/admin.service.js";
 import { BookingsModule } from "./bookings.module.js";
 import { MoviesModule } from "./movies.module.js";
+import { ShowtimesModule } from "./showtimes.module.js";
 
 class AdminModule {}
 
 decorateClass(AdminModule, [
   Module({
-    imports: [MoviesModule, BookingsModule],
+    imports: [MoviesModule, BookingsModule, ShowtimesModule],
     controllers: [AdminController],
     providers: [AdminService]
   })
