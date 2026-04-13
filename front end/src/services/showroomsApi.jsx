@@ -15,3 +15,11 @@ export function fetchShowrooms() {
     operation: "Fetch showrooms"
   });
 }
+
+export function fetchShowroomById(showroomId) {
+  return APICallHandler({
+    url: `${API_ENDPOINTS.showrooms.list}/${showroomId}`,
+    method: "GET",
+    operation: "Fetch showroom by id"
+  });
+}

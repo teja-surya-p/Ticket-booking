@@ -1,12 +1,18 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { buildAdminIssueReport, getMeaningfulErrorMessage } from "@/services/apiErrorUtils";
 import { uploadMovieAssetToStorage } from "@/services/firebaseStorage";
+import { sendPromotion } from "@/services/adminApi";
+import { fetchShowrooms } from "@/services/showroomsApi";
 import {
   formatDurationLabel,
   getMovieGenreList,
   getMovieGenres,
   MOVIE_GENRE_OPTIONS
 } from "@/models/movie-model";
+
+const MAX_SHOWTIMES_PER_DAY = 4;
+
+const initialPromotionForm = { title: "", message: "", showroomId: "" };
 
 const initialFormState = {
   title: "",
@@ -18,7 +24,9 @@ const initialFormState = {
   durationMinutes: "",
   director: "",
   cast: "",
-  showtimes: "2:00 PM, 5:00 PM, 8:00 PM"
+  showtimes: ["2:00 PM", "5:00 PM", "8:00 PM"],
+  showroomId: "",
+  releaseDate: ""
 };
 
 const initialAssetSelection = {
@@ -87,7 +95,9 @@ function buildFormStateFromMovie(movie) {
     durationMinutes,
     director: String(movie?.director ?? ""),
     cast: Array.isArray(movie?.cast) ? movie.cast.join(", ") : "",
-    showtimes: Array.isArray(movie?.showtimes) ? movie.showtimes.join(", ") : ""
+    showtimes: Array.isArray(movie?.showtimes) ? movie.showtimes.slice(0, MAX_SHOWTIMES_PER_DAY) : [],
+    showroomId: String(movie?.showroomId ?? ""),
+    releaseDate: String(movie?.releaseDate ?? "")
   };
 }
 
@@ -102,6 +112,23 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   const [submitError, setSubmitError] = useState(null);
   const [adminIssueReport, setAdminIssueReport] = useState(null);
   const [copiedIssueReport, setCopiedIssueReport] = useState(false);
+
+  const [showrooms, setShowrooms] = useState([]);
+  const [isLoadingShowrooms, setIsLoadingShowrooms] = useState(false);
+
+  const [showPromotionDialog, setShowPromotionDialog] = useState(false);
+  const [promotionForm, setPromotionForm] = useState(initialPromotionForm);
+  const [isSendingPromotion, setIsSendingPromotion] = useState(false);
+  const [promotionSendResult, setPromotionSendResult] = useState(null);
+  const [promotionError, setPromotionError] = useState(null);
+
+  useEffect(() => {
+    setIsLoadingShowrooms(true);
+    fetchShowrooms()
+      .then((data) => setShowrooms(Array.isArray(data) ? data : []))
+      .catch(() => setShowrooms([]))
+      .finally(() => setIsLoadingShowrooms(false));
+  }, []);
 
   const currentlyRunning = movies.filter((movie) => movie.status === "currently_running").length;
   const comingSoon = movies.filter((movie) => movie.status === "coming_soon").length;
@@ -182,6 +209,7 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     const isEditing = Boolean(editingMovie);
 
     if (!form.title.trim()) return "Movie title is required.";
+    if (!form.showroomId) return "Please select a showroom for this movie.";
     if (form.genres.length === 0) return "Select at least one genre.";
     if (form.status === "currently_running" && !form.rating) return "Rating is required for currently playing movies.";
     if (!form.description.trim()) return "Description is required.";
@@ -218,8 +246,19 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
       return "Trailer thumbnail must be a JPG, PNG, or WebP image for Safari compatibility.";
     }
 
-    const showtimes = toCommaSeparatedList(form.showtimes);
+    const showtimes = form.showtimes.map((s) => s.trim()).filter(Boolean);
     if (showtimes.length === 0) return "At least one showtime is required.";
+    if (showtimes.length > MAX_SHOWTIMES_PER_DAY) return `A maximum of ${MAX_SHOWTIMES_PER_DAY} showtimes per day is allowed.`;
+
+    const timePattern = /^(1[0-2]|0?[1-9]):[0-5]\d\s?(AM|PM)$/i;
+    const invalidTimes = showtimes.filter((t) => !timePattern.test(t));
+    if (invalidTimes.length > 0) {
+      return `Invalid showtime format: "${invalidTimes[0]}". Use format like "2:00 PM".`;
+    }
+
+    if (form.status === "coming_soon" && !form.releaseDate) {
+      return "Release date is required for coming soon movies.";
+    }
 
     const cast = toCommaSeparatedList(form.cast);
     if (cast.length === 0) return "At least one cast member is required.";
@@ -232,6 +271,21 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     if (validationError) {
       setSubmitError(validationError);
       return;
+    }
+
+    if (form.showroomId) {
+      const conflictMovies = movies.filter(
+        (m) => m.showroomId === form.showroomId && (!editingMovie || m.id !== editingMovie.id)
+      );
+      const takenTimes = new Set(conflictMovies.flatMap((m) => m.showtimes ?? []));
+      const newTimes = form.showtimes.map((s) => s.trim()).filter(Boolean);
+      const conflicts = newTimes.filter((t) => takenTimes.has(t));
+      if (conflicts.length > 0) {
+        setSubmitError(
+          `Showroom conflict: "${conflicts.join(", ")}" is already used by another movie in this showroom.`
+        );
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -257,7 +311,9 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
         duration: selectedDuration,
         director: form.director.trim(),
         cast: toCommaSeparatedList(form.cast),
-        showtimes: toCommaSeparatedList(form.showtimes),
+        showtimes: form.showtimes.map((s) => s.trim()).filter(Boolean),
+        showroomId: form.showroomId || null,
+        releaseDate: form.status === "coming_soon" ? (form.releaseDate || null) : null,
         poster: posterUpload?.url ?? editingMovie?.poster ?? "",
         trailerUrl: trailerUpload?.url ?? editingMovie?.trailerUrl ?? "",
         trailerThumbnail: trailerThumbnailUpload?.url ?? editingMovie?.trailerThumbnail ?? ""
@@ -286,6 +342,63 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const openPromotionDialog = () => {
+    setPromotionForm(initialPromotionForm);
+    setPromotionSendResult(null);
+    setPromotionError(null);
+    setShowPromotionDialog(true);
+  };
+
+  const closePromotionDialog = () => {
+    setShowPromotionDialog(false);
+  };
+
+  const handlePromotionChange = (key) => (value) => {
+    setPromotionForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSendPromotion = async () => {
+    const { title, message, showroomId } = promotionForm;
+    if (!title.trim()) { setPromotionError("Title is required."); return; }
+    if (!message.trim()) { setPromotionError("Message is required."); return; }
+    if (!showroomId) { setPromotionError("Please select a showroom."); return; }
+
+    setIsSendingPromotion(true);
+    setPromotionError(null);
+    setPromotionSendResult(null);
+
+    try {
+      const result = await sendPromotion({ title: title.trim(), message: message.trim(), showroomId });
+      setPromotionSendResult(result);
+    } catch (error) {
+      setPromotionError(getMeaningfulErrorMessage(error, "admin"));
+    } finally {
+      setIsSendingPromotion(false);
+    }
+  };
+
+  const handleAddShowtime = () => {
+    setForm((previous) => {
+      if (previous.showtimes.length >= MAX_SHOWTIMES_PER_DAY) return previous;
+      return { ...previous, showtimes: [...previous.showtimes, ""] };
+    });
+  };
+
+  const handleUpdateShowtime = (index, value) => {
+    setForm((previous) => {
+      const next = [...previous.showtimes];
+      next[index] = value;
+      return { ...previous, showtimes: next };
+    });
+  };
+
+  const handleRemoveShowtime = (index) => {
+    setForm((previous) => {
+      const next = previous.showtimes.filter((_, idx) => idx !== index);
+      return { ...previous, showtimes: next };
+    });
   };
 
   const copyIssueReport = async () => {
@@ -355,14 +468,29 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     ratingOptions,
     durationHourOptions,
     durationMinuteOptions,
+    showrooms,
+    isLoadingShowrooms,
+    showPromotionDialog,
+    promotionForm,
+    isSendingPromotion,
+    promotionSendResult,
+    promotionError,
+    openPromotionDialog,
+    closePromotionDialog,
+    handlePromotionChange,
+    handleSendPromotion,
     handleChange,
     handleToggleGenre,
     handleFileChange,
+    handleAddShowtime,
+    handleUpdateShowtime,
+    handleRemoveShowtime,
     openCreateDialog,
     openEditDialog,
     closeDialog,
     handleSaveMovie,
     copyIssueReport,
-    handleDeleteMovie
+    handleDeleteMovie,
+    maxShowtimes: MAX_SHOWTIMES_PER_DAY
   };
 }

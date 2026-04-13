@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -12,13 +13,15 @@ import {
   Query
 } from "@nestjs/common";
 import { decorateClass, decorateMethod, parameterDecorator } from "../common/nest-metadata.js";
+import { AuthGuardService } from "../services/auth-guard.service.js";
 import { MoviesService } from "../services/movies.service.js";
 import { ShowtimesService } from "../services/showtimes.service.js";
 
 class MoviesController {
-  constructor(moviesService, showtimesService) {
+  constructor(moviesService, showtimesService, authGuardService) {
     this.moviesService = moviesService;
     this.showtimesService = showtimesService;
+    this.authGuardService = authGuardService;
   }
 
   async getMovies(query) {
@@ -38,15 +41,18 @@ class MoviesController {
     return await this.showtimesService.findByMovieId(movieId);
   }
 
-  async createMovie(body) {
+  async createMovie(authorization, body) {
+    await this.authGuardService.requireAuthenticatedCustomer(authorization);
     return await this.moviesService.create(body);
   }
 
-  async updateMovie(id, body) {
+  async updateMovie(authorization, id, body) {
+    await this.authGuardService.requireAuthenticatedCustomer(authorization);
     return await this.moviesService.update(id, body);
   }
 
-  async deleteMovie(id) {
+  async deleteMovie(authorization, id) {
+    await this.authGuardService.requireAuthenticatedCustomer(authorization);
     await this.moviesService.remove(id);
   }
 }
@@ -78,8 +84,8 @@ decorateMethod(
 decorateMethod(
   MoviesController.prototype,
   "createMovie",
-  [Post(), parameterDecorator(0, Body())],
-  { paramTypes: [Object], returnType: Promise }
+  [Post(), parameterDecorator(0, Headers("authorization")), parameterDecorator(1, Body())],
+  { paramTypes: [String, Object], returnType: Promise }
 );
 
 decorateMethod(
@@ -87,10 +93,11 @@ decorateMethod(
   "updateMovie",
   [
     Patch(":id"),
-    parameterDecorator(0, Param("id", ParseIntPipe)),
-    parameterDecorator(1, Body())
+    parameterDecorator(0, Headers("authorization")),
+    parameterDecorator(1, Param("id", ParseIntPipe)),
+    parameterDecorator(2, Body())
   ],
-  { paramTypes: [Number, Object], returnType: Promise }
+  { paramTypes: [String, Number, Object], returnType: Promise }
 );
 
 decorateMethod(
@@ -99,11 +106,12 @@ decorateMethod(
   [
     Delete(":id"),
     HttpCode(HttpStatus.NO_CONTENT),
-    parameterDecorator(0, Param("id", ParseIntPipe))
+    parameterDecorator(0, Headers("authorization")),
+    parameterDecorator(1, Param("id", ParseIntPipe))
   ],
-  { paramTypes: [Number], returnType: Promise }
+  { paramTypes: [String, Number], returnType: Promise }
 );
 
-decorateClass(MoviesController, [Controller("movies")], [MoviesService, ShowtimesService]);
+decorateClass(MoviesController, [Controller("movies")], [MoviesService, ShowtimesService, AuthGuardService]);
 
 export { MoviesController };

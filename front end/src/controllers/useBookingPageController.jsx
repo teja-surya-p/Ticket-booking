@@ -6,6 +6,7 @@ import {
   fetchTicketPricing,
   getMeaningfulErrorMessage
 } from "@/services";
+import { fetchShowroomById } from "@/services/showroomsApi";
 import {
   BOOKING_SEAT_COLS,
   BOOKING_SEAT_ROWS,
@@ -18,7 +19,7 @@ import {
   getTotalTickets
 } from "@/models/booking-model";
 
-export function useBookingPageController({ movie, showtime }) {
+export function useBookingPageController({ movie, showtime, currentUser }) {
   const [reservedSeats, setReservedSeats] = useState(new Set());
   const [selectedSeats, setSelectedSeats] = useState(new Set());
   const [tickets, setTickets] = useState(INITIAL_TICKETS);
@@ -28,6 +29,9 @@ export function useBookingPageController({ movie, showtime }) {
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [needsLogin, setNeedsLogin] = useState(false);
+  const [seatRows, setSeatRows] = useState(BOOKING_SEAT_ROWS);
+  const [seatCols, setSeatCols] = useState(BOOKING_SEAT_COLS);
   const [quoteError, setQuoteError] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
   const [checkoutSuccess, setCheckoutSuccess] = useState(null);
@@ -66,10 +70,15 @@ export function useBookingPageController({ movie, showtime }) {
       setLoadError(null);
 
       try {
-        const [reservedSeatsData, pricingData] = await Promise.all([
+        const fetchList = [
           fetchReservedSeats(movie.id, showtime),
           fetchTicketPricing()
-        ]);
+        ];
+        if (movie.showroomId) {
+          fetchList.push(fetchShowroomById(movie.showroomId));
+        }
+
+        const [reservedSeatsData, pricingData, showroomData] = await Promise.all(fetchList);
 
         if (!active) {
           return;
@@ -77,6 +86,11 @@ export function useBookingPageController({ movie, showtime }) {
 
         setReservedSeats(new Set(reservedSeatsData.reservedSeats));
         setPricing(pricingData);
+
+        if (showroomData?.layout?.rows && showroomData?.layout?.cols) {
+          setSeatRows(showroomData.layout.rows);
+          setSeatCols(showroomData.layout.cols);
+        }
       } catch (error) {
         if (!active) {
           return;
@@ -192,6 +206,11 @@ export function useBookingPageController({ movie, showtime }) {
     setCheckoutError(null);
     setCheckoutSuccess(null);
 
+    if (!currentUser) {
+      setNeedsLogin(true);
+      return;
+    }
+
     if (totalTickets <= 0) {
       setCheckoutError("Please select at least one ticket.");
       return;
@@ -231,8 +250,10 @@ export function useBookingPageController({ movie, showtime }) {
   };
 
   return {
-    ROWS: BOOKING_SEAT_ROWS,
-    COLS: BOOKING_SEAT_COLS,
+    ROWS: seatRows,
+    COLS: seatCols,
+    needsLogin,
+    clearNeedsLogin: () => setNeedsLogin(false),
     ticketTypes: BOOKING_TICKET_TYPES,
     reservedSeats,
     selectedSeats,

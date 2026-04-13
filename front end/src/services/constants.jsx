@@ -32,7 +32,8 @@ export const API_ENDPOINTS = {
   },
   admin: {
     stats: `${API_ROUTES.admin}/stats`,
-    scheduleShowtime: `${API_ROUTES.admin}/showtimes`
+    scheduleShowtime: `${API_ROUTES.admin}/showtimes`,
+    sendPromotion: `${API_ROUTES.admin}/promotions`
   },
   auth: {
     register: `${API_ROUTES.auth}/register`,

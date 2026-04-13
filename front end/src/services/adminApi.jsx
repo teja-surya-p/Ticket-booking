@@ -24,3 +24,12 @@ export function scheduleShowtime(payload) {
     body: payload
   });
 }
+
+export function sendPromotion(payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.admin.sendPromotion,
+    method: "POST",
+    operation: "Send promotion",
+    body: payload
+  });
+}

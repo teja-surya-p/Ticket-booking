@@ -550,8 +550,13 @@ export default function ProfilePage() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setPasswordError("New password must be at least 6 characters.");
+    const passwordErrors = [];
+    if (newPassword.length < 8) passwordErrors.push("at least 8 characters");
+    if (!/[A-Z]/.test(newPassword)) passwordErrors.push("one uppercase letter");
+    if (!/[a-z]/.test(newPassword)) passwordErrors.push("one lowercase letter");
+    if (!/[0-9]/.test(newPassword)) passwordErrors.push("one number");
+    if (passwordErrors.length > 0) {
+      setPasswordError(`New password must contain: ${passwordErrors.join(", ")}.`);
       return;
     }
 
@@ -1476,7 +1481,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <p className={styles.securityHint}>
-                      New password must be at least 6 characters.
+                      New password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number.
                     </p>
                   </section>
 

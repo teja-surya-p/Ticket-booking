@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException
@@ -53,6 +54,11 @@ class MoviesService {
   }
 
   async create(dto) {
+    if (dto.showroomId) {
+      const showtimes = Array.isArray(dto.showtimes) ? dto.showtimes : [];
+      await this.assertNoShowtimeConflict(dto.showroomId, showtimes, null);
+    }
+
     const movies = await this.readAllMoviesFromStore();
     const nextId = Math.max(...movies.map((movie) => movie.id), 0) + 1;
     const newMovie = this.normalizeMovie(
@@ -73,6 +79,12 @@ class MoviesService {
 
     if (!docRef) {
       throw new NotFoundException(`Movie with id ${id} not found`);
+    }
+
+    const showroomToCheck = dto.showroomId ?? existing.showroomId;
+    if (showroomToCheck) {
+      const showtimes = Array.isArray(dto.showtimes) ? dto.showtimes : (existing.showtimes ?? []);
+      await this.assertNoShowtimeConflict(showroomToCheck, showtimes, id);
     }
 
     const updatedMovie = this.normalizeMovie(
@@ -291,8 +303,44 @@ class MoviesService {
         typeof data?.director === "string" && data.director.trim().length > 0
           ? data.director.trim()
           : "Unknown",
-      cast
+      cast,
+      showroomId:
+        typeof data?.showroomId === "string" && data.showroomId.trim().length > 0
+          ? data.showroomId.trim()
+          : null,
+      releaseDate:
+        typeof data?.releaseDate === "string" && data.releaseDate.trim().length > 0
+          ? data.releaseDate.trim()
+          : null
     });
+  }
+
+  async findByShowroomId(showroomId) {
+    const snapshot = await this.collection()
+      .where("showroomId", "==", showroomId)
+      .get();
+    return snapshot.docs.map((doc, index) => this.normalizeMovie(doc.data(), index + 1));
+  }
+
+  async assertNoShowtimeConflict(showroomId, newShowtimes, excludeId) {
+    const moviesInRoom = await this.findByShowroomId(showroomId);
+    const conflicts = [];
+
+    for (const movie of moviesInRoom) {
+      if (excludeId !== null && movie.id === excludeId) continue;
+      for (const time of (movie.showtimes ?? [])) {
+        if (newShowtimes.includes(time)) {
+          conflicts.push(time);
+        }
+      }
+    }
+
+    if (conflicts.length > 0) {
+      const unique = [...new Set(conflicts)];
+      throw new ConflictException(
+        `Showroom "${showroomId}" already has another movie scheduled at: ${unique.join(", ")}`
+      );
+    }
   }
 
   normalizeStatus(value) {

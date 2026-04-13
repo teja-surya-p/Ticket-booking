@@ -21,6 +21,7 @@ class ShowtimesService {
 
   /**
    * Creates a showtime. Conflict check: same showroomId + same startAt.
+   * Also enforces max 4 showtimes per movie per calendar day.
    * The caller (AdminService) is responsible for validating that the movie exists.
    *
    * @param {{ movieId: number, showroomId: string, startAt: string }} dto
@@ -34,6 +35,19 @@ class ShowtimesService {
     if (conflict) {
       throw new ConflictException(
         `Showroom "${showroomId}" already has a showtime at ${startAt}`
+      );
+    }
+
+    const dayStart = startAt.slice(0, 10) + "T00:00:00.000Z";
+    const dayEnd = startAt.slice(0, 10) + "T23:59:59.999Z";
+    const daySnapshot = await this.collection()
+      .where("movieId", "==", movieId)
+      .where("startAt", ">=", dayStart)
+      .where("startAt", "<=", dayEnd)
+      .get();
+    if (daySnapshot.size >= 4) {
+      throw new ConflictException(
+        `Movie already has 4 showtimes on ${startAt.slice(0, 10)}, which is the daily maximum`
       );
     }
 

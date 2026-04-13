@@ -12,8 +12,9 @@ function formatShowtime(value) {
   }
   return value;
 }
-import { Armchair, Loader2, MonitorPlay, PencilLine, Trash2 } from "lucide-react";
+import { Armchair, Loader2, LogIn, MonitorPlay, PencilLine, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -62,6 +63,11 @@ export function SeatSelectionDialog({
   maxCardsAllowed,
   showPaymentStep,
   canCheckoutWithPayment,
+  needsLogin,
+  clearNeedsLogin,
+  saveCard,
+  onSaveCardChange,
+  onLogin,
   ROWS,
   COLS,
   isLoadingSeats,
@@ -207,6 +213,23 @@ export function SeatSelectionDialog({
           <div className={styles["seat-dialog-class-6"]}>
             {visibleError && (
               <p className={styles["seat-dialog-class-39"]}>{visibleError}</p>
+            )}
+
+            {needsLogin && (
+              <div className={styles["seat-dialog-class-39"]} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap" }}>
+                <span>Please sign in to complete your booking.</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    clearNeedsLogin();
+                    onLogin?.();
+                  }}
+                >
+                  <LogIn className="mr-1 h-4 w-4" />
+                  Sign In
+                </Button>
+              </div>
             )}
 
             {!showPaymentStep && (
@@ -611,8 +634,20 @@ export function SeatSelectionDialog({
                       </div>
                     </div>
 
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <Checkbox
+                        id="checkout-save-card"
+                        checked={saveCard}
+                        onCheckedChange={(checked) => onSaveCardChange(!!checked)}
+                        disabled={isSavingCard || isSubmitting}
+                      />
+                      <Label htmlFor="checkout-save-card" style={{ cursor: "pointer", fontSize: "0.875rem" }}>
+                        Save this card for future payments
+                      </Label>
+                    </div>
+
                     <Button type="button" onClick={onSaveCard} disabled={isSavingCard || isSubmitting}>
-                      {isSavingCard ? "Saving..." : "Save Card"}
+                      {isSavingCard ? "Saving..." : saveCard ? "Save Card" : "Use Card"}
                     </Button>
                   </div>
                 )}

@@ -9,6 +9,7 @@ import {
   savePaymentCard,
   updateSavedCard as updateSavedCardRequest
 } from "@/services";
+import { fetchShowroomById } from "@/services/showroomsApi";
 import {
   BOOKING_SEAT_COLS,
   BOOKING_SEAT_ROWS,
@@ -172,6 +173,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const [editCardForm, setEditCardForm] = useState(createEmptyEditCardForm());
   const [editCardFieldErrors, setEditCardFieldErrors] = useState(createEmptyEditCardFieldErrors());
   const [isUpdatingCard, setIsUpdatingCard] = useState(false);
+  const [needsLogin, setNeedsLogin] = useState(false);
+  const [saveCard, setSaveCard] = useState(true);
+  const [seatRows, setSeatRows] = useState(BOOKING_SEAT_ROWS);
+  const [seatCols, setSeatCols] = useState(BOOKING_SEAT_COLS);
 
   const currentItem = isOpen ? items[currentIndex] ?? null : null;
   const totalSteps = items.length;
@@ -210,6 +215,27 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setCustomerEmail(resolvedUserEmail);
     setCustomerName(resolvedUserName);
   }, [resolvedUserEmail, resolvedUserName]);
+
+  useEffect(() => {
+    const showroomId = currentItem?.movie?.showroomId;
+    if (!showroomId) {
+      setSeatRows(BOOKING_SEAT_ROWS);
+      setSeatCols(BOOKING_SEAT_COLS);
+      return;
+    }
+
+    fetchShowroomById(showroomId)
+      .then((data) => {
+        if (data?.layout?.rows && data?.layout?.cols) {
+          setSeatRows(data.layout.rows);
+          setSeatCols(data.layout.cols);
+        }
+      })
+      .catch(() => {
+        setSeatRows(BOOKING_SEAT_ROWS);
+        setSeatCols(BOOKING_SEAT_COLS);
+      });
+  }, [currentItem?.movie?.showroomId]);
 
   const loadReservedSeatsForItem = async (item) => {
     if (!item) {
@@ -536,9 +562,25 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     }
     if (!cardForm.expMonth) {
       nextFieldErrors.expMonth = "Expiry month is required.";
+    } else {
+      const month = Number(cardForm.expMonth);
+      if (!Number.isInteger(month) || month < 1 || month > 12) {
+        nextFieldErrors.expMonth = "Month must be between 01 and 12.";
+      }
     }
     if (!cardForm.expYear) {
       nextFieldErrors.expYear = "Expiry year is required.";
+    }
+
+    if (!nextFieldErrors.expMonth && !nextFieldErrors.expYear && cardForm.expMonth && cardForm.expYear) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const month = Number(cardForm.expMonth);
+      const year = Number(cardForm.expYear);
+      if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        nextFieldErrors.expYear = "This card has expired.";
+      }
     }
 
     if (Object.values(nextFieldErrors).some(Boolean)) {
@@ -785,8 +827,49 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     const confirmedBookings = [];
     let warning = null;
 
-    if (!canCheckoutWithPayment) {
-      setPaymentError("Select a saved card before checkout.");
+    if (!currentUser) {
+      setNeedsLogin(true);
+      return;
+    }
+
+    // If no saved card selected and the card form has data, temporarily save it
+    let tempCardId = null;
+    if (!selectedCardId && showCardForm) {
+      const cardholderName = cardForm.cardholderName.trim() || customerName.trim();
+      if (!cardholderName || !cardForm.cardNumber || !cardForm.cvv || !cardForm.expMonth || !cardForm.expYear) {
+        setPaymentError("Please fill in all card details before confirming checkout.");
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+        const authToken = await getAuthToken();
+        const response = await savePaymentCard({
+          customerUid: customerUid || undefined,
+          customerEmail: normalizedCustomerEmail,
+          cardholderName,
+          cardNumber: cardForm.cardNumber,
+          cvv: cardForm.cvv,
+          expMonth: Number(cardForm.expMonth),
+          expYear: Number(cardForm.expYear)
+        }, authToken);
+        tempCardId = response?.savedCardId ?? (Array.isArray(response?.cards) ? response.cards[0]?.cardId : null);
+        if (!tempCardId) {
+          setPaymentError("Could not process card. Please try again.");
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (error) {
+        setPaymentError(getPaymentErrorMessage(error));
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    const effectiveCardId = selectedCardId || tempCardId;
+
+    if (!effectiveCardId) {
+      setPaymentError("Select a saved card or enter card details to continue.");
       return;
     }
 
@@ -827,7 +910,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
           tickets: item.tickets,
           customerEmail: normalizedCustomerEmail,
           customerName: customerName.trim() || selectedCard?.cardholderName,
-          paymentCardId: selectedCardId
+          paymentCardId: effectiveCardId
         }, authToken);
 
         confirmedBookings.push({
@@ -861,6 +944,16 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
       return;
     }
 
+    // Clean up the temporarily saved card if user chose not to save it
+    if (tempCardId && !saveCard) {
+      try {
+        const cleanupToken = await getAuthToken();
+        await deleteSavedCardRequest(tempCardId, cleanupToken);
+      } catch {
+        // Non-fatal: card cleanup failure doesn't affect the booking
+      }
+    }
+
     onCheckout({
       confirmedBookings,
       total: confirmedBookings.reduce((sum, booking) => sum + booking.total, 0),
@@ -881,10 +974,8 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
       return;
     }
 
-    if (!isValidEmail(normalizedCustomerEmail)) {
-      setPaymentError(
-        "Please sign in to continue checkout."
-      );
+    if (!currentUser) {
+      setNeedsLogin(true);
       return;
     }
 
@@ -944,8 +1035,12 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     maxCardsAllowed,
     showPaymentStep: isPaymentStep,
     canCheckoutWithPayment,
-    ROWS: BOOKING_SEAT_ROWS,
-    COLS: BOOKING_SEAT_COLS,
+    needsLogin,
+    clearNeedsLogin: () => setNeedsLogin(false),
+    saveCard,
+    setSaveCard,
+    ROWS: seatRows,
+    COLS: seatCols,
     formatSeatLabel,
     handleSelectCard,
     handleCardFieldChange,

@@ -48,7 +48,9 @@ const registerSchema = z
     firstName: z.string().trim().min(1, "First name is required."),
     lastName: z.string().trim().min(1, "Last name is required."),
     email: z.string().trim().min(1, "Email is required.").email("Enter a valid email address."),
-    phone: z.string().trim().min(1, "Phone is required."),
+    phone: z.string().trim()
+      .min(10, "Phone number must be at least 10 digits.")
+      .regex(/^[+]?[\d\s\-().]+$/, "Enter a valid phone number."),
     password: passwordSchema,
     confirmPassword: z.string().min(1, "Confirm password is required."),
     promotionsOptIn: z.boolean().default(false),

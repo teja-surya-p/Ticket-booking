@@ -187,6 +187,42 @@ class ProfileNotificationService {
     return await this.dispatchEmailMessage(message, "password-changed");
   }
 
+  async sendPromotionEmail(toEmail, displayName, promotion) {
+    if (typeof toEmail !== "string" || toEmail.trim().length === 0) {
+      return { sent: false, reason: "missing-recipient" };
+    }
+
+    const name = this.sanitizeHeaderText(displayName, "Valued Customer");
+    const safeTitle = this.sanitizeHeaderText(promotion?.title, "Special Offer");
+    const safeMessage = this.sanitizeHeaderText(promotion?.message, "");
+    const safeShowroom = this.sanitizeHeaderText(promotion?.showroomName, "our showroom");
+
+    const message = {
+      toEmail: toEmail.trim(),
+      subject: `CineBook Promotion: ${safeTitle}`,
+      text: [
+        `Hi ${name},`,
+        "",
+        `We have an exciting promotion for you at ${safeShowroom}!`,
+        "",
+        safeTitle,
+        "",
+        safeMessage,
+        "",
+        "Visit CineBook to book your tickets today."
+      ].join("\n"),
+      html: [
+        `<p>Hi ${name},</p>`,
+        `<p>We have an exciting promotion for you at <strong>${safeShowroom}</strong>!</p>`,
+        `<h2 style="margin:1rem 0 0.5rem">${safeTitle}</h2>`,
+        `<p>${safeMessage}</p>`,
+        "<p>Visit CineBook to book your tickets today.</p>"
+      ].join("")
+    };
+
+    return await this.dispatchEmailMessage(message, "promotion");
+  }
+
   async dispatchEmailMessage(message, category = "notification") {
     const deliveryMode = this.resolveDeliveryMode();
 
