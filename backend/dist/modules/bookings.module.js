@@ -4,12 +4,13 @@ import { BookingsController } from "../controllers/bookings.controller.js";
 import { BookingsService } from "../services/bookings.service.js";
 import { DefaultPricingStrategy } from "../services/pricing.strategy.js";
 import { MoviesModule } from "./movies.module.js";
+import { ShowtimesModule } from "./showtimes.module.js";
 
 class BookingsModule {}
 
 decorateClass(BookingsModule, [
   Module({
-    imports: [MoviesModule],
+    imports: [MoviesModule, ShowtimesModule],
     controllers: [BookingsController],
     providers: [BookingsService, DefaultPricingStrategy],
     exports: [BookingsService]

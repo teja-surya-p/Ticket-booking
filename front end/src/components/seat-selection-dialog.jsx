@@ -1,6 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
+
+function formatShowtime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!isNaN(date.getTime()) && value.includes("T")) {
+    const datePart = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    const timePart = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    return `${datePart} · ${timePart}`;
+  }
+  return value;
+}
 import { Armchair, Loader2, MonitorPlay, PencilLine, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,7 +191,7 @@ export function SeatSelectionDialog({
               <DialogTitle>{showPaymentStep ? "Select Payment Card" : "Select Your Seats"}</DialogTitle>
               {currentItem && (
                 <p className={styles["seat-dialog-class-4"]}>
-                  {currentItem.movie.title} - {currentItem.showtime}
+                  {currentItem.movie.title} - {formatShowtime(currentItem.showtime)}
                 </p>
               )}
             </div>

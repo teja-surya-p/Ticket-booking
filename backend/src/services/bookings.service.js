@@ -16,6 +16,7 @@ import { toBookingEntity } from "../entities/booking.entity.js";
 import { AuthGuardService } from "./auth-guard.service.js";
 import { DefaultPricingStrategy } from "./pricing.strategy.js";
 import { MoviesService } from "./movies.service.js";
+import { ShowtimesService } from "./showtimes.service.js";
 
 /**
  * BookingsService
@@ -31,11 +32,12 @@ import { MoviesService } from "./movies.service.js";
  *      (promotions, taxes) without modifying this class.
  */
 class BookingsService {
-  constructor(firestoreService, moviesService, authGuardService, pricingStrategy) {
+  constructor(firestoreService, moviesService, authGuardService, pricingStrategy, showtimesService) {
     this.firestoreService = firestoreService;
     this.moviesService = moviesService;
     this.authGuardService = authGuardService;
     this.pricingStrategy = pricingStrategy;
+    this.showtimesService = showtimesService;
   }
 
   // ── Card management ──────────────────────────────────────────────────────
@@ -652,7 +654,12 @@ class BookingsService {
     }
 
     if (!movie.showtimes.includes(payload.showtime)) {
-      throw new BadRequestException("Invalid showtime for the selected movie");
+      // Fall back to checking the scheduled showtimes collection (ISO timestamps from Sprint 3)
+      const scheduledShowtimes = await this.showtimesService.findByMovieId(payload.movieId);
+      const isScheduled = scheduledShowtimes.some((st) => st.startAt === payload.showtime);
+      if (!isScheduled) {
+        throw new BadRequestException("Invalid showtime for the selected movie");
+      }
     }
 
     const adult = Number(payload.tickets?.adult ?? 0);
@@ -704,7 +711,7 @@ class BookingsService {
 decorateClass(
   BookingsService,
   [Injectable()],
-  [FirestoreService, MoviesService, AuthGuardService, DefaultPricingStrategy]
+  [FirestoreService, MoviesService, AuthGuardService, DefaultPricingStrategy, ShowtimesService]
 );
 
 export { BookingsService };

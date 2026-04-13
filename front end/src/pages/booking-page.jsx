@@ -4,6 +4,18 @@ import { ArrowLeft, Loader2, Minus, Plus, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBookingPageController } from "@/controllers/useBookingPageController";
 import styles from "./booking-page.module.css";
+
+function formatShowtime(value) {
+  if (!value) return "";
+  // If it looks like an ISO timestamp, format it as "Mon, Apr 15 · 2:00 PM"
+  const date = new Date(value);
+  if (!isNaN(date.getTime()) && value.includes("T")) {
+    const datePart = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    const timePart = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    return `${datePart} · ${timePart}`;
+  }
+  return value;
+}
 export function BookingPage({
   movie,
   showtime,
@@ -49,7 +61,7 @@ export function BookingPage({
           Book Tickets
         </h1>
         <p className={styles["booking-page-class-6"]}>
-          {movie.title} &middot; {showtime}
+          {movie.title} &middot; {formatShowtime(showtime)}
         </p>
       </div>
 
@@ -120,7 +132,7 @@ export function BookingPage({
 
             <div className={styles["booking-page-class-33"]}>
               <p className={styles["booking-page-class-34"]}>{movie.title}</p>
-              <p>Showtime: {showtime}</p>
+              <p>Showtime: {formatShowtime(showtime)}</p>
               {selectedSeats.size > 0 && <p>
                   Seats:{" "}
                   {selectedSeatIds.map(s => {
