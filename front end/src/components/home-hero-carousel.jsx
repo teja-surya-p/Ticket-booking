@@ -26,7 +26,6 @@ function truncateText(value, maxLength) {
 export function HomeHeroCarousel({
   movies = [],
   onMovieClick = NO_OP,
-  onAddToCart = NO_OP,
   onWatchTrailer = NO_OP,
   onToggleFavorite = NO_OP,
   favoriteMovieIds = [],
@@ -120,7 +119,6 @@ export function HomeHeroCarousel({
             const heroImageUrl = getMovieTrailerPreviewUrl(movie);
             const genres = getMovieGenreList(movie).slice(0, 3);
             const hasTrailer = getMovieTrailerUrl(movie).length > 0;
-            const defaultShowtime = movie.showtimes[0];
             const isActive = index === activeIndex;
             const movieIdKey = typeof movie.id === "number" ? String(movie.id) : String(movie.id ?? "").trim();
             const isFavorite = favoriteMovieIdSet.has(movieIdKey);
@@ -170,17 +168,10 @@ export function HomeHeroCarousel({
                         <Button
                           size="lg"
                           className={styles["home-hero-primary-action"]}
-                          onClick={() => {
-                            if (defaultShowtime) {
-                              onAddToCart(movie);
-                              return;
-                            }
-
-                            onMovieClick(movie);
-                          }}
+                          onClick={() => onMovieClick(movie)}
                         >
                           <Ticket className={styles["home-hero-action-icon"]} />
-                          {defaultShowtime ? "Add to Cart" : "View Movie"}
+                          View Movie
                         </Button>
 
                         <Button

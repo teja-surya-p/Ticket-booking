@@ -31,7 +31,6 @@ export function HomePage({
   onGenreChange = NO_OP,
   onDateChange = NO_OP,
   onMovieClick = NO_OP,
-  onAddToCartFromCard = NO_OP,
   onWatchTrailer = NO_OP,
   onToggleFavorite = NO_OP,
   favoriteMovieIds = [],
@@ -145,7 +144,6 @@ export function HomePage({
         <HomeHeroCarousel
           movies={currentlyRunning}
           onMovieClick={onMovieClick}
-          onAddToCart={onAddToCartFromCard}
           onWatchTrailer={onWatchTrailer}
           onToggleFavorite={onToggleFavorite}
           favoriteMovieIds={favoriteMovieIds}
@@ -176,7 +174,6 @@ export function HomePage({
                 key={movie.id}
                 movie={movie}
                 onClick={onMovieClick}
-                onAddToCart={onAddToCartFromCard}
                 onNotifyMe={setNotifyMovie}
                 isFavorite={favoriteMovieIdSet.has(String(movie.id))}
                 isFavoriteBusy={favoritePendingMovieIdSet.has(String(movie.id))}
@@ -204,7 +201,6 @@ export function HomePage({
                 key={movie.id}
                 movie={movie}
                 onClick={onMovieClick}
-                onAddToCart={onAddToCartFromCard}
                 onNotifyMe={setNotifyMovie}
                 isFavorite={favoriteMovieIdSet.has(String(movie.id))}
                 isFavoriteBusy={favoritePendingMovieIdSet.has(String(movie.id))}

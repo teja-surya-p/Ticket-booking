@@ -62,11 +62,25 @@ export function CartPage({
     saveCardForEmail,
     updateSavedCardById,
     deleteSavedCardById,
+    needsLogin,
+    clearNeedsLogin,
+    saveCard,
+    setSaveCard,
     openDialog,
     closeDialog,
     toggleSeat,
     continueCheckout,
-    goToPreviousItem
+    goToPreviousItem,
+    promoCodeInput,
+    setPromoCodeInput,
+    appliedPromo,
+    promoError,
+    isApplyingPromo,
+    applyPromoCode,
+    showOrderSummaryStep,
+    customerEmail,
+    setCustomerEmail,
+    seatSelections
   } = useSeatSelectionCheckoutController({
     items,
     onCheckout,
@@ -223,7 +237,17 @@ export function CartPage({
         canAddMoreCards={canAddMoreCards}
         maxCardsAllowed={maxCardsAllowed}
         showPaymentStep={showPaymentStep}
+        showOrderSummaryStep={showOrderSummaryStep}
         canCheckoutWithPayment={canCheckoutWithPayment}
+        needsLogin={needsLogin}
+        clearNeedsLogin={clearNeedsLogin}
+        saveCard={saveCard}
+        onSaveCardChange={setSaveCard}
+        allItems={items}
+        allSeatSelections={seatSelections}
+        customerEmail={customerEmail}
+        onCustomerEmailChange={setCustomerEmail}
+        ticketPriceMap={ticketPrices}
         ROWS={ROWS}
         COLS={COLS}
         isLoadingSeats={isLoadingSeats}
@@ -244,6 +268,12 @@ export function CartPage({
         onToggleSeat={toggleSeat}
         onContinue={continueCheckout}
         onBack={goToPreviousItem}
+        promoCodeInput={promoCodeInput}
+        onPromoCodeInputChange={setPromoCodeInput}
+        appliedPromo={appliedPromo}
+        promoError={promoError}
+        isApplyingPromo={isApplyingPromo}
+        onApplyPromoCode={applyPromoCode}
       />
     </div>;
 }

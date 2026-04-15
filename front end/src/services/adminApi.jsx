@@ -33,3 +33,20 @@ export function sendPromotion(payload) {
     body: payload
   });
 }
+
+export function fetchAvailableShowrooms(startAt) {
+  return APICallHandler({
+    url: `${API_ENDPOINTS.admin.availableShowrooms}?startAt=${encodeURIComponent(startAt)}`,
+    method: "GET",
+    operation: "Fetch available showrooms"
+  });
+}
+
+export function createPromoCode(payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.admin.promoCode,
+    method: "POST",
+    operation: "Create promo code",
+    body: payload
+  });
+}

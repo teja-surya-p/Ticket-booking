@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { FIRESTORE_COLLECTIONS } from "../common/constants.js";
 import { decorateClass } from "../common/nest-metadata.js";
@@ -51,17 +51,21 @@ class AdminService {
     return await this.showtimesService.create(dto);
   }
 
+  async getAvailableShowrooms(startAt) {
+    if (typeof startAt !== "string" || startAt.trim().length === 0) {
+      throw new BadRequestException("startAt query parameter is required");
+    }
+    const occupiedIds = new Set(await this.showtimesService.findOccupiedShowroomIds(startAt));
+    const allShowrooms = await this.showroomsService.findAll();
+    return allShowrooms.filter((room) => !occupiedIds.has(room.showroomId));
+  }
+
   async sendPromotion(dto) {
     const title = typeof dto?.title === "string" ? dto.title.trim() : "";
     const message = typeof dto?.message === "string" ? dto.message.trim() : "";
-    const showroomId = typeof dto?.showroomId === "string" ? dto.showroomId.trim() : "";
 
     if (!title) throw new BadRequestException("title is required");
     if (!message) throw new BadRequestException("message is required");
-    if (!showroomId) throw new BadRequestException("showroomId is required");
-
-    const showroom = await this.showroomsService.findById(showroomId);
-    if (!showroom) throw new NotFoundException(`Showroom "${showroomId}" not found`);
 
     const usersSnapshot = await this.firestoreService
       .db()
@@ -69,7 +73,7 @@ class AdminService {
       .where("promotionsOptIn", "==", true)
       .get();
 
-    const promotion = { title, message, showroomId, showroomName: showroom.name };
+    const promotion = { title, message };
 
     await Promise.all(
       usersSnapshot.docs.map((doc) => {
@@ -88,8 +92,6 @@ class AdminService {
       promotionId,
       title,
       message,
-      showroomId,
-      showroomName: showroom.name,
       sentAt: now,
       recipientCount: usersSnapshot.size
     };

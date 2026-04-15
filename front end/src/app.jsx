@@ -41,7 +41,6 @@ export default function App() {
     handleMovieClick,
     handleWatchTrailer,
     handleAddToCart,
-    handleAddToCartFromCard,
     handleCreateMovie,
     handleUpdateMovie,
     handleDeleteMovie,
@@ -125,7 +124,6 @@ export default function App() {
             favoritesLoading={favoritesLoading}
             currentUser={currentUser}
             onMovieClick={handleMovieClick}
-            onAddToCartFromCard={handleAddToCartFromCard}
             onToggleFavorite={handleToggleFavorite}
             favoriteMovieIds={favoriteMovieIds}
             favoritePendingMovieIds={favoritePendingMovieIds}
@@ -154,7 +152,6 @@ export default function App() {
             onGenreChange={setSelectedGenre}
             onDateChange={setSelectedDate}
             onMovieClick={handleMovieClick}
-            onAddToCartFromCard={handleAddToCartFromCard}
             onWatchTrailer={handleWatchTrailer}
             onToggleFavorite={handleToggleFavorite}
             favoriteMovieIds={favoriteMovieIds}

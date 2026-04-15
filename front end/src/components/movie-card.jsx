@@ -9,13 +9,11 @@ import styles from "./movie-card.module.css";
 export function MovieCard({
   movie,
   onClick,
-  onAddToCart,
   onNotifyMe,
   isFavorite = false,
   isFavoriteBusy = false,
   onToggleFavorite
 }) {
-  const defaultShowtime = movie.showtimes[0];
   const posterUrl = getMoviePosterUrl(movie);
   const isComingSoon = movie.status === "coming_soon";
   return <article className={"group movie-card-class-1"}>
@@ -63,7 +61,7 @@ export function MovieCard({
             {movie.description}
           </p>
           <p className={styles["movie-card-class-15"]}>
-            {defaultShowtime ? `Default showtime: ${defaultShowtime}` : "No showtimes available"}
+            {isComingSoon ? "Coming Soon" : "Now Playing"}
           </p>
         </div>
       </button>
@@ -79,25 +77,17 @@ export function MovieCard({
             <Heart className={styles["movie-card-class-18"]} />
             {isFavorite ? "Favorited" : "Favorite"}
           </Button> : null}
-        <Button
-          type="button"
-          size="sm"
-          className={styles["movie-card-class-17"]}
-          onClick={() => {
-            if (isComingSoon) {
-              onNotifyMe?.(movie);
-              return;
-            }
-
-            onAddToCart(movie);
-          }}
-          disabled={!isComingSoon && !defaultShowtime}
-        >
-          {isComingSoon ? <>
-              <Bell className={styles["movie-card-class-18"]} />
-              Notify Me
-            </> : defaultShowtime ? "Add to Cart" : "Unavailable"}
-        </Button>
+        {isComingSoon && (
+          <Button
+            type="button"
+            size="sm"
+            className={styles["movie-card-class-17"]}
+            onClick={() => onNotifyMe?.(movie)}
+          >
+            <Bell className={styles["movie-card-class-18"]} />
+            Notify Me
+          </Button>
+        )}
       </div>
     </article>;
 }

@@ -10,7 +10,8 @@ export const API_ROUTES = {
   admin: withPrefix("/admin"),
   auth: withPrefix("/auth"),
   favorites: withPrefix("/favorites"),
-  showrooms: withPrefix("/showrooms")
+  showrooms: withPrefix("/showrooms"),
+  promoCodes: withPrefix("/promo-codes")
 };
 export const API_ENDPOINTS = {
   movies: {
@@ -33,7 +34,12 @@ export const API_ENDPOINTS = {
   admin: {
     stats: `${API_ROUTES.admin}/stats`,
     scheduleShowtime: `${API_ROUTES.admin}/showtimes`,
-    sendPromotion: `${API_ROUTES.admin}/promotions`
+    sendPromotion: `${API_ROUTES.admin}/promotions`,
+    availableShowrooms: `${API_ROUTES.admin}/available-showrooms`,
+    promoCode: `${API_ROUTES.admin}/promo-codes`
+  },
+  promoCodes: {
+    validate: `${API_ROUTES.promoCodes}/validate`
   },
   auth: {
     register: `${API_ROUTES.auth}/register`,

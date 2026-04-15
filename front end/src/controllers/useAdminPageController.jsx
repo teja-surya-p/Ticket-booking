@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildAdminIssueReport, getMeaningfulErrorMessage } from "@/services/apiErrorUtils";
 import { uploadMovieAssetToStorage } from "@/services/firebaseStorage";
-import { sendPromotion } from "@/services/adminApi";
+import { fetchAvailableShowrooms, scheduleShowtime, sendPromotion } from "@/services/adminApi";
+import { fetchMovieShowtimes } from "@/services/moviesApi";
 import { fetchShowrooms } from "@/services/showroomsApi";
 import {
   formatDurationLabel,
@@ -10,9 +11,7 @@ import {
   MOVIE_GENRE_OPTIONS
 } from "@/models/movie-model";
 
-const MAX_SHOWTIMES_PER_DAY = 4;
-
-const initialPromotionForm = { title: "", message: "", showroomId: "" };
+const initialPromotionForm = { title: "", message: "" };
 
 const initialFormState = {
   title: "",
@@ -24,10 +23,11 @@ const initialFormState = {
   durationMinutes: "",
   director: "",
   cast: "",
-  showtimes: ["2:00 PM", "5:00 PM", "8:00 PM"],
   showroomId: "",
   releaseDate: ""
 };
+
+const initialScheduleForm = { movieId: "", startAt: "" };
 
 const initialAssetSelection = {
   poster: null,
@@ -95,7 +95,6 @@ function buildFormStateFromMovie(movie) {
     durationMinutes,
     director: String(movie?.director ?? ""),
     cast: Array.isArray(movie?.cast) ? movie.cast.join(", ") : "",
-    showtimes: Array.isArray(movie?.showtimes) ? movie.showtimes.slice(0, MAX_SHOWTIMES_PER_DAY) : [],
     showroomId: String(movie?.showroomId ?? ""),
     releaseDate: String(movie?.releaseDate ?? "")
   };
@@ -121,6 +120,17 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   const [isSendingPromotion, setIsSendingPromotion] = useState(false);
   const [promotionSendResult, setPromotionSendResult] = useState(null);
   const [promotionError, setPromotionError] = useState(null);
+
+  const [editingMovieShowtimes, setEditingMovieShowtimes] = useState([]);
+
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState(initialScheduleForm);
+  const [scheduleSelectedRoom, setScheduleSelectedRoom] = useState("");
+  const [availableShowrooms, setAvailableShowrooms] = useState([]);
+  const [isCheckingRooms, setIsCheckingRooms] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [scheduleError, setScheduleError] = useState(null);
+  const [scheduleSuccess, setScheduleSuccess] = useState(null);
 
   useEffect(() => {
     setIsLoadingShowrooms(true);
@@ -197,7 +207,11 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     setSubmitError(null);
     setAdminIssueReport(null);
     setCopiedIssueReport(false);
+    setEditingMovieShowtimes([]);
     setShowAddDialog(true);
+    fetchMovieShowtimes(movie.id)
+      .then((data) => setEditingMovieShowtimes(Array.isArray(data) ? data : []))
+      .catch(() => setEditingMovieShowtimes([]));
   };
 
   const closeDialog = () => {
@@ -246,16 +260,6 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
       return "Trailer thumbnail must be a JPG, PNG, or WebP image for Safari compatibility.";
     }
 
-    const showtimes = form.showtimes.map((s) => s.trim()).filter(Boolean);
-    if (showtimes.length === 0) return "At least one showtime is required.";
-    if (showtimes.length > MAX_SHOWTIMES_PER_DAY) return `A maximum of ${MAX_SHOWTIMES_PER_DAY} showtimes per day is allowed.`;
-
-    const timePattern = /^(1[0-2]|0?[1-9]):[0-5]\d\s?(AM|PM)$/i;
-    const invalidTimes = showtimes.filter((t) => !timePattern.test(t));
-    if (invalidTimes.length > 0) {
-      return `Invalid showtime format: "${invalidTimes[0]}". Use format like "2:00 PM".`;
-    }
-
     if (form.status === "coming_soon" && !form.releaseDate) {
       return "Release date is required for coming soon movies.";
     }
@@ -271,21 +275,6 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     if (validationError) {
       setSubmitError(validationError);
       return;
-    }
-
-    if (form.showroomId) {
-      const conflictMovies = movies.filter(
-        (m) => m.showroomId === form.showroomId && (!editingMovie || m.id !== editingMovie.id)
-      );
-      const takenTimes = new Set(conflictMovies.flatMap((m) => m.showtimes ?? []));
-      const newTimes = form.showtimes.map((s) => s.trim()).filter(Boolean);
-      const conflicts = newTimes.filter((t) => takenTimes.has(t));
-      if (conflicts.length > 0) {
-        setSubmitError(
-          `Showroom conflict: "${conflicts.join(", ")}" is already used by another movie in this showroom.`
-        );
-        return;
-      }
     }
 
     setIsSubmitting(true);
@@ -311,7 +300,6 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
         duration: selectedDuration,
         director: form.director.trim(),
         cast: toCommaSeparatedList(form.cast),
-        showtimes: form.showtimes.map((s) => s.trim()).filter(Boolean),
         showroomId: form.showroomId || null,
         releaseDate: form.status === "coming_soon" ? (form.releaseDate || null) : null,
         poster: posterUpload?.url ?? editingMovie?.poster ?? "",
@@ -360,17 +348,16 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   };
 
   const handleSendPromotion = async () => {
-    const { title, message, showroomId } = promotionForm;
+    const { title, message } = promotionForm;
     if (!title.trim()) { setPromotionError("Title is required."); return; }
     if (!message.trim()) { setPromotionError("Message is required."); return; }
-    if (!showroomId) { setPromotionError("Please select a showroom."); return; }
 
     setIsSendingPromotion(true);
     setPromotionError(null);
     setPromotionSendResult(null);
 
     try {
-      const result = await sendPromotion({ title: title.trim(), message: message.trim(), showroomId });
+      const result = await sendPromotion({ title: title.trim(), message: message.trim() });
       setPromotionSendResult(result);
     } catch (error) {
       setPromotionError(getMeaningfulErrorMessage(error, "admin"));
@@ -379,26 +366,69 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     }
   };
 
-  const handleAddShowtime = () => {
-    setForm((previous) => {
-      if (previous.showtimes.length >= MAX_SHOWTIMES_PER_DAY) return previous;
-      return { ...previous, showtimes: [...previous.showtimes, ""] };
+  const openScheduleDialog = () => {
+    setScheduleForm(initialScheduleForm);
+    setScheduleSelectedRoom("");
+    setAvailableShowrooms([]);
+    setScheduleError(null);
+    setScheduleSuccess(null);
+    setShowScheduleDialog(true);
+  };
+
+  const closeScheduleDialog = () => {
+    setShowScheduleDialog(false);
+  };
+
+  const handleFetchAvailableShowrooms = async (startAt) => {
+    if (!startAt) {
+      setAvailableShowrooms([]);
+      return;
+    }
+    setIsCheckingRooms(true);
+    setScheduleSelectedRoom("");
+    try {
+      const data = await fetchAvailableShowrooms(startAt);
+      setAvailableShowrooms(Array.isArray(data) ? data : []);
+    } catch {
+      setAvailableShowrooms([]);
+    } finally {
+      setIsCheckingRooms(false);
+    }
+  };
+
+  const handleScheduleFormChange = (key, value) => {
+    setScheduleForm((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === "startAt") {
+        void handleFetchAvailableShowrooms(value);
+      }
+      return next;
     });
   };
 
-  const handleUpdateShowtime = (index, value) => {
-    setForm((previous) => {
-      const next = [...previous.showtimes];
-      next[index] = value;
-      return { ...previous, showtimes: next };
-    });
-  };
+  const handleScheduleShow = async () => {
+    setScheduleError(null);
+    setScheduleSuccess(null);
 
-  const handleRemoveShowtime = (index) => {
-    setForm((previous) => {
-      const next = previous.showtimes.filter((_, idx) => idx !== index);
-      return { ...previous, showtimes: next };
-    });
+    if (!scheduleForm.movieId) { setScheduleError("Please select a movie."); return; }
+    if (!scheduleForm.startAt) { setScheduleError("Please select a date and time."); return; }
+    if (!scheduleSelectedRoom) { setScheduleError("Please select an available showroom."); return; }
+
+    const movieId = Number(scheduleForm.movieId);
+    const startAt = new Date(scheduleForm.startAt).toISOString();
+
+    setIsScheduling(true);
+    try {
+      await scheduleShowtime({ movieId, showroomId: scheduleSelectedRoom, startAt });
+      setScheduleSuccess("Show scheduled successfully!");
+      setScheduleForm(initialScheduleForm);
+      setScheduleSelectedRoom("");
+      setAvailableShowrooms([]);
+    } catch (error) {
+      setScheduleError(getMeaningfulErrorMessage(error, "admin"));
+    } finally {
+      setIsScheduling(false);
+    }
   };
 
   const copyIssueReport = async () => {
@@ -479,18 +509,28 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     closePromotionDialog,
     handlePromotionChange,
     handleSendPromotion,
+    editingMovieShowtimes,
+    showScheduleDialog,
+    scheduleForm,
+    scheduleSelectedRoom,
+    setScheduleSelectedRoom,
+    availableShowrooms,
+    isCheckingRooms,
+    isScheduling,
+    scheduleError,
+    scheduleSuccess,
+    openScheduleDialog,
+    closeScheduleDialog,
+    handleScheduleFormChange,
+    handleScheduleShow,
     handleChange,
     handleToggleGenre,
     handleFileChange,
-    handleAddShowtime,
-    handleUpdateShowtime,
-    handleRemoveShowtime,
     openCreateDialog,
     openEditDialog,
     closeDialog,
     handleSaveMovie,
     copyIssueReport,
-    handleDeleteMovie,
-    maxShowtimes: MAX_SHOWTIMES_PER_DAY
+    handleDeleteMovie
   };
 }

@@ -247,23 +247,9 @@ export function MovieDetail({
                 )}
               </>
             ) : (
-              /* Fallback: legacy showtimes from movie record */
-              <div className={styles["movie-detail-class-27"]}>
-                {movie.showtimes.length === 0 ? (
-                  <p style={{ fontSize: "0.875rem", opacity: 0.6 }}>No showtimes available.</p>
-                ) : (
-                  movie.showtimes.map((time) => (
-                    <Button
-                      key={time}
-                      variant="outline"
-                      onClick={() => onSelectShowtime(movie, time)}
-                      className={styles["movie-detail-class-28"]}
-                    >
-                      {time} &bull; Add
-                    </Button>
-                  ))
-                )}
-              </div>
+              <p style={{ fontSize: "0.875rem", opacity: 0.6 }}>
+                No showtimes have been scheduled yet.
+              </p>
             )}
           </div>
         </div>

@@ -308,14 +308,6 @@ export function useCinemaAppController() {
     setCartItems((previous) => addMovieToCart(previous, movie, showtime));
   };
 
-  const handleAddToCartFromCard = (movie) => {
-    const defaultShowtime = movie.showtimes[0];
-    if (!defaultShowtime) {
-      return;
-    }
-    handleAddToCart(movie, defaultShowtime);
-  };
-
   const handleCreateMovie = async (payload) => {
     const createdMovie = await createMovie(payload);
     setMovies((previous) => [createdMovie, ...previous]);
@@ -500,7 +492,6 @@ export function useCinemaAppController() {
     handleMovieClick,
     handleWatchTrailer,
     handleAddToCart,
-    handleAddToCartFromCard,
     handleCreateMovie,
     handleUpdateMovie,
     handleDeleteMovie,

@@ -62,6 +62,7 @@ export function SeatSelectionDialog({
   canAddMoreCards,
   maxCardsAllowed,
   showPaymentStep,
+  showOrderSummaryStep,
   canCheckoutWithPayment,
   needsLogin,
   clearNeedsLogin,
@@ -75,6 +76,11 @@ export function SeatSelectionDialog({
   loadError,
   selectionError,
   formatSeatLabel,
+  allItems,
+  allSeatSelections,
+  customerEmail,
+  onCustomerEmailChange,
+  ticketPriceMap,
   onSelectCard,
   onCardFieldChange,
   onStartEditCard,
@@ -87,7 +93,13 @@ export function SeatSelectionDialog({
   onClose,
   onToggleSeat,
   onContinue,
-  onBack
+  onBack,
+  promoCodeInput,
+  onPromoCodeInputChange,
+  appliedPromo,
+  promoError,
+  isApplyingPromo,
+  onApplyPromoCode
 }) {
   const [deleteTargetCardId, setDeleteTargetCardId] = useState("");
   const selectedCount = selectedSeatIds.length;
@@ -101,21 +113,27 @@ export function SeatSelectionDialog({
   const isSelectionComplete = totalTickets > 0 && remainingSeats === 0 && !isLoadingSeats && !loadError;
   const actionLabel = showPaymentStep
     ? "Confirm Checkout"
-    : currentIndex === totalSteps - 1
-      ? "Confirm"
-      : "Continue";
+    : showOrderSummaryStep
+      ? "Proceed to Payment"
+      : currentIndex === totalSteps - 1
+        ? "Confirm"
+        : "Continue";
   const actionDescription = showPaymentStep
     ? canCheckoutWithPayment
       ? "Confirm checkout to finish."
       : "Select a saved card or add one to continue."
-    : remainingSeats === 0
-      ? currentIndex === totalSteps - 1
-        ? "All required seats selected. Click Confirm to continue."
-        : "All required seats selected. Click Continue for the next movie."
-      : `Choose ${remainingSeats} more seat${remainingSeats === 1 ? "" : "s"} to continue.`;
+    : showOrderSummaryStep
+      ? "Review your order and confirm your email, then proceed to payment."
+      : remainingSeats === 0
+        ? currentIndex === totalSteps - 1
+          ? "All required seats selected. Click Confirm to continue."
+          : "All required seats selected. Click Continue for the next movie."
+        : `Choose ${remainingSeats} more seat${remainingSeats === 1 ? "" : "s"} to continue.`;
   const isPrimaryDisabled = showPaymentStep
     ? isSubmitting || !canCheckoutWithPayment
-    : !isSelectionComplete || isSubmitting;
+    : showOrderSummaryStep
+      ? isSubmitting
+      : !isSelectionComplete || isSubmitting;
   const leftColumns = Array.from({ length: Math.ceil(COLS / 2) }, (_, index) => index);
   const rightColumns = Array.from(
     { length: COLS - leftColumns.length },
@@ -148,7 +166,9 @@ export function SeatSelectionDialog({
     ? hasInlineCardErrors || hasInlineEditErrors
       ? null
       : paymentError
-    : loadError || selectionError;
+    : showOrderSummaryStep
+      ? paymentError
+      : loadError || selectionError;
 
   const renderSeat = (row, col) => {
     const seatId = `${row}-${col}`;
@@ -194,7 +214,7 @@ export function SeatSelectionDialog({
         <DialogHeader className={styles["seat-dialog-class-2"]}>
           <div className={styles["seat-dialog-class-3"]}>
             <div>
-              <DialogTitle>{showPaymentStep ? "Select Payment Card" : "Select Your Seats"}</DialogTitle>
+              <DialogTitle>{showPaymentStep ? "Select Payment Card" : showOrderSummaryStep ? "Order Summary" : "Select Your Seats"}</DialogTitle>
               {currentItem && (
                 <p className={styles["seat-dialog-class-4"]}>
                   {currentItem.movie.title} - {formatShowtime(currentItem.showtime)}
@@ -205,7 +225,9 @@ export function SeatSelectionDialog({
           <DialogDescription className={styles["seat-dialog-class-5"]}>
             {showPaymentStep
               ? "Choose a saved card or add a new card to finish checkout."
-              : `Choose ${totalTickets} seat${totalTickets === 1 ? "" : "s"} to match your tickets before checkout.`}
+              : showOrderSummaryStep
+                ? "Confirm your order details and email address before payment."
+                : `Choose ${totalTickets} seat${totalTickets === 1 ? "" : "s"} to match your tickets before checkout.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -232,7 +254,7 @@ export function SeatSelectionDialog({
               </div>
             )}
 
-            {!showPaymentStep && (
+            {!showPaymentStep && !showOrderSummaryStep && (
               <>
                 <div className={styles["seat-dialog-class-7"]}>
                   <div className={styles["seat-dialog-class-8"]}>
@@ -346,7 +368,7 @@ export function SeatSelectionDialog({
               </>
             )}
 
-            <div className={styles["seat-dialog-class-34"]}>
+            {!showOrderSummaryStep && <div className={styles["seat-dialog-class-34"]}>
               <p className={styles["seat-dialog-class-35"]}>Selected Seats</p>
               <div className={styles["seat-dialog-class-36"]}>
                 {selectedSeatLabels.length > 0 ? (
@@ -359,7 +381,117 @@ export function SeatSelectionDialog({
                   <span className={styles["seat-dialog-class-38"]}>No seats selected yet</span>
                 )}
               </div>
-            </div>
+            </div>}
+
+            {showOrderSummaryStep && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {(Array.isArray(allItems) ? allItems : []).map((item) => {
+                  const itemSeats = (allSeatSelections ?? {})[item.id] ?? [];
+                  const seatLabels = itemSeats.map((seatId) => formatSeatLabel(...seatId.split("-").map(Number)));
+                  const prices = ticketPriceMap ?? { adult: 12.99, child: 8.99, senior: 9.99 };
+                  const adultCount = item.tickets?.adult ?? 0;
+                  const childCount = item.tickets?.child ?? 0;
+                  const seniorCount = item.tickets?.senior ?? 0;
+                  const itemTotal = adultCount * prices.adult + childCount * prices.child + seniorCount * prices.senior;
+                  return (
+                    <div key={item.id} style={{ border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                      <p style={{ fontWeight: 600, fontSize: "1rem", margin: 0 }}>{item.movie?.title}</p>
+                      <p style={{ fontSize: "0.875rem", opacity: 0.7, margin: 0 }}>{formatShowtime(item.showtime)}</p>
+                      {seatLabels.length > 0 && (
+                        <p style={{ fontSize: "0.875rem", margin: 0 }}>
+                          <span style={{ fontWeight: 500 }}>Seats: </span>{seatLabels.join(", ")}
+                        </p>
+                      )}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: "0.25rem" }}>
+                        {adultCount > 0 && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
+                            <span>Adult × {adultCount}</span>
+                            <span>${(adultCount * prices.adult).toFixed(2)} (${prices.adult.toFixed(2)}/ticket)</span>
+                          </div>
+                        )}
+                        {childCount > 0 && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
+                            <span>Child × {childCount}</span>
+                            <span>${(childCount * prices.child).toFixed(2)} (${prices.child.toFixed(2)}/ticket)</span>
+                          </div>
+                        )}
+                        {seniorCount > 0 && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
+                            <span>Senior × {seniorCount}</span>
+                            <span>${(seniorCount * prices.senior).toFixed(2)} (${prices.senior.toFixed(2)}/ticket)</span>
+                          </div>
+                        )}
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem", fontWeight: 600, borderTop: "1px solid var(--border)", paddingTop: "0.25rem", marginTop: "0.25rem" }}>
+                          <span>Subtotal (before tax)</span>
+                          <span>${itemTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {(Array.isArray(allItems) ? allItems : []).length > 1 && (() => {
+                  const prices = ticketPriceMap ?? { adult: 12.99, child: 8.99, senior: 9.99 };
+                  const grandTotal = (allItems ?? []).reduce((sum, item) => {
+                    return sum + (item.tickets?.adult ?? 0) * prices.adult + (item.tickets?.child ?? 0) * prices.child + (item.tickets?.senior ?? 0) * prices.senior;
+                  }, 0);
+                  return (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "1rem", padding: "0.5rem 0", borderTop: "2px solid var(--border)" }}>
+                      <span>Total (before tax)</span>
+                      <span>${grandTotal.toFixed(2)}</span>
+                    </div>
+                  );
+                })()}
+
+                <div className={styles["seat-dialog-class-47"]}>
+                  <Label htmlFor="order-summary-email">Confirm Email Address</Label>
+                  <Input
+                    id="order-summary-email"
+                    type="email"
+                    value={customerEmail ?? ""}
+                    onChange={(event) => onCustomerEmailChange?.(event.target.value)}
+                    placeholder="your@email.com"
+                    autoComplete="email"
+                  />
+                  <p style={{ fontSize: "0.75rem", opacity: 0.6, marginTop: "0.25rem" }}>
+                    Booking confirmation will be sent to this address.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {showPaymentStep && (
+              <div className={styles["seat-dialog-class-47"]} style={{ marginBottom: "0.75rem" }}>
+                <Label htmlFor="checkout-promo-code">Promo Code</Label>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <Input
+                    id="checkout-promo-code"
+                    value={promoCodeInput ?? ""}
+                    onChange={(event) => onPromoCodeInputChange?.(event.target.value)}
+                    placeholder="Enter promo code"
+                    disabled={isApplyingPromo || !!appliedPromo}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => onApplyPromoCode?.()}
+                    disabled={isApplyingPromo || !promoCodeInput?.trim() || !!appliedPromo}
+                  >
+                    {isApplyingPromo ? "Applying..." : "Apply"}
+                  </Button>
+                </div>
+                {appliedPromo && (
+                  <p style={{ fontSize: "0.875rem", color: "var(--color-success, green)", marginTop: "0.25rem" }}>
+                    {appliedPromo.discountPercent}% discount applied!
+                  </p>
+                )}
+                {promoError && (
+                  <p className={styles["seat-dialog-class-60"]} style={{ marginTop: "0.25rem" }}>
+                    {promoError}
+                  </p>
+                )}
+              </div>
+            )}
 
             {showPaymentStep && (
               <div className={styles["seat-dialog-class-43"]}>
@@ -701,7 +833,7 @@ export function SeatSelectionDialog({
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            {(currentIndex > 0 || showPaymentStep) && (
+            {(currentIndex > 0 || showPaymentStep || showOrderSummaryStep) && (
               <Button type="button" variant="outline" onClick={onBack} disabled={isSubmitting}>
                 Back
               </Button>

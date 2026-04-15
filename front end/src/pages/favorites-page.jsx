@@ -25,7 +25,6 @@ export function FavoritesPage({
   favoritesLoading = false,
   currentUser = null,
   onMovieClick = NO_OP,
-  onAddToCartFromCard = NO_OP,
   onToggleFavorite = NO_OP,
   favoriteMovieIds = [],
   favoritePendingMovieIds = []
@@ -80,7 +79,6 @@ export function FavoritesPage({
                 key={movie.id}
                 movie={movie}
                 onClick={onMovieClick}
-                onAddToCart={onAddToCartFromCard}
                 isFavorite={favoriteMovieIdSet.has(movieIdKey)}
                 isFavoriteBusy={favoritePendingMovieIdSet.has(movieIdKey)}
                 onToggleFavorite={onToggleFavorite}

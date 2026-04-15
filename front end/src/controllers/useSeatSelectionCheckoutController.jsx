@@ -10,6 +10,7 @@ import {
   updateSavedCard as updateSavedCardRequest
 } from "@/services";
 import { fetchShowroomById } from "@/services/showroomsApi";
+import { validatePromoCode } from "@/services/promoCodesApi";
 import {
   BOOKING_SEAT_COLS,
   BOOKING_SEAT_ROWS,
@@ -169,6 +170,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const [paymentInfo, setPaymentInfo] = useState(null);
   const [maxCardsAllowed, setMaxCardsAllowed] = useState(3);
   const [isPaymentStep, setIsPaymentStep] = useState(false);
+  const [isOrderSummaryStep, setIsOrderSummaryStep] = useState(false);
   const [editingCardId, setEditingCardId] = useState("");
   const [editCardForm, setEditCardForm] = useState(createEmptyEditCardForm());
   const [editCardFieldErrors, setEditCardFieldErrors] = useState(createEmptyEditCardFieldErrors());
@@ -177,6 +179,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const [saveCard, setSaveCard] = useState(true);
   const [seatRows, setSeatRows] = useState(BOOKING_SEAT_ROWS);
   const [seatCols, setSeatCols] = useState(BOOKING_SEAT_COLS);
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoError, setPromoError] = useState(null);
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false);
 
   const currentItem = isOpen ? items[currentIndex] ?? null : null;
   const totalSteps = items.length;
@@ -391,10 +397,15 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setPaymentInfo(null);
     setMaxCardsAllowed(3);
     setIsPaymentStep(false);
+    setIsOrderSummaryStep(false);
     setEditingCardId("");
     setEditCardForm(createEmptyEditCardForm());
     setEditCardFieldErrors(createEmptyEditCardFieldErrors());
     setIsUpdatingCard(false);
+    setPromoCodeInput("");
+    setAppliedPromo(null);
+    setPromoError(null);
+    setIsApplyingPromo(false);
   };
 
   const openDialog = () => {
@@ -426,10 +437,15 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setPaymentInfo(null);
     setMaxCardsAllowed(3);
     setIsPaymentStep(false);
+    setIsOrderSummaryStep(false);
     setEditingCardId("");
     setEditCardForm(createEmptyEditCardForm());
     setEditCardFieldErrors(createEmptyEditCardFieldErrors());
     setIsUpdatingCard(false);
+    setPromoCodeInput("");
+    setAppliedPromo(null);
+    setPromoError(null);
+    setIsApplyingPromo(false);
     setIsOpen(true);
   };
 
@@ -469,10 +485,17 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const goToPreviousItem = () => {
     if (isPaymentStep) {
       setIsPaymentStep(false);
+      setIsOrderSummaryStep(true);
       setCardFieldErrors(createEmptyCardFieldErrors());
       setEditCardFieldErrors(createEmptyEditCardFieldErrors());
       setEditingCardId("");
       setEditCardForm(createEmptyEditCardForm());
+      setPaymentError(null);
+      return;
+    }
+
+    if (isOrderSummaryStep) {
+      setIsOrderSummaryStep(false);
       setPaymentError(null);
       return;
     }
@@ -910,7 +933,8 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
           tickets: item.tickets,
           customerEmail: normalizedCustomerEmail,
           customerName: customerName.trim() || selectedCard?.cardholderName,
-          paymentCardId: effectiveCardId
+          paymentCardId: effectiveCardId,
+          ...(appliedPromo?.code ? { promoCode: appliedPromo.code } : {})
         }, authToken);
 
         confirmedBookings.push({
@@ -963,6 +987,24 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     closeDialog();
   };
 
+  const applyPromoCode = async () => {
+    const trimmedCode = promoCodeInput.trim();
+    if (!trimmedCode) return;
+
+    setIsApplyingPromo(true);
+    setPromoError(null);
+    setAppliedPromo(null);
+
+    try {
+      const result = await validatePromoCode({ code: trimmedCode, userId: customerUid || undefined });
+      setAppliedPromo({ code: trimmedCode, discountPercent: result.discountPercent });
+    } catch (error) {
+      setPromoError(getMeaningfulErrorMessage(error, "user"));
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
+
   const continueCheckout = async () => {
     if (isPaymentStep) {
       if (!canCheckoutWithPayment) {
@@ -971,6 +1013,18 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
       }
 
       await submitCheckout();
+      return;
+    }
+
+    if (isOrderSummaryStep) {
+      if (!isValidEmail(normalizeEmail(customerEmail))) {
+        setPaymentError("Please enter a valid email address to continue.");
+        return;
+      }
+
+      setIsOrderSummaryStep(false);
+      setPaymentError(null);
+      setIsPaymentStep(true);
       return;
     }
 
@@ -1001,7 +1055,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
 
     setSelectionError(null);
     setPaymentError(null);
-    setIsPaymentStep(true);
+    setIsOrderSummaryStep(true);
   };
 
   return {
@@ -1034,7 +1088,11 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     canAddMoreCards,
     maxCardsAllowed,
     showPaymentStep: isPaymentStep,
+    showOrderSummaryStep: isOrderSummaryStep,
     canCheckoutWithPayment,
+    customerEmail,
+    setCustomerEmail,
+    seatSelections,
     needsLogin,
     clearNeedsLogin: () => setNeedsLogin(false),
     saveCard,
@@ -1055,6 +1113,12 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     closeDialog,
     toggleSeat,
     continueCheckout,
-    goToPreviousItem
+    goToPreviousItem,
+    promoCodeInput,
+    setPromoCodeInput,
+    appliedPromo,
+    promoError,
+    isApplyingPromo,
+    applyPromoCode
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Film, Plus, Edit2, Trash2, Eye, BarChart3, Copy, Upload, ChevronDown, Clock, X, Mail } from "lucide-react";
+import { CalendarPlus, Film, Plus, Edit2, Trash2, Eye, BarChart3, Copy, Upload, ChevronDown, X, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -50,19 +50,29 @@ export function AdminPage({
     closePromotionDialog,
     handlePromotionChange,
     handleSendPromotion,
+    editingMovieShowtimes,
+    showScheduleDialog,
+    scheduleForm,
+    scheduleSelectedRoom,
+    setScheduleSelectedRoom,
+    availableShowrooms,
+    isCheckingRooms,
+    isScheduling,
+    scheduleError,
+    scheduleSuccess,
+    openScheduleDialog,
+    closeScheduleDialog,
+    handleScheduleFormChange,
+    handleScheduleShow,
     handleChange,
     handleToggleGenre,
     handleFileChange,
-    handleAddShowtime,
-    handleUpdateShowtime,
-    handleRemoveShowtime,
     openCreateDialog,
     openEditDialog,
     closeDialog,
     handleSaveMovie,
     copyIssueReport,
-    handleDeleteMovie,
-    maxShowtimes
+    handleDeleteMovie
   } = useAdminPageController({
     movies,
     onCreateMovie,
@@ -133,6 +143,10 @@ export function AdminPage({
           <Plus className={styles["admin-icon"]} />
           Add Movie
         </Button>
+        <Button onClick={openScheduleDialog} variant="outline">
+          <CalendarPlus className={styles["admin-icon"]} />
+          Manage Showtimes
+        </Button>
         <Button onClick={openPromotionDialog} variant="outline">
           <Mail className={styles["admin-icon"]} />
           Send Promotion
@@ -165,9 +179,6 @@ export function AdminPage({
               </div>
             </div>
             <div className={styles["admin-mobile-card-footer"]}>
-              <p className={styles["admin-showtime-text"]}>
-                {movie.showtimes.join(", ")}
-              </p>
               <div className={styles["admin-mobile-actions"]}>
                 <Button variant="ghost" size="sm" onClick={() => onViewMovie(movie)} aria-label={`View ${movie.title}`}>
                   <Eye className={styles["admin-icon"]} />
@@ -243,7 +254,7 @@ export function AdminPage({
                     </Badge>
                   </td>
                   <td className={styles["admin-table-showtimes"]}>
-                    {movie.showtimes.join(", ")}
+                    —
                   </td>
                   <td className={styles["admin-table-cell"]}>
                     <div className={styles["admin-table-actions"]}>
@@ -297,7 +308,7 @@ export function AdminPage({
                 </SelectContent>
               </Select>
               <p className={styles["admin-muted-text"]}>
-                Movies in the same showroom cannot share daily showtimes.
+                Determines the seating capacity and layout for this movie.
               </p>
             </div>
 
@@ -406,53 +417,30 @@ export function AdminPage({
               <Input value={form.cast} onChange={event => handleChange("cast")(event.target.value)} placeholder="Actor 1, Actor 2, Actor 3" className={styles["admin-field-control"]} />
             </div>
 
-            <div className={styles["admin-form-field"]}>
-              <label className={styles["admin-field-label"]}>
-                <Clock className={styles["admin-icon"]} style={{ display: "inline", verticalAlign: "middle", marginRight: "0.25rem" }} />
-                Daily Showtimes
-                <span className={styles["admin-muted-text"]} style={{ marginLeft: "0.5rem", fontWeight: "normal" }}>
-                  ({form.showtimes.length}/{maxShowtimes} max)
-                </span>
-              </label>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {form.showtimes.map((time, idx) => (
-                  <div key={idx} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                    <Input
-                      value={time}
-                      onChange={event => handleUpdateShowtime(idx, event.target.value)}
-                      placeholder="e.g. 2:00 PM"
-                      className={styles["admin-field-control"]}
-                      style={{ flex: 1 }}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveShowtime(idx)}
-                      aria-label={`Remove showtime ${idx + 1}`}
-                      style={{ flexShrink: 0 }}
-                    >
-                      <X className={styles["admin-icon"]} />
-                    </Button>
+            {editingMovie && (
+              <div className={styles["admin-form-field"]}>
+                <label className={styles["admin-field-label"]}>Scheduled Shows</label>
+                {editingMovieShowtimes.length === 0 ? (
+                  <p className={styles["admin-muted-text"]}>No shows scheduled yet. Use "Schedule Show" to add.</p>
+                ) : (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                    {editingMovieShowtimes.map((st) => (
+                      <span
+                        key={st.showtimeId}
+                        style={{
+                          padding: "0.2rem 0.6rem",
+                          borderRadius: "0.25rem",
+                          background: "var(--color-muted, #f3f4f6)",
+                          fontSize: "0.8rem"
+                        }}
+                      >
+                        {new Date(st.startAt).toLocaleString()}
+                      </span>
+                    ))}
                   </div>
-                ))}
-                {form.showtimes.length < maxShowtimes && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddShowtime}
-                    style={{ alignSelf: "flex-start" }}
-                  >
-                    <Plus className={styles["admin-icon"]} />
-                    Add Showtime
-                  </Button>
-                )}
-                {form.showtimes.length === 0 && (
-                  <p className={styles["admin-muted-text"]}>No showtimes added yet.</p>
                 )}
               </div>
-            </div>
+            )}
 
             <div className={styles["admin-form-field"]}>
               <label className={styles["admin-field-label"]}>Description</label>
@@ -528,6 +516,98 @@ export function AdminPage({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={showScheduleDialog} onOpenChange={open => open ? null : closeScheduleDialog()}>
+        <DialogContent className={styles["admin-dialog"]}>
+          <DialogHeader>
+            <DialogTitle>Manage Showtimes — Schedule a Show</DialogTitle>
+            <DialogDescription>
+              Pick a movie, choose a date and time, then select an available showroom.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className={styles["admin-form"]}>
+            <div className={styles["admin-form-field"]}>
+              <label className={styles["admin-field-label"]}>Movie</label>
+              <Select value={scheduleForm.movieId} onValueChange={value => handleScheduleFormChange("movieId", value)}>
+                <SelectTrigger className={styles["admin-field-control"]}>
+                  <SelectValue placeholder="Select a movie" />
+                </SelectTrigger>
+                <SelectContent>
+                  {movies.map((m) => (
+                    <SelectItem key={m.id} value={String(m.id)}>{m.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className={styles["admin-form-field"]}>
+              <label className={styles["admin-field-label"]}>Date &amp; Time</label>
+              <Input
+                type="datetime-local"
+                value={scheduleForm.startAt}
+                onChange={event => handleScheduleFormChange("startAt", event.target.value)}
+                className={styles["admin-field-control"]}
+              />
+            </div>
+
+            {scheduleForm.startAt && (
+              <div className={styles["admin-form-field"]}>
+                <label className={styles["admin-field-label"]}>Available Showrooms</label>
+                {isCheckingRooms ? (
+                  <p className={styles["admin-muted-text"]}>Checking availability...</p>
+                ) : availableShowrooms.length === 0 ? (
+                  <p className={styles["admin-muted-text"]}>No showrooms available at this time.</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                    {availableShowrooms.map((room) => (
+                      <button
+                        key={room.showroomId}
+                        type="button"
+                        onClick={() => setScheduleSelectedRoom(room.showroomId)}
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          borderRadius: "0.375rem",
+                          border: scheduleSelectedRoom === room.showroomId ? "2px solid var(--color-primary, #2563eb)" : "1px solid var(--color-border, #e5e7eb)",
+                          background: scheduleSelectedRoom === room.showroomId ? "var(--color-primary-light, #eff6ff)" : "transparent",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          fontSize: "0.875rem"
+                        }}
+                      >
+                        {room.name}
+                        {room.layout && (
+                          <span style={{ marginLeft: "0.5rem", opacity: 0.6 }}>
+                            ({room.layout.totalSeats} seats)
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {scheduleError && (
+              <div className={styles["admin-error-card"]}>
+                <p className={styles["admin-error-title"]}>{scheduleError}</p>
+              </div>
+            )}
+            {scheduleSuccess && (
+              <p style={{ color: "var(--color-success, green)", fontWeight: 500 }}>{scheduleSuccess}</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeScheduleDialog} disabled={isScheduling}>Close</Button>
+            {!scheduleSuccess && (
+              <Button onClick={handleScheduleShow} disabled={isScheduling} className={styles["admin-submit-button"]}>
+                {isScheduling ? "Scheduling..." : "Schedule Show"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showPromotionDialog} onOpenChange={open => open ? null : closePromotionDialog()}>
         <DialogContent className={styles["admin-dialog"]}>
           <DialogHeader>
@@ -538,22 +618,6 @@ export function AdminPage({
           </DialogHeader>
 
           <div className={styles["admin-form"]}>
-            <div className={styles["admin-form-field"]}>
-              <label className={styles["admin-field-label"]}>Showroom</label>
-              <Select value={promotionForm.showroomId} onValueChange={value => handlePromotionChange("showroomId")(value)} disabled={isLoadingShowrooms}>
-                <SelectTrigger className={styles["admin-field-control"]}>
-                  <SelectValue placeholder="Select a showroom" />
-                </SelectTrigger>
-                <SelectContent>
-                  {showrooms.map((room) => (
-                    <SelectItem key={room.showroomId} value={room.showroomId}>
-                      {room.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className={styles["admin-form-field"]}>
               <label className={styles["admin-field-label"]}>Promotion Title</label>
               <Input value={promotionForm.title} onChange={event => handlePromotionChange("title")(event.target.value)} placeholder="e.g. Weekend Special — 20% Off" className={styles["admin-field-control"]} />

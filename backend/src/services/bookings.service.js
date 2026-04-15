@@ -16,6 +16,7 @@ import { toBookingEntity } from "../entities/booking.entity.js";
 import { AuthGuardService } from "./auth-guard.service.js";
 import { DefaultPricingStrategy } from "./pricing.strategy.js";
 import { MoviesService } from "./movies.service.js";
+import { PromoCodesService } from "./promo-codes.service.js";
 import { ShowtimesService } from "./showtimes.service.js";
 
 /**
@@ -32,12 +33,13 @@ import { ShowtimesService } from "./showtimes.service.js";
  *      (promotions, taxes) without modifying this class.
  */
 class BookingsService {
-  constructor(firestoreService, moviesService, authGuardService, pricingStrategy, showtimesService) {
+  constructor(firestoreService, moviesService, authGuardService, pricingStrategy, showtimesService, promoCodesService) {
     this.firestoreService = firestoreService;
     this.moviesService = moviesService;
     this.authGuardService = authGuardService;
     this.pricingStrategy = pricingStrategy;
     this.showtimesService = showtimesService;
+    this.promoCodesService = promoCodesService;
   }
 
   // ── Card management ──────────────────────────────────────────────────────
@@ -163,10 +165,10 @@ class BookingsService {
   // ── Seat availability ────────────────────────────────────────────────────
 
   async getReservedSeats(query) {
-    const movie = await this.moviesService.findById(query.movieId);
+    await this.moviesService.findById(query.movieId);
 
-    if (!query.showtime || !movie.showtimes.includes(query.showtime)) {
-      throw new BadRequestException("Invalid showtime for the selected movie");
+    if (!query.showtime || String(query.showtime).trim().length === 0) {
+      throw new BadRequestException("showtime is required");
     }
 
     const bookings = await this.findBookingsByShowtime(query.movieId, query.showtime);
@@ -342,6 +344,20 @@ class BookingsService {
     }
 
     const quote = this.pricingStrategy.buildQuote(payload.tickets);
+
+    // Apply promo code discount if provided
+    let finalTotal = quote.total;
+    let appliedPromoCodeId = null;
+    let appliedDiscountPercent = 0;
+
+    const promoCodeStr = typeof payload.promoCode === "string" ? payload.promoCode.trim() : "";
+    if (promoCodeStr) {
+      const promoResult = await this.promoCodesService.validate(promoCodeStr, customerUid);
+      appliedPromoCodeId = promoResult.codeId;
+      appliedDiscountPercent = promoResult.discountPercent;
+      finalTotal = roundCurrency(quote.total * (1 - appliedDiscountPercent / 100));
+    }
+
     const booking = toBookingEntity({
       bookingId: randomUUID(),
       movieId: payload.movieId,
@@ -360,11 +376,17 @@ class BookingsService {
         expYear: savedCard.expYear
       },
       status: "confirmed",
-      total: quote.total,
+      total: finalTotal,
+      ...(appliedPromoCodeId ? { promoCode: promoCodeStr, discountPercent: appliedDiscountPercent } : {}),
       createdAt: new Date().toISOString()
     });
 
     await this.collection().doc(booking.bookingId).set(booking);
+
+    if (appliedPromoCodeId) {
+      await this.promoCodesService.markUsed(appliedPromoCodeId, customerUid);
+    }
+
     return { bookingId: booking.bookingId, status: booking.status, total: booking.total };
   }
 
@@ -711,7 +733,7 @@ class BookingsService {
 decorateClass(
   BookingsService,
   [Injectable()],
-  [FirestoreService, MoviesService, AuthGuardService, DefaultPricingStrategy, ShowtimesService]
+  [FirestoreService, MoviesService, AuthGuardService, DefaultPricingStrategy, ShowtimesService, PromoCodesService]
 );
 
 export { BookingsService };
