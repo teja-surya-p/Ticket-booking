@@ -99,7 +99,8 @@ export function SeatSelectionDialog({
   appliedPromo,
   promoError,
   isApplyingPromo,
-  onApplyPromoCode
+  onApplyPromoCode,
+  showroomNameMap
 }) {
   const [deleteTargetCardId, setDeleteTargetCardId] = useState("");
   const selectedCount = selectedSeatIds.length;
@@ -397,6 +398,12 @@ export function SeatSelectionDialog({
                     <div key={item.id} style={{ border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                       <p style={{ fontWeight: 600, fontSize: "1rem", margin: 0 }}>{item.movie?.title}</p>
                       <p style={{ fontSize: "0.875rem", opacity: 0.7, margin: 0 }}>{formatShowtime(item.showtime)}</p>
+                      {item.movie?.showroomId && (showroomNameMap?.[item.movie.showroomId] ?? item.movie.showroomId) && (
+                        <p style={{ fontSize: "0.875rem", margin: 0 }}>
+                          <span style={{ fontWeight: 500 }}>Show Room: </span>
+                          {showroomNameMap?.[item.movie.showroomId] ?? item.movie.showroomId}
+                        </p>
+                      )}
                       {seatLabels.length > 0 && (
                         <p style={{ fontSize: "0.875rem", margin: 0 }}>
                           <span style={{ fontWeight: 500 }}>Seats: </span>{seatLabels.join(", ")}

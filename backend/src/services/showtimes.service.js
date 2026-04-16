@@ -77,6 +77,14 @@ class ShowtimesService {
     const showroomId = this.normalizeShowroomId(dto?.showroomId);
     const startAt = this.normalizeStartAt(dto?.startAt);
 
+    // Prevent scheduling shows on past dates
+    const showDate = new Date(startAt);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (showDate < today) {
+      throw new BadRequestException("Cannot schedule shows for past dates");
+    }
+
     const conflict = await this.findByShowroomAndStartAt(showroomId, startAt);
     if (conflict) {
       throw new ConflictException(
@@ -84,16 +92,17 @@ class ShowtimesService {
       );
     }
 
-    const dayStart = startAt.slice(0, 10) + "T00:00:00.000Z";
-    const dayEnd = startAt.slice(0, 10) + "T23:59:59.999Z";
-    const daySnapshot = await this.collection()
+    const dayStr = startAt.slice(0, 10);
+    const movieDaySnapshot = await this.collection()
       .where("movieId", "==", movieId)
-      .where("startAt", ">=", dayStart)
-      .where("startAt", "<=", dayEnd)
       .get();
-    if (daySnapshot.size >= 4) {
+    const dayCount = movieDaySnapshot.docs.filter((doc) => {
+      const st = doc.data().startAt;
+      return typeof st === "string" && st.startsWith(dayStr);
+    }).length;
+    if (dayCount >= 4) {
       throw new ConflictException(
-        `Movie already has 4 showtimes on ${startAt.slice(0, 10)}, which is the daily maximum`
+        `Movie already has 4 showtimes on ${dayStr}, which is the daily maximum`
       );
     }
 
@@ -109,9 +118,9 @@ class ShowtimesService {
     const normalizedId = this.normalizeMovieId(movieId);
     const snapshot = await this.collection()
       .where("movieId", "==", normalizedId)
-      .orderBy("startAt")
       .get();
-    return snapshot.docs.map((doc) => toShowtimeEntity(doc.data()));
+    const docs = snapshot.docs.map((doc) => toShowtimeEntity(doc.data()));
+    return docs.sort((a, b) => a.startAt.localeCompare(b.startAt));
   }
 
   async findOccupiedShowroomIds(startAt) {
@@ -120,6 +129,27 @@ class ShowtimesService {
       .where("startAt", "==", normalized)
       .get();
     return snapshot.docs.map((doc) => doc.data().showroomId);
+  }
+
+  async findAllUpcoming() {
+    const now = new Date().toISOString();
+    const snapshot = await this.collection()
+      .where("startAt", ">=", now)
+      .orderBy("startAt")
+      .get();
+    return snapshot.docs.map((doc) => toShowtimeEntity(doc.data()));
+  }
+
+  async deleteById(showtimeId) {
+    if (!showtimeId || typeof showtimeId !== "string") {
+      throw new BadRequestException("showtimeId is required");
+    }
+    const ref = this.collection().doc(showtimeId.trim());
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new BadRequestException(`Showtime "${showtimeId}" not found`);
+    }
+    await ref.delete();
   }
 
   async findByShowroomAndStartAt(showroomId, startAt) {

@@ -19,8 +19,55 @@ class ShowtimesService {
     this.firestoreService = firestoreService;
   }
 
+  async onModuleInit() {
+    await this.seedShowtimesIfEmpty();
+  }
+
+  async seedShowtimesIfEmpty() {
+    const snapshot = await this.collection().limit(1).get();
+    if (!snapshot.empty) {
+      return;
+    }
+
+    const now = new Date();
+    // Generate showtimes for the next 3 days at 11:00, 14:00, 18:00 UTC
+    const slots = [
+      { hour: 11, minute: 0 },
+      { hour: 14, minute: 0 },
+      { hour: 18, minute: 0 }
+    ];
+
+    // movie 1 → showroom-1, movie 2 → showroom-2, movie 3 → showroom-3
+    const movieRooms = [
+      { movieId: 1, showroomId: "showroom-1" },
+      { movieId: 2, showroomId: "showroom-2" },
+      { movieId: 3, showroomId: "showroom-3" }
+    ];
+
+    const batch = this.firestoreService.db().batch();
+    const createdAt = now.toISOString();
+
+    for (let dayOffset = 1; dayOffset <= 3; dayOffset++) {
+      for (const slot of slots) {
+        for (const { movieId, showroomId } of movieRooms) {
+          const date = new Date(now);
+          date.setUTCDate(date.getUTCDate() + dayOffset);
+          date.setUTCHours(slot.hour, slot.minute, 0, 0);
+          const startAt = date.toISOString();
+          const showtimeId = randomUUID();
+          const entity = toShowtimeEntity({ showtimeId, movieId, showroomId, startAt, createdAt });
+          const docRef = this.collection().doc(showtimeId);
+          batch.set(docRef, entity);
+        }
+      }
+    }
+
+    await batch.commit();
+  }
+
   /**
    * Creates a showtime. Conflict check: same showroomId + same startAt.
+   * Also enforces max 4 showtimes per movie per calendar day.
    * The caller (AdminService) is responsible for validating that the movie exists.
    *
    * @param {{ movieId: number, showroomId: string, startAt: string }} dto
@@ -30,10 +77,32 @@ class ShowtimesService {
     const showroomId = this.normalizeShowroomId(dto?.showroomId);
     const startAt = this.normalizeStartAt(dto?.startAt);
 
+    // Prevent scheduling shows on past dates
+    const showDate = new Date(startAt);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (showDate < today) {
+      throw new BadRequestException("Cannot schedule shows for past dates");
+    }
+
     const conflict = await this.findByShowroomAndStartAt(showroomId, startAt);
     if (conflict) {
       throw new ConflictException(
         `Showroom "${showroomId}" already has a showtime at ${startAt}`
+      );
+    }
+
+    const dayStr = startAt.slice(0, 10);
+    const movieDaySnapshot = await this.collection()
+      .where("movieId", "==", movieId)
+      .get();
+    const dayCount = movieDaySnapshot.docs.filter((doc) => {
+      const st = doc.data().startAt;
+      return typeof st === "string" && st.startsWith(dayStr);
+    }).length;
+    if (dayCount >= 4) {
+      throw new ConflictException(
+        `Movie already has 4 showtimes on ${dayStr}, which is the daily maximum`
       );
     }
 
@@ -49,6 +118,23 @@ class ShowtimesService {
     const normalizedId = this.normalizeMovieId(movieId);
     const snapshot = await this.collection()
       .where("movieId", "==", normalizedId)
+      .get();
+    const docs = snapshot.docs.map((doc) => toShowtimeEntity(doc.data()));
+    return docs.sort((a, b) => a.startAt.localeCompare(b.startAt));
+  }
+
+  async findOccupiedShowroomIds(startAt) {
+    const normalized = this.normalizeStartAt(startAt);
+    const snapshot = await this.collection()
+      .where("startAt", "==", normalized)
+      .get();
+    return snapshot.docs.map((doc) => doc.data().showroomId);
+  }
+
+  async findAllUpcoming() {
+    const now = new Date().toISOString();
+    const snapshot = await this.collection()
+      .where("startAt", ">=", now)
       .orderBy("startAt")
       .get();
     return snapshot.docs.map((doc) => toShowtimeEntity(doc.data()));

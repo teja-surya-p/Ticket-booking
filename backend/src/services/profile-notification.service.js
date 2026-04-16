@@ -195,7 +195,30 @@ class ProfileNotificationService {
     const name = this.sanitizeHeaderText(displayName, "Valued Customer");
     const safeTitle = this.sanitizeHeaderText(promotion?.title, "Special Offer");
     const safeMessage = this.sanitizeHeaderText(promotion?.message, "");
-    const safeShowroom = this.sanitizeHeaderText(promotion?.showroomName, "our showroom");
+    const promoCode = typeof promotion?.promoCode === "string" && promotion.promoCode.trim().length > 0
+      ? promotion.promoCode.trim()
+      : null;
+    const discountPercent = promoCode && promotion?.discountPercent ? promotion.discountPercent : null;
+
+    const promoCodeTextLines = promoCode
+      ? [
+          "",
+          "--- EXCLUSIVE PROMO CODE ---",
+          `Use code: ${promoCode}`,
+          `Discount: ${discountPercent}% off your booking`,
+          "This code is for one-time use per account.",
+          "----------------------------"
+        ]
+      : [];
+
+    const promoCodeHtml = promoCode
+      ? `<div style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1rem;margin:1rem 0;text-align:center">
+           <p style="font-weight:600;font-size:1rem;margin:0 0 0.5rem">Your Exclusive Promo Code</p>
+           <p style="font-size:1.5rem;font-weight:700;letter-spacing:0.1em;color:#2563eb;margin:0.5rem 0">${promoCode}</p>
+           <p style="margin:0.25rem 0;color:#374151">${discountPercent}% off your booking</p>
+           <p style="font-size:0.75rem;color:#6b7280;margin:0.5rem 0 0">One-time use per account</p>
+         </div>`
+      : "";
 
     const message = {
       toEmail: toEmail.trim(),
@@ -203,19 +226,21 @@ class ProfileNotificationService {
       text: [
         `Hi ${name},`,
         "",
-        `We have an exciting promotion for you at ${safeShowroom}!`,
+        "You have an exclusive promotion from CineBook!",
         "",
         safeTitle,
         "",
         safeMessage,
+        ...promoCodeTextLines,
         "",
         "Visit CineBook to book your tickets today."
       ].join("\n"),
       html: [
         `<p>Hi ${name},</p>`,
-        `<p>We have an exciting promotion for you at <strong>${safeShowroom}</strong>!</p>`,
+        "<p>You have an exclusive promotion from CineBook!</p>",
         `<h2 style="margin:1rem 0 0.5rem">${safeTitle}</h2>`,
         `<p>${safeMessage}</p>`,
+        promoCodeHtml,
         "<p>Visit CineBook to book your tickets today.</p>"
       ].join("")
     };

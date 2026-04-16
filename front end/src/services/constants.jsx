@@ -34,6 +34,8 @@ export const API_ENDPOINTS = {
   admin: {
     stats: `${API_ROUTES.admin}/stats`,
     scheduleShowtime: `${API_ROUTES.admin}/showtimes`,
+    allShowtimes: `${API_ROUTES.admin}/showtimes`,
+    cancelShowtime: (id) => `${API_ROUTES.admin}/showtimes/${id}`,
     sendPromotion: `${API_ROUTES.admin}/promotions`,
     availableShowrooms: `${API_ROUTES.admin}/available-showrooms`,
     promoCode: `${API_ROUTES.admin}/promo-codes`

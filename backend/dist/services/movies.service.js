@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException
@@ -12,9 +13,118 @@ import { decorateClass } from "../common/nest-metadata.js";
 import { FirestoreService } from "../config/firestore.service.js";
 import { toMovieEntity } from "../entities/movie.entity.js";
 
+const SEED_MOVIES = [
+  {
+    id: 1,
+    title: "The Last Horizon",
+    genre: "Action",
+    genres: ["Action", "Sci-Fi"],
+    rating: "PG-13",
+    description: "A lone astronaut discovers a mysterious signal at the edge of the solar system, setting off an interstellar race against time.",
+    poster: DEFAULT_MOVIE_POSTER,
+    trailerUrl: DEFAULT_TRAILER_URL,
+    status: "currently_running",
+    showtimes: [],
+    duration: "2h 15m",
+    director: "James Holden",
+    cast: ["Marcus Bell", "Sofia Reyes", "David Nakamura"],
+    showroomId: "showroom-1",
+    releaseDate: null
+  },
+  {
+    id: 2,
+    title: "Garden of Shadows",
+    genre: "Drama",
+    genres: ["Drama", "Thriller"],
+    rating: "R",
+    description: "A forensic botanist uncovers a decades-old secret buried in a sprawling country estate, forcing her to question everything she knows.",
+    poster: DEFAULT_MOVIE_POSTER,
+    trailerUrl: DEFAULT_TRAILER_URL,
+    status: "currently_running",
+    showtimes: [],
+    duration: "1h 55m",
+    director: "Laura Chen",
+    cast: ["Anna Voss", "Patrick Dune", "Nadia Kowalski"],
+    showroomId: "showroom-2",
+    releaseDate: null
+  },
+  {
+    id: 3,
+    title: "Neon Riders",
+    genre: "Action",
+    genres: ["Action", "Adventure"],
+    rating: "PG-13",
+    description: "In a near-future metropolis, a crew of underground couriers must outrace a corporate hit squad to deliver the one package that could bring down the city.",
+    poster: DEFAULT_MOVIE_POSTER,
+    trailerUrl: DEFAULT_TRAILER_URL,
+    status: "currently_running",
+    showtimes: [],
+    duration: "2h 5m",
+    director: "Carlos Ruiz",
+    cast: ["Tyler Cross", "Mei Lin", "Jax Monroe"],
+    showroomId: "showroom-3",
+    releaseDate: null
+  },
+  {
+    id: 4,
+    title: "Whispers in the Dark",
+    genre: "Horror",
+    genres: ["Horror", "Mystery"],
+    rating: "",
+    description: "A family moves into their dream home only to discover it holds a horrifying secret that has claimed every previous resident.",
+    poster: DEFAULT_MOVIE_POSTER,
+    trailerUrl: DEFAULT_TRAILER_URL,
+    status: "coming_soon",
+    showtimes: [],
+    duration: "2h 20m",
+    director: "Evelyn Hart",
+    cast: ["Olivia Stone", "Henry Walsh", "Camille Dubois"],
+    showroomId: null,
+    releaseDate: "2025-06-15"
+  },
+  {
+    id: 5,
+    title: "Chronicles of the Deep",
+    genre: "Adventure",
+    genres: ["Adventure", "Fantasy"],
+    rating: "",
+    description: "A marine archaeologist stumbles upon an ancient underwater civilization, triggering a chain of events that threatens to reshape human history.",
+    poster: DEFAULT_MOVIE_POSTER,
+    trailerUrl: DEFAULT_TRAILER_URL,
+    status: "coming_soon",
+    showtimes: [],
+    duration: "2h 45m",
+    director: "Samuel Park",
+    cast: ["Zara Okafor", "Leo Fontaine", "Priya Sharma"],
+    showroomId: null,
+    releaseDate: "2025-08-01"
+  }
+];
+
 class MoviesService {
   constructor(firestoreService) {
     this.firestoreService = firestoreService;
+  }
+
+  async onModuleInit() {
+    await this.seedMoviesIfEmpty();
+  }
+
+  async seedMoviesIfEmpty() {
+    const snapshot = await this.collection().limit(1).get();
+    if (!snapshot.empty) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const batch = this.firestoreService.db().batch();
+
+    for (const seed of SEED_MOVIES) {
+      const docRef = this.collection().doc(String(seed.id));
+      batch.set(docRef, toMovieEntity({ ...seed, createdAt: now, updatedAt: now }));
+    }
+
+    await batch.commit();
   }
 
   async findAll(query = {}) {
@@ -53,6 +163,11 @@ class MoviesService {
   }
 
   async create(dto) {
+    if (dto.showroomId) {
+      const showtimes = Array.isArray(dto.showtimes) ? dto.showtimes : [];
+      await this.assertNoShowtimeConflict(dto.showroomId, showtimes, null);
+    }
+
     const movies = await this.readAllMoviesFromStore();
     const nextId = Math.max(...movies.map((movie) => movie.id), 0) + 1;
     const newMovie = this.normalizeMovie(
@@ -73,6 +188,12 @@ class MoviesService {
 
     if (!docRef) {
       throw new NotFoundException(`Movie with id ${id} not found`);
+    }
+
+    const showroomToCheck = dto.showroomId ?? existing.showroomId;
+    if (showroomToCheck) {
+      const showtimes = Array.isArray(dto.showtimes) ? dto.showtimes : (existing.showtimes ?? []);
+      await this.assertNoShowtimeConflict(showroomToCheck, showtimes, id);
     }
 
     const updatedMovie = this.normalizeMovie(
@@ -291,8 +412,44 @@ class MoviesService {
         typeof data?.director === "string" && data.director.trim().length > 0
           ? data.director.trim()
           : "Unknown",
-      cast
+      cast,
+      showroomId:
+        typeof data?.showroomId === "string" && data.showroomId.trim().length > 0
+          ? data.showroomId.trim()
+          : null,
+      releaseDate:
+        typeof data?.releaseDate === "string" && data.releaseDate.trim().length > 0
+          ? data.releaseDate.trim()
+          : null
     });
+  }
+
+  async findByShowroomId(showroomId) {
+    const snapshot = await this.collection()
+      .where("showroomId", "==", showroomId)
+      .get();
+    return snapshot.docs.map((doc, index) => this.normalizeMovie(doc.data(), index + 1));
+  }
+
+  async assertNoShowtimeConflict(showroomId, newShowtimes, excludeId) {
+    const moviesInRoom = await this.findByShowroomId(showroomId);
+    const conflicts = [];
+
+    for (const movie of moviesInRoom) {
+      if (excludeId !== null && movie.id === excludeId) continue;
+      for (const time of (movie.showtimes ?? [])) {
+        if (newShowtimes.includes(time)) {
+          conflicts.push(time);
+        }
+      }
+    }
+
+    if (conflicts.length > 0) {
+      const unique = [...new Set(conflicts)];
+      throw new ConflictException(
+        `Showroom "${showroomId}" already has another movie scheduled at: ${unique.join(", ")}`
+      );
+    }
   }
 
   normalizeStatus(value) {

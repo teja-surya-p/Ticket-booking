@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Clock, Heart, Star } from "lucide-react";
+import { Bell, Clock, Heart, Star, Ticket } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getMovieGenreList, shouldShowMovieRating } from "@/models/movie-model";
@@ -9,6 +9,7 @@ import styles from "./movie-card.module.css";
 export function MovieCard({
   movie,
   onClick,
+  onBookNow,
   onNotifyMe,
   isFavorite = false,
   isFavoriteBusy = false,
@@ -77,7 +78,7 @@ export function MovieCard({
             <Heart className={styles["movie-card-class-18"]} />
             {isFavorite ? "Favorited" : "Favorite"}
           </Button> : null}
-        {isComingSoon && (
+        {isComingSoon ? (
           <Button
             type="button"
             size="sm"
@@ -86,6 +87,16 @@ export function MovieCard({
           >
             <Bell className={styles["movie-card-class-18"]} />
             Notify Me
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            className={styles["movie-card-class-17"]}
+            onClick={() => typeof onBookNow === "function" ? onBookNow(movie) : onClick(movie)}
+          >
+            <Ticket className={styles["movie-card-class-18"]} />
+            Book Now
           </Button>
         )}
       </div>

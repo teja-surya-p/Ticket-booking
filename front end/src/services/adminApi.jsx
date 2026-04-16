@@ -50,3 +50,19 @@ export function createPromoCode(payload) {
     body: payload
   });
 }
+
+export function fetchAllAdminShowtimes() {
+  return APICallHandler({
+    url: API_ENDPOINTS.admin.allShowtimes,
+    method: "GET",
+    operation: "Fetch all admin showtimes"
+  });
+}
+
+export function cancelAdminShowtime(showtimeId) {
+  return APICallHandler({
+    url: API_ENDPOINTS.admin.cancelShowtime(showtimeId),
+    method: "DELETE",
+    operation: "Cancel showtime"
+  });
+}

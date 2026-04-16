@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { CalendarPlus, Film, Plus, Edit2, Trash2, Eye, BarChart3, Copy, Upload, ChevronDown, X, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAdminPageController } from "@/controllers/useAdminPageController";
+import { TIME_SLOT_OPTIONS, useAdminPageController } from "@/controllers/useAdminPageController";
 import { getMoviePosterUrl } from "@/models/movie-media";
 import { getMovieGenreList, shouldShowMovieRating } from "@/models/movie-model";
 import styles from "./admin-page.module.css";
@@ -63,7 +64,21 @@ export function AdminPage({
     openScheduleDialog,
     closeScheduleDialog,
     handleScheduleFormChange,
+    prefillScheduleForm,
     handleScheduleShow,
+    allScheduledShows,
+    isLoadingAllShows,
+    moviesWithoutShowtimes,
+    selectedHall,
+    setSelectedHall,
+    pendingSlots,
+    togglePendingSlot,
+    cancelTarget,
+    setCancelTarget,
+    isCancelling,
+    cancelError,
+    setCancelError,
+    handleCancelShow,
     handleChange,
     handleToggleGenre,
     handleFileChange,
@@ -79,6 +94,8 @@ export function AdminPage({
     onUpdateMovie,
     onDeleteMovie
   });
+
+  const scheduleFormRef = useRef(null);
 
   return <div className={styles["admin-dashboard"]}>
       <div className={styles["admin-header"]}>
@@ -276,6 +293,43 @@ export function AdminPage({
         </div>
       </div>
 
+      {/* No Showtimes section */}
+      {moviesWithoutShowtimes.length > 0 && (
+        <div className={styles["admin-no-showtimes-section"]}>
+          <div className={styles["admin-no-showtimes-header"]}>
+            <CalendarPlus className={styles["admin-icon"]} />
+            <span>No Showtimes</span>
+            <span className={styles["admin-no-showtimes-count"]}>{moviesWithoutShowtimes.length}</span>
+          </div>
+          <p className={styles["admin-no-showtimes-desc"]}>
+            The following currently playing movies have no upcoming showtimes scheduled.
+          </p>
+          <div className={styles["admin-no-showtimes-list"]}>
+            {moviesWithoutShowtimes.map((movie) => {
+              const posterUrl = getMoviePosterUrl(movie);
+              return (
+                <div key={movie.id} className={styles["admin-no-showtimes-row"]}>
+                  <img src={posterUrl} alt={movie.title} className={styles["admin-no-showtimes-poster"]} />
+                  <div className={styles["admin-no-showtimes-info"]}>
+                    <p className={styles["admin-field-label"]}>{movie.title}</p>
+                    <p className={styles["admin-muted-text"]}>{movie.duration}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openScheduleDialog(movie)}
+                    className={styles["admin-no-showtimes-action"]}
+                  >
+                    <CalendarPlus className={styles["admin-icon"]} />
+                    Schedule
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <Dialog open={showAddDialog} onOpenChange={open => open ? setShowAddDialog(true) : closeDialog()}>
         <DialogContent className={styles["admin-dialog"]}>
           <DialogHeader>
@@ -289,12 +343,12 @@ export function AdminPage({
 
           <div className={styles["admin-form"]}>
             <div className={styles["admin-form-field"]}>
-              <label className={styles["admin-field-label"]}>Title</label>
+              <label className={styles["admin-field-label"]}>Title <span style={{ color: "red" }}>*</span></label>
               <Input value={form.title} onChange={event => handleChange("title")(event.target.value)} placeholder="Movie title" className={styles["admin-field-control"]} />
             </div>
 
             <div className={styles["admin-form-field"]}>
-              <label className={styles["admin-field-label"]}>Showroom</label>
+              <label className={styles["admin-field-label"]}>Showroom <span style={{ color: "red" }}>*</span></label>
               <Select value={form.showroomId} onValueChange={value => handleChange("showroomId")(value)} disabled={isLoadingShowrooms}>
                 <SelectTrigger className={styles["admin-field-control"]}>
                   <SelectValue placeholder={isLoadingShowrooms ? "Loading showrooms..." : "Select a showroom"} />
@@ -314,7 +368,7 @@ export function AdminPage({
 
             <div className={styles["admin-form-grid-meta"]}>
               <div className={styles["admin-form-field"]}>
-                <label className={styles["admin-field-label"]}>Genres</label>
+                <label className={styles["admin-field-label"]}>Genres <span style={{ color: "red" }}>*</span></label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button type="button" variant="outline" className={styles["admin-field-control"]}>
@@ -353,7 +407,7 @@ export function AdminPage({
                 </div>}
 
               <div className={styles["admin-form-field"]}>
-                <label className={styles["admin-field-label"]}>Status</label>
+                <label className={styles["admin-field-label"]}>Status <span style={{ color: "red" }}>*</span></label>
                 <Select value={form.status} onValueChange={value => handleChange("status")(value)}>
                   <SelectTrigger className={styles["admin-field-control"]}>
                     <SelectValue placeholder="Status" />
@@ -379,7 +433,7 @@ export function AdminPage({
 
             <div className={styles["admin-form-grid-duration"]}>
               <div className={styles["admin-form-field"]}>
-                <label className={styles["admin-field-label"]}>Duration</label>
+                <label className={styles["admin-field-label"]}>Duration <span style={{ color: "red" }}>*</span></label>
                 <div className={styles["admin-duration-selects"]}>
                   <Select value={form.durationHours} onValueChange={value => handleChange("durationHours")(value)}>
                     <SelectTrigger className={styles["admin-field-control"]}>
@@ -407,13 +461,13 @@ export function AdminPage({
                 </p>
               </div>
               <div className={styles["admin-form-field"]}>
-                <label className={styles["admin-field-label"]}>Director</label>
+                <label className={styles["admin-field-label"]}>Director <span style={{ color: "red" }}>*</span></label>
                 <Input value={form.director} onChange={event => handleChange("director")(event.target.value)} placeholder="Director name" className={styles["admin-field-control"]} />
               </div>
             </div>
 
             <div className={styles["admin-form-field"]}>
-              <label className={styles["admin-field-label"]}>Cast (comma separated)</label>
+              <label className={styles["admin-field-label"]}>Cast (comma separated) <span style={{ color: "red" }}>*</span></label>
               <Input value={form.cast} onChange={event => handleChange("cast")(event.target.value)} placeholder="Actor 1, Actor 2, Actor 3" className={styles["admin-field-control"]} />
             </div>
 
@@ -443,7 +497,7 @@ export function AdminPage({
             )}
 
             <div className={styles["admin-form-field"]}>
-              <label className={styles["admin-field-label"]}>Description</label>
+              <label className={styles["admin-field-label"]}>Description <span style={{ color: "red" }}>*</span></label>
               <textarea value={form.description} onChange={event => handleChange("description")(event.target.value)} placeholder="Movie description" className={styles["admin-description-input"]} />
             </div>
 
@@ -455,7 +509,7 @@ export function AdminPage({
 
               <div className={styles["admin-form-field"]}>
                 <label className={styles["admin-assets-label"]}>
-                  {editingMovie ? "Poster Image Replacement" : "Poster Image"}
+                  {editingMovie ? "Poster Image Replacement" : <>Poster Image <span style={{ color: "red" }}>*</span></>}
                 </label>
                 <Input type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={handleFileChange("poster")} />
                 <p className={styles["admin-muted-text"]}>
@@ -465,7 +519,7 @@ export function AdminPage({
 
               <div className={styles["admin-form-field"]}>
                 <label className={styles["admin-assets-label"]}>
-                  {editingMovie ? "Trailer Video Replacement" : "Trailer Video"}
+                  {editingMovie ? "Trailer Video Replacement" : <>Trailer Video <span style={{ color: "red" }}>*</span></>}
                 </label>
                 <Input type="file" accept=".mp4,.mov,.m4v,video/mp4,video/quicktime,video/x-m4v" onChange={handleFileChange("trailer")} />
                 <p className={styles["admin-muted-text"]}>
@@ -475,7 +529,7 @@ export function AdminPage({
 
               <div className={styles["admin-form-field"]}>
                 <label className={styles["admin-assets-label"]}>
-                  {editingMovie ? "Trailer Thumbnail Replacement" : "Trailer Thumbnail Image"}
+                  {editingMovie ? "Trailer Thumbnail Replacement" : <>Trailer Thumbnail Image <span style={{ color: "red" }}>*</span></>}
                 </label>
                 <Input type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={handleFileChange("trailerThumbnail")} />
                 <p className={styles["admin-muted-text"]}>
@@ -517,46 +571,68 @@ export function AdminPage({
       </Dialog>
 
       <Dialog open={showScheduleDialog} onOpenChange={open => open ? null : closeScheduleDialog()}>
-        <DialogContent className={styles["admin-dialog"]}>
+        <DialogContent className={styles["admin-dialog"]} style={{ maxHeight: "90vh", overflowY: "auto" }}>
           <DialogHeader>
-            <DialogTitle>Manage Showtimes — Schedule a Show</DialogTitle>
+            <DialogTitle>Manage Shows</DialogTitle>
             <DialogDescription>
-              Pick a movie, choose a date and time, then select an available showroom.
+              Schedule a new show or view all upcoming scheduled shows.
             </DialogDescription>
           </DialogHeader>
 
-          <div className={styles["admin-form"]}>
+          <div className={styles["admin-form"]} ref={scheduleFormRef}>
+            <p style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Add a Show</p>
+
             <div className={styles["admin-form-field"]}>
-              <label className={styles["admin-field-label"]}>Movie</label>
+              <label className={styles["admin-field-label"]}>Movie <span style={{ color: "red" }}>*</span></label>
               <Select value={scheduleForm.movieId} onValueChange={value => handleScheduleFormChange("movieId", value)}>
                 <SelectTrigger className={styles["admin-field-control"]}>
                   <SelectValue placeholder="Select a movie" />
                 </SelectTrigger>
                 <SelectContent>
                   {movies.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>{m.title}</SelectItem>
+                    <SelectItem key={m.id} value={String(m.id)}>
+                      {m.title}
+                      {m.status === "coming_soon" && m.releaseDate ? ` (from ${m.releaseDate})` : ""}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className={styles["admin-form-field"]}>
-              <label className={styles["admin-field-label"]}>Date &amp; Time</label>
-              <Input
-                type="datetime-local"
-                value={scheduleForm.startAt}
-                onChange={event => handleScheduleFormChange("startAt", event.target.value)}
-                className={styles["admin-field-control"]}
-              />
+            <div className={styles["admin-form-grid-duration"]}>
+              <div className={styles["admin-form-field"]}>
+                <label className={styles["admin-field-label"]}>Date <span style={{ color: "red" }}>*</span></label>
+                <Input
+                  type="date"
+                  value={scheduleForm.date}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={event => handleScheduleFormChange("date", event.target.value)}
+                  className={styles["admin-field-control"]}
+                />
+              </div>
+
+              <div className={styles["admin-form-field"]}>
+                <label className={styles["admin-field-label"]}>Time Slot <span style={{ color: "red" }}>*</span></label>
+                <Select value={scheduleForm.timeSlot} onValueChange={value => handleScheduleFormChange("timeSlot", value)}>
+                  <SelectTrigger className={styles["admin-field-control"]}>
+                    <SelectValue placeholder="Select time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_SLOT_OPTIONS.map((slot) => (
+                      <SelectItem key={slot.value} value={slot.value}>{slot.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            {scheduleForm.startAt && (
+            {scheduleForm.date && scheduleForm.timeSlot && (
               <div className={styles["admin-form-field"]}>
                 <label className={styles["admin-field-label"]}>Available Showrooms</label>
                 {isCheckingRooms ? (
                   <p className={styles["admin-muted-text"]}>Checking availability...</p>
                 ) : availableShowrooms.length === 0 ? (
-                  <p className={styles["admin-muted-text"]}>No showrooms available at this time.</p>
+                  <p className={styles["admin-muted-text"]}>No showrooms available at this time slot.</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                     {availableShowrooms.map((room) => (
@@ -587,6 +663,28 @@ export function AdminPage({
               </div>
             )}
 
+            {pendingSlots.length > 0 && (
+              <div style={{ padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "1px solid #22c55e", background: "rgba(34,197,94,0.08)" }}>
+                <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#22c55e", marginBottom: "0.35rem" }}>
+                  {pendingSlots.length} slot{pendingSlots.length !== 1 ? "s" : ""} selected
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem" }}>
+                  {pendingSlots.map((s) => {
+                    const dateLabel = new Date(s.dateKey + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                    const timeLabel = TIME_SLOT_OPTIONS.find((o) => o.value === s.slotValue)?.label ?? s.slotValue;
+                    return (
+                      <span
+                        key={s.key}
+                        style={{ fontSize: "0.72rem", padding: "0.15rem 0.5rem", borderRadius: "0.3rem", background: "rgba(34,197,94,0.18)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.4)" }}
+                      >
+                        {dateLabel} · {timeLabel}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {scheduleError && (
               <div className={styles["admin-error-card"]}>
                 <p className={styles["admin-error-title"]}>{scheduleError}</p>
@@ -595,15 +693,173 @@ export function AdminPage({
             {scheduleSuccess && (
               <p style={{ color: "var(--color-success, green)", fontWeight: 500 }}>{scheduleSuccess}</p>
             )}
+
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1rem", marginTop: "0.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem", gap: "0.75rem", flexWrap: "wrap" }}>
+                <p style={{ fontWeight: 600, fontSize: "0.95rem", margin: 0 }}>
+                  All Scheduled Shows
+                  {isLoadingAllShows && <span style={{ fontWeight: 400, opacity: 0.6, marginLeft: "0.5rem", fontSize: "0.8rem" }}>Loading...</span>}
+                </p>
+                {/* Hall selector */}
+                {(() => {
+                  const hallNames = Array.from(new Set(allScheduledShows.map((s) => s.showroomName || s.showroomId).filter(Boolean)));
+                  if (hallNames.length === 0) return null;
+                  return (
+                    <select
+                      value={selectedHall}
+                      onChange={(e) => setSelectedHall(e.target.value)}
+                      style={{ fontSize: "0.8rem", padding: "0.3rem 0.5rem", borderRadius: "0.4rem", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", cursor: "pointer" }}
+                    >
+                      <option value="">All Halls</option>
+                      {hallNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                  );
+                })()}
+              </div>
+
+              {!isLoadingAllShows && allScheduledShows.length === 0 ? (
+                <p className={styles["admin-muted-text"]}>No upcoming shows scheduled.</p>
+              ) : (() => {
+                const bookedSet = {};
+                for (const s of allScheduledShows) {
+                  const hall = s.showroomName || s.showroomId || "Unknown Hall";
+                  const dateKey = s.startAt.slice(0, 10);
+                  const timeKey = s.startAt.slice(11, 16); // "HH:MM"
+                  if (!bookedSet[hall]) bookedSet[hall] = {};
+                  if (!bookedSet[hall][dateKey]) bookedSet[hall][dateKey] = {};
+                  bookedSet[hall][dateKey][timeKey] = s;
+                }
+
+                const hallsToShow = selectedHall
+                  ? [selectedHall]
+                  : Object.keys(bookedSet);
+
+                // Date range: today + next 13 days
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const dates = Array.from({ length: 14 }, (_, i) => {
+                  const d = new Date(today);
+                  d.setDate(today.getDate() + i);
+                  return d.toISOString().slice(0, 10);
+                });
+
+                const slots = TIME_SLOT_OPTIONS; // [{label, value}] e.g. "10:00", "14:00"
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem", maxHeight: "300px", overflowY: "auto", paddingRight: "0.25rem" }}>
+                    {hallsToShow.map((hall) => (
+                      <div key={hall}>
+                        {/* Hall header */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                          <span style={{ fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--primary)" }}>{hall}</span>
+                          <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
+                        </div>
+                        {/* Date rows */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                          {dates.map((dateKey) => {
+                            const dateLabel = new Date(dateKey + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                            const dayBookings = bookedSet[hall]?.[dateKey] ?? {};
+                            return (
+                              <div key={dateKey} style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                                <span style={{ fontSize: "0.75rem", color: "var(--muted-foreground)", width: "6.5rem", flexShrink: 0 }}>{dateLabel}</span>
+                                {slots.map((slot) => {
+                                  const booked = dayBookings[slot.value];
+                                  const isPending = !booked && pendingSlots.some((s) => s.key === `${dateKey}_${slot.value}`);
+                                  return (
+                                    <button
+                                      key={slot.value}
+                                      type="button"
+                                      title={
+                                        booked
+                                          ? `${booked.movieTitle} — click to cancel`
+                                          : isPending
+                                            ? `Deselect ${slot.label}`
+                                            : `Add ${slot.label} to schedule`
+                                      }
+                                      onClick={() => {
+                                        if (booked) {
+                                          setCancelTarget(booked);
+                                        } else {
+                                          togglePendingSlot(dateKey, slot.value, hall);
+                                          scheduleFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                        }
+                                      }}
+                                      style={{
+                                        padding: "0.25rem 0.55rem",
+                                        borderRadius: "0.35rem",
+                                        border: "1px solid",
+                                        fontSize: "0.72rem",
+                                        fontWeight: 500,
+                                        cursor: "pointer",
+                                        whiteSpace: "nowrap",
+                                        transition: "background 0.15s, color 0.15s, border-color 0.15s",
+                                        borderColor: booked ? "var(--primary)" : isPending ? "#22c55e" : "var(--border)",
+                                        background: booked ? "var(--primary)" : isPending ? "rgba(34,197,94,0.18)" : "transparent",
+                                        color: booked ? "var(--primary-foreground)" : isPending ? "#22c55e" : "var(--muted-foreground)",
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        if (!booked && !isPending) { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.color = "#22c55e"; }
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        if (!booked && !isPending) { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--muted-foreground)"; }
+                                      }}
+                                    >
+                                      {slot.label}
+                                      {booked && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem", opacity: 0.8 }}>✕</span>}
+                                      {isPending && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem" }}>✓</span>}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={closeScheduleDialog} disabled={isScheduling}>Close</Button>
-            {!scheduleSuccess && (
-              <Button onClick={handleScheduleShow} disabled={isScheduling} className={styles["admin-submit-button"]}>
-                {isScheduling ? "Scheduling..." : "Schedule Show"}
-              </Button>
-            )}
+            <Button onClick={handleScheduleShow} disabled={isScheduling} className={styles["admin-submit-button"]}>
+              {isScheduling
+                ? "Scheduling..."
+                : pendingSlots.length > 1
+                  ? `Schedule ${pendingSlots.length} Shows`
+                  : "Schedule Show"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel showtime confirm dialog */}
+      <Dialog open={Boolean(cancelTarget)} onOpenChange={(open) => { if (!open) { setCancelTarget(null); setCancelError(""); } }}>
+        <DialogContent className={styles["admin-dialog"]}>
+          <DialogHeader>
+            <DialogTitle>Cancel Scheduled Show</DialogTitle>
+            <DialogDescription>
+              {cancelTarget && (
+                <>
+                  Are you sure you want to cancel <strong>{cancelTarget.movieTitle}</strong> at{" "}
+                  <strong>
+                    {new Date(cancelTarget.startAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                    {" · "}
+                    {new Date(cancelTarget.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  </strong>{" "}
+                  in <strong>{cancelTarget.showroomName}</strong>? This cannot be undone.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {cancelError && <p style={{ color: "var(--destructive)", fontSize: "0.85rem", marginTop: "0.5rem" }}>{cancelError}</p>}
+          <DialogFooter style={{ marginTop: "1rem" }}>
+            <Button variant="outline" onClick={() => { setCancelTarget(null); setCancelError(""); }} disabled={isCancelling}>Keep Show</Button>
+            <Button variant="destructive" onClick={handleCancelShow} disabled={isCancelling}>
+              {isCancelling ? "Cancelling..." : "Cancel Show"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -619,13 +875,42 @@ export function AdminPage({
 
           <div className={styles["admin-form"]}>
             <div className={styles["admin-form-field"]}>
-              <label className={styles["admin-field-label"]}>Promotion Title</label>
+              <label className={styles["admin-field-label"]}>Promotion Title <span style={{ color: "red" }}>*</span></label>
               <Input value={promotionForm.title} onChange={event => handlePromotionChange("title")(event.target.value)} placeholder="e.g. Weekend Special — 20% Off" className={styles["admin-field-control"]} />
             </div>
 
             <div className={styles["admin-form-field"]}>
-              <label className={styles["admin-field-label"]}>Message</label>
+              <label className={styles["admin-field-label"]}>Message <span style={{ color: "red" }}>*</span></label>
               <textarea value={promotionForm.message} onChange={event => handlePromotionChange("message")(event.target.value)} placeholder="Describe the promotion details..." className={styles["admin-description-input"]} />
+            </div>
+
+            <div style={{ borderTop: "1px solid var(--color-border, #e5e7eb)", paddingTop: "0.75rem", marginTop: "0.25rem" }}>
+              <p style={{ fontSize: "0.8rem", opacity: 0.6, marginBottom: "0.5rem" }}>
+                Optional: attach a promo code to this promotion. If provided, the code will be created and included in the email sent to subscribers.
+              </p>
+              <div className={styles["admin-form-grid-duration"]}>
+                <div className={styles["admin-form-field"]}>
+                  <label className={styles["admin-field-label"]}>Promo Code</label>
+                  <Input
+                    value={promotionForm.promoCode}
+                    onChange={event => handlePromotionChange("promoCode")(event.target.value.toUpperCase())}
+                    placeholder="e.g. SAVE20"
+                    className={styles["admin-field-control"]}
+                  />
+                </div>
+                <div className={styles["admin-form-field"]}>
+                  <label className={styles["admin-field-label"]}>Discount % {promotionForm.promoCode.trim() && <span style={{ color: "red" }}>*</span>}</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={promotionForm.discountPercent}
+                    onChange={event => handlePromotionChange("discountPercent")(event.target.value)}
+                    placeholder="e.g. 20"
+                    className={styles["admin-field-control"]}
+                  />
+                </div>
+              </div>
             </div>
 
             {promotionError && (
@@ -638,6 +923,7 @@ export function AdminPage({
               <div className={styles["admin-form-field"]}>
                 <p style={{ color: "var(--color-success, green)", fontWeight: 500 }}>
                   Promotion sent successfully to {promotionSendResult.sentCount} subscriber(s).
+                  {promotionForm.promoCode.trim() && " Promo code created and included in the email."}
                 </p>
               </div>
             )}

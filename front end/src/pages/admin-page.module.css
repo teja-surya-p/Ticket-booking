@@ -124,6 +124,42 @@
   @apply text-destructive hover:text-destructive;
 }
 
+.admin-no-showtimes-section {
+  @apply mb-6 rounded-xl border border-orange-500/30 bg-orange-500/5 px-5 py-4;
+}
+
+.admin-no-showtimes-header {
+  @apply mb-1 flex items-center gap-2 text-base font-semibold text-foreground;
+}
+
+.admin-no-showtimes-count {
+  @apply ml-1 rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-bold text-orange-400;
+}
+
+.admin-no-showtimes-desc {
+  @apply mb-4 text-sm text-muted-foreground;
+}
+
+.admin-no-showtimes-list {
+  @apply flex flex-col gap-2;
+}
+
+.admin-no-showtimes-row {
+  @apply flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2;
+}
+
+.admin-no-showtimes-poster {
+  @apply h-12 w-9 flex-shrink-0 rounded object-cover;
+}
+
+.admin-no-showtimes-info {
+  @apply flex-1 min-w-0;
+}
+
+.admin-no-showtimes-action {
+  @apply flex-shrink-0;
+}
+
 .admin-table-wrapper {
   @apply hidden overflow-hidden rounded-lg border border-border md:block;
 }

@@ -26,6 +26,7 @@ function truncateText(value, maxLength) {
 export function HomeHeroCarousel({
   movies = [],
   onMovieClick = NO_OP,
+  onBookNow = NO_OP,
   onWatchTrailer = NO_OP,
   onToggleFavorite = NO_OP,
   favoriteMovieIds = [],
@@ -168,10 +169,10 @@ export function HomeHeroCarousel({
                         <Button
                           size="lg"
                           className={styles["home-hero-primary-action"]}
-                          onClick={() => onMovieClick(movie)}
+                          onClick={() => onBookNow(movie)}
                         >
                           <Ticket className={styles["home-hero-action-icon"]} />
-                          View Movie
+                          Book Now
                         </Button>
 
                         <Button
@@ -206,9 +207,7 @@ export function HomeHeroCarousel({
                       </div>
                       <div className={styles["home-hero-side-title"]}>{movie.title}</div>
                       <p className={styles["home-hero-side-copy"]}>
-                        {defaultShowtime
-                          ? `Next default showtime ${defaultShowtime}`
-                          : "Open the movie page to explore more details."}
+                        Open the movie page to explore more details.
                       </p>
                       <button
                         type="button"

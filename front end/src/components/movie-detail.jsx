@@ -78,8 +78,11 @@ export function MovieDetail({
     fetchMovieShowtimes(movie.id)
       .then((data) => {
         if (!active) return;
-        const list = Array.isArray(data?.showtimes) ? data.showtimes
+        const rawList = Array.isArray(data?.showtimes) ? data.showtimes
           : Array.isArray(data) ? data : [];
+        // Filter out past showtimes — only show future ones
+        const now = new Date();
+        const list = rawList.filter((st) => new Date(st.startAt) > now);
         setScheduledShowtimes(list);
         if (list.length > 0) {
           setSelectedDate(extractDateKey(list[0].startAt));
@@ -208,7 +211,11 @@ export function MovieDetail({
                 <Loader2 className={styles["movie-detail-class-3"]} style={{ animation: "spin 1s linear infinite" }} />
                 <span style={{ marginLeft: "0.5rem" }}>Loading showtimes...</span>
               </div>
-            ) : useScheduled ? (
+            ) : !useScheduled ? (
+              <p style={{ fontSize: "0.875rem", opacity: 0.6 }}>
+                No shows available for this movie.
+              </p>
+            ) : (
               <>
                 {/* Date picker */}
                 <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
@@ -246,10 +253,6 @@ export function MovieDetail({
                   </div>
                 )}
               </>
-            ) : (
-              <p style={{ fontSize: "0.875rem", opacity: 0.6 }}>
-                No showtimes have been scheduled yet.
-              </p>
             )}
           </div>
         </div>

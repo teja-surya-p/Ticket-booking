@@ -80,7 +80,8 @@ export function CartPage({
     showOrderSummaryStep,
     customerEmail,
     setCustomerEmail,
-    seatSelections
+    seatSelections,
+    showroomNameMap
   } = useSeatSelectionCheckoutController({
     items,
     onCheckout,
@@ -274,6 +275,7 @@ export function CartPage({
         promoError={promoError}
         isApplyingPromo={isApplyingPromo}
         onApplyPromoCode={applyPromoCode}
+        showroomNameMap={showroomNameMap}
       />
     </div>;
 }

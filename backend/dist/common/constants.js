@@ -7,7 +7,9 @@ export const FIRESTORE_COLLECTIONS = {
   favorites: "favorites",
   users: "users",
   showrooms: "showrooms",
-  showtimes: "showtimes"
+  showtimes: "showtimes",
+  promotions: "promotions",
+  promoCodes: "promoCodes"
 };
 
 export const USER_ACCOUNT_STATUSES = {

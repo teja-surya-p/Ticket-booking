@@ -179,6 +179,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const [saveCard, setSaveCard] = useState(true);
   const [seatRows, setSeatRows] = useState(BOOKING_SEAT_ROWS);
   const [seatCols, setSeatCols] = useState(BOOKING_SEAT_COLS);
+  const [showroomNameMap, setShowroomNameMap] = useState({});
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [promoError, setPromoError] = useState(null);
@@ -235,6 +236,9 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
         if (data?.layout?.rows && data?.layout?.cols) {
           setSeatRows(data.layout.rows);
           setSeatCols(data.layout.cols);
+        }
+        if (data?.name && showroomId) {
+          setShowroomNameMap((prev) => ({ ...prev, [showroomId]: data.name }));
         }
       })
       .catch(() => {
@@ -1119,6 +1123,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     appliedPromo,
     promoError,
     isApplyingPromo,
-    applyPromoCode
+    applyPromoCode,
+    showroomNameMap
   };
 }

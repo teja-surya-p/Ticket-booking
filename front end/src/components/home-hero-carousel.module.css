@@ -139,11 +139,11 @@
 }
 
 .home-hero-controls {
-  @apply pointer-events-none absolute inset-x-0 bottom-6 z-20 min-h-11 px-5 sm:px-8 md:px-12 lg:px-14;
+  @apply pointer-events-none absolute inset-x-0 bottom-6 z-20 flex items-center justify-between px-5 sm:px-8 md:px-12 lg:px-14;
 }
 
 .home-hero-pagination {
-  @apply pointer-events-auto absolute left-1/2 flex max-w-full -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-full border border-white/10 bg-black/35 px-3 py-2 backdrop-blur-md;
+  @apply pointer-events-auto flex max-w-full items-center gap-2 overflow-x-auto rounded-full border border-white/10 bg-black/35 px-3 py-2 backdrop-blur-md;
 }
 
 .home-hero-dot {
@@ -155,7 +155,7 @@
 }
 
 .home-hero-nav {
-  @apply pointer-events-auto absolute right-5 flex items-center gap-2 sm:right-8 md:right-12 lg:right-14;
+  @apply pointer-events-auto flex items-center gap-2;
 }
 
 .home-hero-nav-button {
@@ -172,14 +172,10 @@
 
 @media (max-width: 767px) {
   .home-hero-controls {
-    @apply static mt-0 flex min-h-0 items-center justify-center gap-4 border-t border-white/8 bg-black/55 px-5 py-4;
+    @apply static mt-0 min-h-0 justify-center gap-4 border-t border-white/8 bg-black/55 px-5 py-4;
   }
 
   .home-hero-pagination {
-    @apply static left-auto max-w-[calc(100%-4.5rem)] translate-x-0;
-  }
-
-  .home-hero-nav {
-    @apply static;
+    @apply max-w-[calc(100%-4.5rem)];
   }
 }

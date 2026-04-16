@@ -154,6 +154,7 @@ export default function App() {
             onMovieClick={handleMovieClick}
             onWatchTrailer={handleWatchTrailer}
             onToggleFavorite={handleToggleFavorite}
+            onAddToCart={handleAddToCart}
             favoriteMovieIds={favoriteMovieIds}
             favoritePendingMovieIds={favoritePendingMovieIds}
           />

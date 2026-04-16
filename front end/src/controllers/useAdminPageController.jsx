@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildAdminIssueReport, getMeaningfulErrorMessage } from "@/services/apiErrorUtils";
 import { uploadMovieAssetToStorage } from "@/services/firebaseStorage";
-import { fetchAvailableShowrooms, scheduleShowtime, sendPromotion } from "@/services/adminApi";
+import { cancelAdminShowtime, fetchAllAdminShowtimes, fetchAvailableShowrooms, scheduleShowtime, sendPromotion } from "@/services/adminApi";
 import { fetchMovieShowtimes } from "@/services/moviesApi";
 import { fetchShowrooms } from "@/services/showroomsApi";
 import {
@@ -11,7 +11,14 @@ import {
   MOVIE_GENRE_OPTIONS
 } from "@/models/movie-model";
 
-const initialPromotionForm = { title: "", message: "" };
+const initialPromotionForm = { title: "", message: "", promoCode: "", discountPercent: "" };
+
+export const TIME_SLOT_OPTIONS = [
+  { label: "10:00 AM", value: "10:00" },
+  { label: "2:00 PM", value: "14:00" },
+  { label: "5:00 PM", value: "17:00" },
+  { label: "9:00 PM", value: "21:00" }
+];
 
 const initialFormState = {
   title: "",
@@ -27,7 +34,7 @@ const initialFormState = {
   releaseDate: ""
 };
 
-const initialScheduleForm = { movieId: "", startAt: "" };
+const initialScheduleForm = { movieId: "", date: "", timeSlot: "" };
 
 const initialAssetSelection = {
   poster: null,
@@ -131,6 +138,13 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState(null);
   const [scheduleSuccess, setScheduleSuccess] = useState(null);
+  const [allScheduledShows, setAllScheduledShows] = useState([]);
+  const [isLoadingAllShows, setIsLoadingAllShows] = useState(false);
+  const [selectedHall, setSelectedHall] = useState("");
+  const [pendingSlots, setPendingSlots] = useState([]);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   useEffect(() => {
     setIsLoadingShowrooms(true);
@@ -140,8 +154,24 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
       .finally(() => setIsLoadingShowrooms(false));
   }, []);
 
+  // Load all upcoming scheduled shows on mount so the dashboard can show movies missing showtimes
+  useEffect(() => {
+    setIsLoadingAllShows(true);
+    fetchAllAdminShowtimes()
+      .then((data) => setAllScheduledShows(Array.isArray(data) ? data : []))
+      .catch(() => setAllScheduledShows([]))
+      .finally(() => setIsLoadingAllShows(false));
+  }, []);
+
   const currentlyRunning = movies.filter((movie) => movie.status === "currently_running").length;
   const comingSoon = movies.filter((movie) => movie.status === "coming_soon").length;
+
+  const moviesWithoutShowtimes = useMemo(() => {
+    const scheduledMovieIds = new Set(allScheduledShows.map((s) => Number(s.movieId)));
+    return movies.filter(
+      (movie) => movie.status === "currently_running" && !scheduledMovieIds.has(Number(movie.id))
+    );
+  }, [movies, allScheduledShows]);
 
   const selectedDuration = useMemo(
     () => formatDurationLabel(form.durationHours, form.durationMinutes),
@@ -348,16 +378,28 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   };
 
   const handleSendPromotion = async () => {
-    const { title, message } = promotionForm;
+    const { title, message, promoCode, discountPercent } = promotionForm;
     if (!title.trim()) { setPromotionError("Title is required."); return; }
     if (!message.trim()) { setPromotionError("Message is required."); return; }
+    if (promoCode.trim()) {
+      const pct = Number(discountPercent);
+      if (!discountPercent || isNaN(pct) || pct < 1 || pct > 100) {
+        setPromotionError("Discount % must be a number between 1 and 100 when a promo code is set.");
+        return;
+      }
+    }
 
     setIsSendingPromotion(true);
     setPromotionError(null);
     setPromotionSendResult(null);
 
     try {
-      const result = await sendPromotion({ title: title.trim(), message: message.trim() });
+      const payload = { title: title.trim(), message: message.trim() };
+      if (promoCode.trim()) {
+        payload.promoCode = promoCode.trim().toUpperCase();
+        payload.discountPercent = Number(discountPercent);
+      }
+      const result = await sendPromotion(payload);
       setPromotionSendResult(result);
     } catch (error) {
       setPromotionError(getMeaningfulErrorMessage(error, "admin"));
@@ -366,17 +408,50 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     }
   };
 
-  const openScheduleDialog = () => {
-    setScheduleForm(initialScheduleForm);
+  const loadAllScheduledShows = () => {
+    setIsLoadingAllShows(true);
+    fetchAllAdminShowtimes()
+      .then((data) => setAllScheduledShows(Array.isArray(data) ? data : []))
+      .catch(() => setAllScheduledShows([]))
+      .finally(() => setIsLoadingAllShows(false));
+  };
+
+  const handleCancelShow = async () => {
+    if (!cancelTarget) return;
+    setIsCancelling(true);
+    setCancelError("");
+    try {
+      await cancelAdminShowtime(cancelTarget.showtimeId);
+      setAllScheduledShows((prev) => prev.filter((s) => s.showtimeId !== cancelTarget.showtimeId));
+      setCancelTarget(null);
+    } catch (err) {
+      setCancelError(err?.message ?? "Failed to cancel. Please try again.");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const openScheduleDialog = (preselectedMovie = null) => {
+    setScheduleForm(preselectedMovie
+      ? { ...initialScheduleForm, movieId: String(preselectedMovie.id) }
+      : initialScheduleForm
+    );
     setScheduleSelectedRoom("");
     setAvailableShowrooms([]);
     setScheduleError(null);
     setScheduleSuccess(null);
     setShowScheduleDialog(true);
+    loadAllScheduledShows();
   };
 
   const closeScheduleDialog = () => {
     setShowScheduleDialog(false);
+    setPendingSlots([]);
+  };
+
+  const buildStartAtFromForm = (date, timeSlot) => {
+    if (!date || !timeSlot) return "";
+    return `${date}T${timeSlot}`;
   };
 
   const handleFetchAvailableShowrooms = async (startAt) => {
@@ -396,11 +471,47 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     }
   };
 
+  const prefillScheduleForm = (date, timeSlot, hallName = null) => {
+    setScheduleForm((prev) => ({ ...prev, date, timeSlot }));
+    setAvailableShowrooms([]);
+    // Auto-select showroom by hall name
+    if (hallName) {
+      const room = showrooms.find((r) => r.name === hallName);
+      if (room) {
+        setScheduleSelectedRoom(room.showroomId);
+      }
+    }
+    if (date && timeSlot) {
+      void handleFetchAvailableShowrooms(buildStartAtFromForm(date, timeSlot));
+    }
+  };
+
+  const togglePendingSlot = (dateKey, slotValue, hallName) => {
+    const key = `${dateKey}_${slotValue}`;
+    setPendingSlots((prev) => {
+      const exists = prev.some((s) => s.key === key);
+      if (exists) return prev.filter((s) => s.key !== key);
+      return [...prev, { key, dateKey, slotValue, hallName }];
+    });
+    // Auto-select hall in the form for the most recently clicked slot
+    const room = showrooms.find((r) => r.name === hallName);
+    if (room) setScheduleSelectedRoom(room.showroomId);
+    setScheduleForm((prev) => ({ ...prev, date: dateKey, timeSlot: slotValue }));
+    if (dateKey && slotValue) {
+      void handleFetchAvailableShowrooms(buildStartAtFromForm(dateKey, slotValue));
+    }
+  };
+
   const handleScheduleFormChange = (key, value) => {
     setScheduleForm((prev) => {
       const next = { ...prev, [key]: value };
-      if (key === "startAt") {
-        void handleFetchAvailableShowrooms(value);
+      const date = key === "date" ? value : next.date;
+      const timeSlot = key === "timeSlot" ? value : next.timeSlot;
+      if (date && timeSlot) {
+        void handleFetchAvailableShowrooms(buildStartAtFromForm(date, timeSlot));
+      } else {
+        setAvailableShowrooms([]);
+        setScheduleSelectedRoom("");
       }
       return next;
     });
@@ -411,19 +522,55 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     setScheduleSuccess(null);
 
     if (!scheduleForm.movieId) { setScheduleError("Please select a movie."); return; }
-    if (!scheduleForm.startAt) { setScheduleError("Please select a date and time."); return; }
     if (!scheduleSelectedRoom) { setScheduleError("Please select an available showroom."); return; }
 
     const movieId = Number(scheduleForm.movieId);
-    const startAt = new Date(scheduleForm.startAt).toISOString();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Multi-slot path
+    if (pendingSlots.length > 0) {
+      setIsScheduling(true);
+      const errors = [];
+      let successCount = 0;
+      for (const slot of pendingSlots) {
+        const startAt = new Date(buildStartAtFromForm(slot.dateKey, slot.slotValue)).toISOString();
+        try {
+          await scheduleShowtime({ movieId, showroomId: scheduleSelectedRoom, startAt });
+          successCount++;
+        } catch (err) {
+          errors.push(getMeaningfulErrorMessage(err, "admin"));
+        }
+      }
+      setIsScheduling(false);
+      setPendingSlots([]);
+      loadAllScheduledShows();
+      if (errors.length === 0) {
+        setScheduleSuccess(`${successCount} show${successCount !== 1 ? "s" : ""} scheduled successfully!`);
+      } else if (successCount > 0) {
+        setScheduleSuccess(`${successCount} scheduled. ${errors.length} failed: ${errors[0]}`);
+      } else {
+        setScheduleError(errors[0] ?? "Scheduling failed.");
+      }
+      return;
+    }
+
+    // Single-slot path (manual form)
+    if (!scheduleForm.date) { setScheduleError("Please select a date."); return; }
+    if (!scheduleForm.timeSlot) { setScheduleError("Please select a time slot."); return; }
+
+    const startAtLocal = buildStartAtFromForm(scheduleForm.date, scheduleForm.timeSlot);
+    const startDate = new Date(startAtLocal);
+    if (startDate < today) { setScheduleError("Cannot schedule shows for past dates."); return; }
 
     setIsScheduling(true);
     try {
-      await scheduleShowtime({ movieId, showroomId: scheduleSelectedRoom, startAt });
+      await scheduleShowtime({ movieId, showroomId: scheduleSelectedRoom, startAt: startDate.toISOString() });
       setScheduleSuccess("Show scheduled successfully!");
       setScheduleForm(initialScheduleForm);
       setScheduleSelectedRoom("");
       setAvailableShowrooms([]);
+      loadAllScheduledShows();
     } catch (error) {
       setScheduleError(getMeaningfulErrorMessage(error, "admin"));
     } finally {
@@ -522,7 +669,22 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     openScheduleDialog,
     closeScheduleDialog,
     handleScheduleFormChange,
+    prefillScheduleForm,
     handleScheduleShow,
+    allScheduledShows,
+    moviesWithoutShowtimes,
+    selectedHall,
+    setSelectedHall,
+    pendingSlots,
+    togglePendingSlot,
+    cancelTarget,
+    setCancelTarget,
+    isCancelling,
+    cancelError,
+    setCancelError,
+    handleCancelShow,
+    isLoadingAllShows,
+    buildStartAtFromForm,
     handleChange,
     handleToggleGenre,
     handleFileChange,
