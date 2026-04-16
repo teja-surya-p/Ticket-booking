@@ -1,70 +1,102 @@
 import { Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Param, Post, Query } from "@nestjs/common";
 import { decorateClass, decorateMethod, parameterDecorator } from "../common/nest-metadata.js";
-import { AuthGuardService } from "../services/auth-guard.service.js";
+import { AdminAccessService } from "../services/admin-access.service.js";
 import { PromoCodesService } from "../services/promo-codes.service.js";
 import { AdminService } from "../services/admin.service.js";
 
 class AdminController {
-  constructor(adminService, promoCodesService, authGuardService) {
+  constructor(adminService, promoCodesService, adminAccessService) {
     this.adminService = adminService;
     this.promoCodesService = promoCodesService;
-    this.authGuardService = authGuardService;
+    this.adminAccessService = adminAccessService;
   }
 
-  async getStats() {
+  async getStats(adminEmail, adminPassword) {
+    this.adminAccessService.requireAdminAccess(adminEmail, adminPassword);
     return await this.adminService.getDashboardStats();
   }
 
-  async scheduleShowtime(body) {
+  async scheduleShowtime(adminEmail, adminPassword, body) {
+    this.adminAccessService.requireAdminAccess(adminEmail, adminPassword);
     return await this.adminService.scheduleShowtime(body);
   }
 
-  async sendPromotion(body) {
+  async sendPromotion(adminEmail, adminPassword, body) {
+    this.adminAccessService.requireAdminAccess(adminEmail, adminPassword);
     return await this.adminService.sendPromotion(body);
   }
 
-  async getAvailableShowrooms(startAt) {
+  async getAvailableShowrooms(adminEmail, adminPassword, startAt) {
+    this.adminAccessService.requireAdminAccess(adminEmail, adminPassword);
     return await this.adminService.getAvailableShowrooms(startAt);
   }
 
-  async createPromoCode(authorization, body) {
-    await this.authGuardService.requireAuthenticatedCustomer(authorization, {});
+  async createPromoCode(adminEmail, adminPassword, body) {
+    this.adminAccessService.requireAdminAccess(adminEmail, adminPassword);
     return await this.promoCodesService.create(body);
   }
 
-  async getAllShowtimes() {
+  async getAllShowtimes(adminEmail, adminPassword) {
+    this.adminAccessService.requireAdminAccess(adminEmail, adminPassword);
     return await this.adminService.getAllShowtimes();
   }
 
-  async cancelShowtime(showtimeId) {
+  async cancelShowtime(adminEmail, adminPassword, showtimeId) {
+    this.adminAccessService.requireAdminAccess(adminEmail, adminPassword);
     await this.adminService.cancelShowtime(showtimeId);
   }
 }
 
-decorateMethod(AdminController.prototype, "getStats", [Get("stats")], {
-  paramTypes: [],
-  returnType: Promise
-});
+decorateMethod(
+  AdminController.prototype,
+  "getStats",
+  [
+    Get("stats"),
+    parameterDecorator(0, Headers("x-admin-email")),
+    parameterDecorator(1, Headers("x-admin-password"))
+  ],
+  {
+    paramTypes: [String, String],
+    returnType: Promise
+  }
+);
 
 decorateMethod(
   AdminController.prototype,
   "scheduleShowtime",
-  [Post("showtimes"), HttpCode(HttpStatus.CREATED), parameterDecorator(0, Body())],
-  { paramTypes: [Object], returnType: Promise }
+  [
+    Post("showtimes"),
+    HttpCode(HttpStatus.CREATED),
+    parameterDecorator(0, Headers("x-admin-email")),
+    parameterDecorator(1, Headers("x-admin-password")),
+    parameterDecorator(2, Body())
+  ],
+  { paramTypes: [String, String, Object], returnType: Promise }
 );
 
 decorateMethod(
   AdminController.prototype,
   "sendPromotion",
-  [Post("promotions"), HttpCode(HttpStatus.CREATED), parameterDecorator(0, Body())],
-  { paramTypes: [Object], returnType: Promise }
+  [
+    Post("promotions"),
+    HttpCode(HttpStatus.CREATED),
+    parameterDecorator(0, Headers("x-admin-email")),
+    parameterDecorator(1, Headers("x-admin-password")),
+    parameterDecorator(2, Body())
+  ],
+  { paramTypes: [String, String, Object], returnType: Promise }
 );
 
 decorateMethod(
   AdminController.prototype,
   "getAvailableShowrooms",
-  [Get("available-showrooms"), parameterDecorator(0, Query("startAt"))],
-  { paramTypes: [String], returnType: Promise }
+  [
+    Get("available-showrooms"),
+    parameterDecorator(0, Headers("x-admin-email")),
+    parameterDecorator(1, Headers("x-admin-password")),
+    parameterDecorator(2, Query("startAt"))
+  ],
+  { paramTypes: [String, String, String], returnType: Promise }
 );
 
 decorateMethod(
@@ -73,24 +105,40 @@ decorateMethod(
   [
     Post("promo-codes"),
     HttpCode(HttpStatus.CREATED),
-    parameterDecorator(0, Headers("authorization")),
-    parameterDecorator(1, Body())
+    parameterDecorator(0, Headers("x-admin-email")),
+    parameterDecorator(1, Headers("x-admin-password")),
+    parameterDecorator(2, Body())
   ],
-  { paramTypes: [String, Object], returnType: Promise }
+  { paramTypes: [String, String, Object], returnType: Promise }
 );
 
-decorateMethod(AdminController.prototype, "getAllShowtimes", [Get("showtimes")], {
-  paramTypes: [],
-  returnType: Promise
-});
+decorateMethod(
+  AdminController.prototype,
+  "getAllShowtimes",
+  [
+    Get("showtimes"),
+    parameterDecorator(0, Headers("x-admin-email")),
+    parameterDecorator(1, Headers("x-admin-password"))
+  ],
+  {
+    paramTypes: [String, String],
+    returnType: Promise
+  }
+);
 
 decorateMethod(
   AdminController.prototype,
   "cancelShowtime",
-  [Delete("showtimes/:id"), HttpCode(HttpStatus.NO_CONTENT), parameterDecorator(0, Param("id"))],
-  { paramTypes: [String], returnType: Promise }
+  [
+    Delete("showtimes/:id"),
+    HttpCode(HttpStatus.NO_CONTENT),
+    parameterDecorator(0, Headers("x-admin-email")),
+    parameterDecorator(1, Headers("x-admin-password")),
+    parameterDecorator(2, Param("id"))
+  ],
+  { paramTypes: [String, String, String], returnType: Promise }
 );
 
-decorateClass(AdminController, [Controller("admin")], [AdminService, PromoCodesService, AuthGuardService]);
+decorateClass(AdminController, [Controller("admin")], [AdminService, PromoCodesService, AdminAccessService]);
 
 export { AdminController };

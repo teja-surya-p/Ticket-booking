@@ -21,9 +21,12 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
+  LOCAL_ADMIN_EMAIL,
+  LOCAL_ADMIN_PASSWORD,
   mapAuthErrorToMessage,
   registerCustomer,
   resendVerificationEmail,
+  setAdminMode,
   sendPasswordResetLink,
   signOutCurrentUser,
   signInWithEmailPassword,
@@ -83,8 +86,6 @@ const registerDefaults = {
   zip: ""
 };
 
-const ADMIN_EMAIL = "admin@gmail.com";
-const ADMIN_PASSWORD = "admin";
 const VERIFICATION_REQUIRED_POPUP_MESSAGE =
   "Account is not verified. Please check your email to verify your account.";
 
@@ -159,19 +160,6 @@ function buildAddress(values) {
   };
 
   return Object.values(address).some(Boolean) ? address : null;
-}
-
-function setAdminMode(enabled) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  if (enabled) {
-    window.localStorage.setItem("cinebook:admin", "true");
-    return;
-  }
-
-  window.localStorage.removeItem("cinebook:admin");
 }
 
 export default function LoginPage() {
@@ -272,7 +260,7 @@ export default function LoginPage() {
     const normalizedEmail = values.email.trim().toLowerCase();
     const normalizedPassword = values.password;
     const isHardcodedAdminLogin =
-      normalizedEmail === ADMIN_EMAIL && normalizedPassword === ADMIN_PASSWORD;
+      normalizedEmail === LOCAL_ADMIN_EMAIL && normalizedPassword === LOCAL_ADMIN_PASSWORD;
 
     if (isHardcodedAdminLogin) {
       await signOutCurrentUser();
@@ -350,7 +338,7 @@ export default function LoginPage() {
       return;
     }
 
-    if (normalizedEmail === ADMIN_EMAIL) {
+    if (normalizedEmail === LOCAL_ADMIN_EMAIL) {
       setForgotPasswordState((previous) => ({
         ...previous,
         email,
@@ -380,7 +368,7 @@ export default function LoginPage() {
     }));
   };
   const isAdminForgotPasswordEmail =
-    forgotPasswordState.email.trim().toLowerCase() === ADMIN_EMAIL;
+    forgotPasswordState.email.trim().toLowerCase() === LOCAL_ADMIN_EMAIL;
 
   const handleRegister = async (values) => {
     setFormError("");

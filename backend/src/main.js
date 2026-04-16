@@ -17,6 +17,12 @@ async function bootstrap() {
     import("./app.module.js"),
     import("./config/app.config.js")
   ]);
+  const allowedHeaders = [
+    "Content-Type",
+    "Authorization",
+    "X-Admin-Email",
+    "X-Admin-Password"
+  ];
 
   const app = await NestFactory.create(AppModule);
   const corsOrigins = appConfig.corsOrigin
@@ -35,7 +41,7 @@ async function bootstrap() {
       callback(new Error(`CORS blocked for origin: ${origin}`), false);
     },
     methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders,
     exposedHeaders: ["Content-Type"],
     credentials: true,
     preflightContinue: false,

@@ -1,4 +1,5 @@
 import { APICallHandler } from "./apiCallHandler";
+import { getAdminAuthHeaders } from "./adminSession";
 import { API_ENDPOINTS, QUERY_KEYS } from "./constants";
 import "./moviesApi.module.css";
 function buildMovieQuery(params = {}) {
@@ -36,7 +37,8 @@ export function createMovie(payload) {
     url: API_ENDPOINTS.movies.list,
     method: "POST",
     operation: "Create movie",
-    body: payload
+    body: payload,
+    header: getAdminAuthHeaders()
   });
 }
 export function updateMovie(movieId, payload) {
@@ -44,7 +46,8 @@ export function updateMovie(movieId, payload) {
     url: API_ENDPOINTS.movies.detail(movieId),
     method: "PATCH",
     operation: "Update movie",
-    body: payload
+    body: payload,
+    header: getAdminAuthHeaders()
   });
 }
 export function deleteMovie(movieId) {
@@ -52,6 +55,7 @@ export function deleteMovie(movieId) {
     url: API_ENDPOINTS.movies.detail(movieId),
     method: "DELETE",
     operation: "Delete movie",
+    header: getAdminAuthHeaders(),
     allowEmptyResponse: true
   });
 }

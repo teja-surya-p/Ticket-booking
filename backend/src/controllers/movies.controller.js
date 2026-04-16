@@ -13,16 +13,16 @@ import {
   Query
 } from "@nestjs/common";
 import { decorateClass, decorateMethod, parameterDecorator } from "../common/nest-metadata.js";
-import { AuthGuardService } from "../services/auth-guard.service.js";
+import { AdminAccessService } from "../services/admin-access.service.js";
 import { MovieNotificationsService } from "../services/movie-notifications.service.js";
 import { MoviesService } from "../services/movies.service.js";
 import { ShowtimesService } from "../services/showtimes.service.js";
 
 class MoviesController {
-  constructor(moviesService, showtimesService, authGuardService, movieNotificationsService) {
+  constructor(moviesService, showtimesService, adminAccessService, movieNotificationsService) {
     this.moviesService = moviesService;
     this.showtimesService = showtimesService;
-    this.authGuardService = authGuardService;
+    this.adminAccessService = adminAccessService;
     this.movieNotificationsService = movieNotificationsService;
   }
 
@@ -43,18 +43,18 @@ class MoviesController {
     return await this.showtimesService.findByMovieId(movieId);
   }
 
-  async createMovie(authorization, body) {
-    await this.authGuardService.requireAuthenticatedCustomer(authorization);
+  async createMovie(adminEmail, adminPassword, body) {
+    this.adminAccessService.requireAdminAccess(adminEmail, adminPassword);
     return await this.moviesService.create(body);
   }
 
-  async updateMovie(authorization, id, body) {
-    await this.authGuardService.requireAuthenticatedCustomer(authorization);
+  async updateMovie(adminEmail, adminPassword, id, body) {
+    this.adminAccessService.requireAdminAccess(adminEmail, adminPassword);
     return await this.moviesService.update(id, body);
   }
 
-  async deleteMovie(authorization, id) {
-    await this.authGuardService.requireAuthenticatedCustomer(authorization);
+  async deleteMovie(adminEmail, adminPassword, id) {
+    this.adminAccessService.requireAdminAccess(adminEmail, adminPassword);
     await this.moviesService.remove(id);
   }
 
@@ -91,8 +91,13 @@ decorateMethod(
 decorateMethod(
   MoviesController.prototype,
   "createMovie",
-  [Post(), parameterDecorator(0, Headers("authorization")), parameterDecorator(1, Body())],
-  { paramTypes: [String, Object], returnType: Promise }
+  [
+    Post(),
+    parameterDecorator(0, Headers("x-admin-email")),
+    parameterDecorator(1, Headers("x-admin-password")),
+    parameterDecorator(2, Body())
+  ],
+  { paramTypes: [String, String, Object], returnType: Promise }
 );
 
 decorateMethod(
@@ -100,11 +105,12 @@ decorateMethod(
   "updateMovie",
   [
     Patch(":id"),
-    parameterDecorator(0, Headers("authorization")),
-    parameterDecorator(1, Param("id", ParseIntPipe)),
-    parameterDecorator(2, Body())
+    parameterDecorator(0, Headers("x-admin-email")),
+    parameterDecorator(1, Headers("x-admin-password")),
+    parameterDecorator(2, Param("id", ParseIntPipe)),
+    parameterDecorator(3, Body())
   ],
-  { paramTypes: [String, Number, Object], returnType: Promise }
+  { paramTypes: [String, String, Number, Object], returnType: Promise }
 );
 
 decorateMethod(
@@ -113,10 +119,11 @@ decorateMethod(
   [
     Delete(":id"),
     HttpCode(HttpStatus.NO_CONTENT),
-    parameterDecorator(0, Headers("authorization")),
-    parameterDecorator(1, Param("id", ParseIntPipe))
+    parameterDecorator(0, Headers("x-admin-email")),
+    parameterDecorator(1, Headers("x-admin-password")),
+    parameterDecorator(2, Param("id", ParseIntPipe))
   ],
-  { paramTypes: [String, Number], returnType: Promise }
+  { paramTypes: [String, String, Number], returnType: Promise }
 );
 
 decorateMethod(
@@ -131,6 +138,6 @@ decorateMethod(
   { paramTypes: [Number, Object], returnType: Promise }
 );
 
-decorateClass(MoviesController, [Controller("movies")], [MoviesService, ShowtimesService, AuthGuardService, MovieNotificationsService]);
+decorateClass(MoviesController, [Controller("movies")], [MoviesService, ShowtimesService, AdminAccessService, MovieNotificationsService]);
 
 export { MoviesController };

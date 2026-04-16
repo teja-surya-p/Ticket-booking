@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   addFavoriteMovie,
+  clearAdminMode as clearStoredAdminMode,
   createMovie,
   deleteMovie,
   fetchFavorites,
   fetchCurrentUserProfile,
   fetchMovies,
   getMeaningfulErrorMessage,
+  isAdminModeEnabled,
   removeFavoriteMovie,
   signOutCurrentUser,
   subscribeToAuthState,
@@ -131,8 +133,7 @@ export function useCinemaAppController() {
       return;
     }
 
-    const storedAdminState = window.localStorage.getItem("cinebook:admin") === "true";
-    setIsAdmin(storedAdminState);
+    setIsAdmin(isAdminModeEnabled());
   }, []);
 
   useEffect(() => {
@@ -434,9 +435,7 @@ export function useCinemaAppController() {
 
   const clearAdminMode = () => {
     setIsAdmin(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem("cinebook:admin");
-    }
+    clearStoredAdminMode();
   };
 
   const handleSignOut = async () => {

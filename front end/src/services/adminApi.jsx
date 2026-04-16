@@ -1,11 +1,13 @@
 import { APICallHandler } from "./apiCallHandler";
+import { getAdminAuthHeaders } from "./adminSession";
 import { API_ENDPOINTS } from "./constants";
 import "./adminApi.module.css";
 export function fetchAdminDashboardStats() {
   return APICallHandler({
     url: API_ENDPOINTS.admin.stats,
     method: "GET",
-    operation: "Fetch admin dashboard stats"
+    operation: "Fetch admin dashboard stats",
+    header: getAdminAuthHeaders()
   });
 }
 
@@ -21,7 +23,8 @@ export function scheduleShowtime(payload) {
     url: API_ENDPOINTS.admin.scheduleShowtime,
     method: "POST",
     operation: "Schedule showtime",
-    body: payload
+    body: payload,
+    header: getAdminAuthHeaders()
   });
 }
 
@@ -30,7 +33,8 @@ export function sendPromotion(payload) {
     url: API_ENDPOINTS.admin.sendPromotion,
     method: "POST",
     operation: "Send promotion",
-    body: payload
+    body: payload,
+    header: getAdminAuthHeaders()
   });
 }
 
@@ -38,7 +42,8 @@ export function fetchAvailableShowrooms(startAt) {
   return APICallHandler({
     url: `${API_ENDPOINTS.admin.availableShowrooms}?startAt=${encodeURIComponent(startAt)}`,
     method: "GET",
-    operation: "Fetch available showrooms"
+    operation: "Fetch available showrooms",
+    header: getAdminAuthHeaders()
   });
 }
 
@@ -47,7 +52,8 @@ export function createPromoCode(payload) {
     url: API_ENDPOINTS.admin.promoCode,
     method: "POST",
     operation: "Create promo code",
-    body: payload
+    body: payload,
+    header: getAdminAuthHeaders()
   });
 }
 
@@ -55,7 +61,8 @@ export function fetchAllAdminShowtimes() {
   return APICallHandler({
     url: API_ENDPOINTS.admin.allShowtimes,
     method: "GET",
-    operation: "Fetch all admin showtimes"
+    operation: "Fetch all admin showtimes",
+    header: getAdminAuthHeaders()
   });
 }
 
@@ -63,6 +70,7 @@ export function cancelAdminShowtime(showtimeId) {
   return APICallHandler({
     url: API_ENDPOINTS.admin.cancelShowtime(showtimeId),
     method: "DELETE",
-    operation: "Cancel showtime"
+    operation: "Cancel showtime",
+    header: getAdminAuthHeaders()
   });
 }

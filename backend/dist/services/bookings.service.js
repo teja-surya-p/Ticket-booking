@@ -653,15 +653,27 @@ class BookingsService {
         .where("showtime", "==", showtime)
         .get()
     ]);
-    const docs = [...numberIdSnapshot.docs, ...stringIdSnapshot.docs];
 
-    return docs.map((doc) => doc.data()).map((data) => ({
-      seatIds: Array.isArray(data.seatIds)
-        ? data.seatIds.filter((v) => typeof v === "string")
-        : Array.isArray(data.seats)
-          ? data.seats.filter((v) => typeof v === "string")
-          : []
-    }));
+    // Deduplicate docs by bookingId (number + string movieId queries may overlap)
+    const seen = new Set();
+    const docs = [...numberIdSnapshot.docs, ...stringIdSnapshot.docs].filter((doc) => {
+      if (seen.has(doc.id)) return false;
+      seen.add(doc.id);
+      return true;
+    });
+
+    return docs
+      .map((doc) => doc.data())
+      // Only confirmed bookings permanently reserve seats.
+      // draft / seats_selected are in-progress and must not block seats for other users.
+      .filter((data) => data.status === "confirmed")
+      .map((data) => ({
+        seatIds: Array.isArray(data.seatIds)
+          ? data.seatIds.filter((v) => typeof v === "string")
+          : Array.isArray(data.seats)
+            ? data.seats.filter((v) => typeof v === "string")
+            : []
+      }));
   }
 
   /**
