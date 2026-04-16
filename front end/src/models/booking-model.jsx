@@ -32,15 +32,31 @@ export function calculateBookingSubtotal(tickets, pricing) {
   );
 }
 
+export function buildSeatId(row, col) {
+  return `${Number(row) + 1}-${Number(col) + 1}`;
+}
+
+export function parseSeatId(seatId) {
+  const [rowValue, colValue] = String(seatId).split("-").map(Number);
+  if (!Number.isInteger(rowValue) || !Number.isInteger(colValue) || rowValue <= 0 || colValue <= 0) {
+    return null;
+  }
+
+  return {
+    row: rowValue - 1,
+    col: colValue - 1
+  };
+}
+
 export function formatSeatLabel(row, col) {
   return `${String.fromCharCode(65 + row)}${col + 1}`;
 }
 
 export function formatSeatIdLabel(seatId) {
-  const [row, col] = String(seatId).split("-").map(Number);
-  if (!Number.isFinite(row) || !Number.isFinite(col)) {
+  const parsedSeat = parseSeatId(seatId);
+  if (!parsedSeat) {
     return seatId;
   }
 
-  return formatSeatLabel(row, col);
+  return formatSeatLabel(parsedSeat.row, parsedSeat.col);
 }

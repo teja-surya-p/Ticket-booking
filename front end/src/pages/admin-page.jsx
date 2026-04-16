@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { CalendarPlus, Film, Plus, Edit2, Trash2, Eye, BarChart3, Copy, Upload, ChevronDown, X, Mail } from "lucide-react";
+import { CalendarPlus, Film, Plus, Edit2, Trash2, Eye, BarChart3, Copy, Upload, ChevronDown, X, Mail, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,19 @@ export function AdminPage({
     durationMinuteOptions,
     showrooms,
     isLoadingShowrooms,
+    showHallDialog,
+    hallForm,
+    editingHall,
+    hallSubmitError,
+    hallTotalSeats,
+    isSavingHall,
+    deletingHallId,
+    openHallDialog,
+    openEditHallDialog,
+    closeHallDialog,
+    handleHallChange,
+    handleSaveHall,
+    handleDeleteHall,
     showPromotionDialog,
     promotionForm,
     isSendingPromotion,
@@ -163,6 +176,10 @@ export function AdminPage({
         <Button onClick={openScheduleDialog} variant="outline">
           <CalendarPlus className={styles["admin-icon"]} />
           Manage Showtimes
+        </Button>
+        <Button onClick={openHallDialog} variant="outline">
+          <LayoutGrid className={styles["admin-icon"]} />
+          Manage Halls
         </Button>
         <Button onClick={openPromotionDialog} variant="outline">
           <Mail className={styles["admin-icon"]} />
@@ -331,6 +348,149 @@ export function AdminPage({
       )}
 
 
+      <Dialog open={showHallDialog} onOpenChange={(open) => { if (!open) closeHallDialog(); }}>
+        <DialogContent className={styles["admin-dialog"]}>
+          <DialogHeader>
+            <DialogTitle>{editingHall ? "Edit Hall" : "Manage Halls"}</DialogTitle>
+            <DialogDescription>
+              Create new halls, update their seat layout, or remove unused halls. The customer seat map will use the hall layout configured here.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className={styles["admin-form"]}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap" }}>
+              <p style={{ fontWeight: 600, fontSize: "0.95rem", margin: 0 }}>
+                {editingHall ? `Editing ${editingHall.name}` : "Add a New Hall"}
+              </p>
+              {editingHall && (
+                <Button type="button" variant="outline" size="sm" onClick={openHallDialog}>
+                  Create New Hall
+                </Button>
+              )}
+            </div>
+
+            <div className={styles["admin-form-field"]}>
+              <label className={styles["admin-field-label"]}>Hall Name <span style={{ color: "red" }}>*</span></label>
+              <Input
+                value={hallForm.name}
+                onChange={(event) => handleHallChange("name")(event.target.value)}
+                placeholder="e.g. Deluxe Hall"
+                className={styles["admin-field-control"]}
+              />
+            </div>
+
+            <div className={styles["admin-form-grid-duration"]}>
+              <div className={styles["admin-form-field"]}>
+                <label className={styles["admin-field-label"]}>Rows <span style={{ color: "red" }}>*</span></label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={hallForm.rows}
+                  onChange={(event) => handleHallChange("rows")(event.target.value)}
+                  placeholder="e.g. 10"
+                  className={styles["admin-field-control"]}
+                />
+              </div>
+              <div className={styles["admin-form-field"]}>
+                <label className={styles["admin-field-label"]}>Seats Per Row <span style={{ color: "red" }}>*</span></label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={hallForm.cols}
+                  onChange={(event) => handleHallChange("cols")(event.target.value)}
+                  placeholder="e.g. 20"
+                  className={styles["admin-field-control"]}
+                />
+              </div>
+            </div>
+
+            <p className={styles["admin-muted-text"]}>
+              {hallTotalSeats > 0
+                ? `This layout will show exactly ${hallTotalSeats} seat${hallTotalSeats === 1 ? "" : "s"} to customers.`
+                : "Enter rows and seats per row to calculate total capacity."}
+            </p>
+
+            {hallSubmitError && (
+              <div className={styles["admin-error-card"]}>
+                <p className={styles["admin-error-title"]}>{hallSubmitError}</p>
+              </div>
+            )}
+
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1rem", marginTop: "0.25rem" }}>
+              <p style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.75rem" }}>
+                Existing Halls
+              </p>
+
+              {isLoadingShowrooms ? (
+                <p className={styles["admin-muted-text"]}>Loading halls...</p>
+              ) : showrooms.length === 0 ? (
+                <p className={styles["admin-muted-text"]}>No halls found.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem", maxHeight: "280px", overflowY: "auto", paddingRight: "0.25rem" }}>
+                  {showrooms.map((room) => (
+                    <div
+                      key={room.showroomId}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "0.75rem",
+                        border: "1px solid var(--border)",
+                        borderRadius: "0.6rem",
+                        padding: "0.8rem 0.9rem"
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                        <span style={{ fontWeight: 600 }}>{room.name}</span>
+                        <span className={styles["admin-muted-text"]}>
+                          {room.layout?.rows ?? 0} rows × {room.layout?.cols ?? 0} seats per row
+                        </span>
+                        <span className={styles["admin-muted-text"]}>
+                          {room.layout?.totalSeats ?? 0} total seats
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => openEditHallDialog(room)}
+                          aria-label={`Edit ${room.name}`}
+                          disabled={isSavingHall || deletingHallId === room.showroomId}
+                        >
+                          <Edit2 className={styles["admin-icon"]} />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className={styles["admin-delete-button"]}
+                          onClick={() => handleDeleteHall(room)}
+                          aria-label={`Delete ${room.name}`}
+                          disabled={isSavingHall || deletingHallId === room.showroomId}
+                        >
+                          <Trash2 className={styles["admin-icon"]} />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeHallDialog} disabled={isSavingHall}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveHall} disabled={isSavingHall} className={styles["admin-submit-button"]}>
+              {isSavingHall ? "Saving..." : editingHall ? "Save Hall" : "Create Hall"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showAddDialog} onOpenChange={open => open ? setShowAddDialog(true) : closeDialog()}>
         <DialogContent className={styles["admin-dialog"]}>
           <DialogHeader>
@@ -352,18 +512,18 @@ export function AdminPage({
             {/* Showroom — always visible, prominent for coming soon → currently playing */}
             <div className={styles["admin-form-field"]}>
               <label className={styles["admin-field-label"]}>Showroom <span style={{ color: "red" }}>*</span></label>
-              <Select value={form.showroomId} onValueChange={value => handleChange("showroomId")(value)} disabled={isLoadingShowrooms}>
-                <SelectTrigger className={styles["admin-field-control"]}>
-                  <SelectValue placeholder={isLoadingShowrooms ? "Loading showrooms..." : "Select a showroom"} />
-                </SelectTrigger>
-                <SelectContent>
+                <Select value={form.showroomId} onValueChange={value => handleChange("showroomId")(value)} disabled={isLoadingShowrooms}>
+                  <SelectTrigger className={styles["admin-field-control"]}>
+                    <SelectValue placeholder={isLoadingShowrooms ? "Loading showrooms..." : "Select a showroom"} />
+                  </SelectTrigger>
+                  <SelectContent>
                   {showrooms.map((room) => (
                     <SelectItem key={room.showroomId} value={room.showroomId}>
-                      {room.name}
+                      {room.name} ({room.layout?.totalSeats ?? 0} seats)
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
               <p className={styles["admin-muted-text"]}>Determines the seating capacity and layout for this movie.</p>
             </div>
 

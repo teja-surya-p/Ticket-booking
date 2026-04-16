@@ -123,6 +123,15 @@ class ShowtimesService {
     return docs.sort((a, b) => a.startAt.localeCompare(b.startAt));
   }
 
+  async findByShowroomId(showroomId) {
+    const normalizedId = this.normalizeShowroomId(showroomId);
+    const snapshot = await this.collection()
+      .where("showroomId", "==", normalizedId)
+      .get();
+    const docs = snapshot.docs.map((doc) => toShowtimeEntity(doc.data()));
+    return docs.sort((a, b) => a.startAt.localeCompare(b.startAt));
+  }
+
   async findOccupiedShowroomIds(startAt) {
     const normalized = this.normalizeStartAt(startAt);
     const snapshot = await this.collection()

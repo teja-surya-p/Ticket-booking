@@ -164,6 +164,7 @@ class MoviesService {
 
   async create(dto) {
     if (dto.showroomId) {
+      await this.assertShowroomExists(dto.showroomId);
       const showtimes = Array.isArray(dto.showtimes) ? dto.showtimes : [];
       await this.assertNoShowtimeConflict(dto.showroomId, showtimes, null);
     }
@@ -192,6 +193,7 @@ class MoviesService {
 
     const showroomToCheck = dto.showroomId ?? existing.showroomId;
     if (showroomToCheck) {
+      await this.assertShowroomExists(showroomToCheck);
       const showtimes = Array.isArray(dto.showtimes) ? dto.showtimes : (existing.showtimes ?? []);
       await this.assertNoShowtimeConflict(showroomToCheck, showtimes, id);
     }
@@ -429,6 +431,18 @@ class MoviesService {
       .where("showroomId", "==", showroomId)
       .get();
     return snapshot.docs.map((doc, index) => this.normalizeMovie(doc.data(), index + 1));
+  }
+
+  async assertShowroomExists(showroomId) {
+    const snapshot = await this.firestoreService
+      .db()
+      .collection(FIRESTORE_COLLECTIONS.showrooms)
+      .doc(String(showroomId).trim())
+      .get();
+
+    if (!snapshot.exists) {
+      throw new NotFoundException(`Hall "${showroomId}" not found`);
+    }
   }
 
   async assertNoShowtimeConflict(showroomId, newShowtimes, excludeId) {

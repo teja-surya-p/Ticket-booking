@@ -53,6 +53,11 @@ class AdminService {
    */
   async scheduleShowtime(dto) {
     const movie = await this.moviesService.findById(Number(dto?.movieId));
+    const showroom = await this.showroomsService.findById(dto?.showroomId);
+
+    if (!showroom) {
+      throw new BadRequestException(`Hall "${dto?.showroomId ?? ""}" not found`);
+    }
 
     // Coming soon movies cannot be scheduled before their release date
     if (movie.status === "coming_soon" && movie.releaseDate) {

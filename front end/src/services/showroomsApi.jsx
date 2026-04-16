@@ -1,4 +1,5 @@
 import { APICallHandler } from "./apiCallHandler";
+import { getAdminAuthHeaders } from "./adminSession";
 import { API_ENDPOINTS } from "./constants";
 
 /**
@@ -18,8 +19,38 @@ export function fetchShowrooms() {
 
 export function fetchShowroomById(showroomId) {
   return APICallHandler({
-    url: `${API_ENDPOINTS.showrooms.list}/${showroomId}`,
+    url: API_ENDPOINTS.showrooms.detail(showroomId),
     method: "GET",
     operation: "Fetch showroom by id"
+  });
+}
+
+export function createShowroom(payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.showrooms.list,
+    method: "POST",
+    operation: "Create hall",
+    body: payload,
+    header: getAdminAuthHeaders()
+  });
+}
+
+export function updateShowroom(showroomId, payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.showrooms.detail(showroomId),
+    method: "PATCH",
+    operation: "Update hall",
+    body: payload,
+    header: getAdminAuthHeaders()
+  });
+}
+
+export function deleteShowroom(showroomId) {
+  return APICallHandler({
+    url: API_ENDPOINTS.showrooms.detail(showroomId),
+    method: "DELETE",
+    operation: "Delete hall",
+    allowEmptyResponse: true,
+    header: getAdminAuthHeaders()
   });
 }

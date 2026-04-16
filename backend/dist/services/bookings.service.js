@@ -17,6 +17,7 @@ import { AuthGuardService } from "./auth-guard.service.js";
 import { DefaultPricingStrategy } from "./pricing.strategy.js";
 import { MoviesService } from "./movies.service.js";
 import { PromoCodesService } from "./promo-codes.service.js";
+import { ShowroomsService } from "./showrooms.service.js";
 import { ShowtimesService } from "./showtimes.service.js";
 
 /**
@@ -33,13 +34,14 @@ import { ShowtimesService } from "./showtimes.service.js";
  *      (promotions, taxes) without modifying this class.
  */
 class BookingsService {
-  constructor(firestoreService, moviesService, authGuardService, pricingStrategy, showtimesService, promoCodesService) {
+  constructor(firestoreService, moviesService, authGuardService, pricingStrategy, showtimesService, promoCodesService, showroomsService) {
     this.firestoreService = firestoreService;
     this.moviesService = moviesService;
     this.authGuardService = authGuardService;
     this.pricingStrategy = pricingStrategy;
     this.showtimesService = showtimesService;
     this.promoCodesService = promoCodesService;
+    this.showroomsService = showroomsService;
   }
 
   // ── Card management ──────────────────────────────────────────────────────
@@ -253,6 +255,8 @@ class BookingsService {
     if (uniqueSeatIds.length !== totalTickets) {
       throw new BadRequestException("Seat count must match total ticket count");
     }
+
+    await this.assertValidSeatIdsForMovie(booking.movieId, uniqueSeatIds);
 
     const existingReservedSeats = new Set(
       (
@@ -738,14 +742,48 @@ class BookingsService {
       throw new BadRequestException("Seat count must match total ticket count");
     }
 
+    await this.assertValidSeatIdsForMovie(payload.movieId, uniqueSeatIds);
+
     return tickets;
+  }
+
+  async assertValidSeatIdsForMovie(movieId, seatIds) {
+    const movie = await this.moviesService.findById(movieId);
+
+    if (typeof movie?.showroomId !== "string" || movie.showroomId.trim().length === 0) {
+      throw new BadRequestException("The selected movie does not have a hall assigned");
+    }
+
+    const showroom = await this.showroomsService.findById(movie.showroomId);
+    if (!showroom?.layout) {
+      throw new BadRequestException("The selected hall could not be found");
+    }
+
+    const validSeatIds = new Set(this.showroomsService.generateSeatIds(showroom.layout));
+    const invalidSeatIds = (Array.isArray(seatIds) ? seatIds : []).filter(
+      (seatId) => typeof seatId !== "string" || !validSeatIds.has(seatId)
+    );
+
+    if (invalidSeatIds.length > 0) {
+      throw new BadRequestException(
+        `Invalid seat selection for this hall: ${invalidSeatIds.join(", ")}`
+      );
+    }
   }
 }
 
 decorateClass(
   BookingsService,
   [Injectable()],
-  [FirestoreService, MoviesService, AuthGuardService, DefaultPricingStrategy, ShowtimesService, PromoCodesService]
+  [
+    FirestoreService,
+    MoviesService,
+    AuthGuardService,
+    DefaultPricingStrategy,
+    ShowtimesService,
+    PromoCodesService,
+    ShowroomsService
+  ]
 );
 
 export { BookingsService };

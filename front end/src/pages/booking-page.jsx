@@ -2,6 +2,7 @@
 
 import { ArrowLeft, Loader2, Minus, Plus, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { buildSeatId, parseSeatId } from "@/models/booking-model";
 import { useBookingPageController } from "@/controllers/useBookingPageController";
 import styles from "./booking-page.module.css";
 
@@ -95,7 +96,7 @@ export function BookingPage({
                       {Array.from({
                   length: COLS
                 }, (_, col) => {
-                  const seatId = `${row}-${col}`;
+                  const seatId = buildSeatId(row, col);
                   const isReserved = reservedSeats.has(seatId);
                   const isSelected = selectedSeats.has(seatId);
                   return <button key={seatId} disabled={isReserved} onClick={() => toggleSeat(seatId)} className={[styles["booking-page-class-20"], isReserved ? styles["booking-page-class-21"] : isSelected ? styles["booking-page-class-22"] : styles["booking-page-class-23"]].filter(Boolean).join(" ")} title={isReserved ? `Seat ${seatLabel(row, col)} - Reserved` : `Seat ${seatLabel(row, col)}`} aria-label={isReserved ? `Seat ${seatLabel(row, col)} reserved` : isSelected ? `Seat ${seatLabel(row, col)} selected` : `Select seat ${seatLabel(row, col)}`}>
@@ -136,8 +137,8 @@ export function BookingPage({
               {selectedSeats.size > 0 && <p>
                   Seats:{" "}
                   {selectedSeatIds.map(s => {
-                const [r, c] = s.split("-").map(Number);
-                return seatLabel(r, c);
+                const parsedSeat = parseSeatId(s);
+                return parsedSeat ? seatLabel(parsedSeat.row, parsedSeat.col) : s;
               }).join(", ")}
                 </p>}
             </div>

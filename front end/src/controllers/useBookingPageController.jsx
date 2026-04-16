@@ -14,6 +14,7 @@ import {
   DEFAULT_PRICING,
   INITIAL_TICKETS,
   MAX_TICKETS_PER_BOOKING,
+  buildSeatId,
   calculateBookingSubtotal,
   formatSeatLabel,
   getTotalTickets
@@ -45,6 +46,31 @@ export function useBookingPageController({ movie, showtime, currentUser }) {
   const total = quote?.total ?? localSubtotal;
 
   const seatLabel = (row, col) => formatSeatLabel(row, col);
+  const resetSeatLayout = () => {
+    setSeatRows(BOOKING_SEAT_ROWS);
+    setSeatCols(BOOKING_SEAT_COLS);
+  };
+
+  const applySeatLayout = (rows, cols) => {
+    setSeatRows(rows);
+    setSeatCols(cols);
+
+    const validSeatIds = new Set(
+      Array.from({ length: rows }, (_, row) =>
+        Array.from({ length: cols }, (_, col) => buildSeatId(row, col))
+      ).flat()
+    );
+
+    setSelectedSeats((previous) => {
+      const next = new Set();
+      previous.forEach((seatId) => {
+        if (validSeatIds.has(seatId)) {
+          next.add(seatId);
+        }
+      });
+      return next;
+    });
+  };
 
   const refreshReservedSeats = async () => {
     const data = await fetchReservedSeats(movie.id, showtime);
@@ -88,13 +114,15 @@ export function useBookingPageController({ movie, showtime, currentUser }) {
         setPricing(pricingData);
 
         if (showroomData?.layout?.rows && showroomData?.layout?.cols) {
-          setSeatRows(showroomData.layout.rows);
-          setSeatCols(showroomData.layout.cols);
+          applySeatLayout(showroomData.layout.rows, showroomData.layout.cols);
+        } else {
+          resetSeatLayout();
         }
       } catch (error) {
         if (!active) {
           return;
         }
+        resetSeatLayout();
         setLoadError(getMeaningfulErrorMessage(error, "user"));
       } finally {
         if (active) {
@@ -108,7 +136,7 @@ export function useBookingPageController({ movie, showtime, currentUser }) {
     return () => {
       active = false;
     };
-  }, [movie.id, showtime]);
+  }, [movie.id, movie.showroomId, showtime]);
 
   useEffect(() => {
     let active = true;

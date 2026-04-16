@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { buildSeatId, formatSeatIdLabel } from "@/models/booking-model";
 
 function formatShowtime(value) {
   if (!value) return "";
@@ -104,9 +105,7 @@ export function SeatSelectionDialog({
 }) {
   const [deleteTargetCardId, setDeleteTargetCardId] = useState("");
   const selectedCount = selectedSeatIds.length;
-  const selectedSeatLabels = selectedSeatIds.map((seatId) =>
-    formatSeatLabel(...seatId.split("-").map(Number))
-  );
+  const selectedSeatLabels = selectedSeatIds.map((seatId) => formatSeatIdLabel(seatId));
   const deleteTargetCard = useMemo(
     () => savedCards.find((card) => card.cardId === deleteTargetCardId) ?? null,
     [savedCards, deleteTargetCardId]
@@ -172,7 +171,7 @@ export function SeatSelectionDialog({
       : loadError || selectionError;
 
   const renderSeat = (row, col) => {
-    const seatId = `${row}-${col}`;
+    const seatId = buildSeatId(row, col);
     const isReserved = reservedSeats.has(seatId);
     const isSelected = selectedSeatIds.includes(seatId);
 
@@ -388,7 +387,7 @@ export function SeatSelectionDialog({
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {(Array.isArray(allItems) ? allItems : []).map((item) => {
                   const itemSeats = (allSeatSelections ?? {})[item.id] ?? [];
-                  const seatLabels = itemSeats.map((seatId) => formatSeatLabel(...seatId.split("-").map(Number)));
+                  const seatLabels = itemSeats.map((seatId) => formatSeatIdLabel(seatId));
                   const prices = ticketPriceMap ?? { adult: 12.99, child: 8.99, senior: 9.99 };
                   const adultCount = item.tickets?.adult ?? 0;
                   const childCount = item.tickets?.child ?? 0;

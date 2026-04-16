@@ -3,7 +3,12 @@ import { buildAdminIssueReport, getMeaningfulErrorMessage } from "@/services/api
 import { uploadMovieAssetToStorage } from "@/services/firebaseStorage";
 import { cancelAdminShowtime, fetchAllAdminShowtimes, fetchAvailableShowrooms, scheduleShowtime, sendPromotion } from "@/services/adminApi";
 import { fetchMovieShowtimes } from "@/services/moviesApi";
-import { fetchShowrooms } from "@/services/showroomsApi";
+import {
+  createShowroom,
+  deleteShowroom,
+  fetchShowrooms,
+  updateShowroom
+} from "@/services/showroomsApi";
 import {
   formatDurationLabel,
   getMovieGenreList,
@@ -35,6 +40,7 @@ const initialFormState = {
 };
 
 const initialScheduleForm = { movieId: "", date: "", timeSlot: "" };
+const initialHallForm = { name: "", rows: "", cols: "" };
 
 const initialAssetSelection = {
   poster: null,
@@ -107,6 +113,20 @@ function buildFormStateFromMovie(movie) {
   };
 }
 
+function buildHallFormState(showroom) {
+  return {
+    name: String(showroom?.name ?? ""),
+    rows:
+      Number.isInteger(Number(showroom?.layout?.rows)) && Number(showroom?.layout?.rows) > 0
+        ? String(showroom.layout.rows)
+        : "",
+    cols:
+      Number.isInteger(Number(showroom?.layout?.cols)) && Number(showroom?.layout?.cols) > 0
+        ? String(showroom.layout.cols)
+        : ""
+  };
+}
+
 export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, onDeleteMovie }) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingMovie, setEditingMovie] = useState(null);
@@ -121,6 +141,12 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
 
   const [showrooms, setShowrooms] = useState([]);
   const [isLoadingShowrooms, setIsLoadingShowrooms] = useState(false);
+  const [showHallDialog, setShowHallDialog] = useState(false);
+  const [hallForm, setHallForm] = useState(initialHallForm);
+  const [editingHall, setEditingHall] = useState(null);
+  const [hallSubmitError, setHallSubmitError] = useState(null);
+  const [isSavingHall, setIsSavingHall] = useState(false);
+  const [deletingHallId, setDeletingHallId] = useState("");
 
   const [showPromotionDialog, setShowPromotionDialog] = useState(false);
   const [promotionForm, setPromotionForm] = useState(initialPromotionForm);
@@ -146,12 +172,20 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
 
-  useEffect(() => {
+  const loadShowrooms = async () => {
     setIsLoadingShowrooms(true);
-    fetchShowrooms()
-      .then((data) => setShowrooms(Array.isArray(data) ? data : []))
-      .catch(() => setShowrooms([]))
-      .finally(() => setIsLoadingShowrooms(false));
+    try {
+      const data = await fetchShowrooms();
+      setShowrooms(Array.isArray(data) ? data : []);
+    } catch {
+      setShowrooms([]);
+    } finally {
+      setIsLoadingShowrooms(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadShowrooms();
   }, []);
 
   // Load all upcoming scheduled shows on mount so the dashboard can show movies missing showtimes
@@ -188,6 +222,11 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     () => (filterStatus === "all" ? movies : movies.filter((movie) => movie.status === filterStatus)),
     [movies, filterStatus]
   );
+  const hallTotalSeats = useMemo(() => {
+    const rows = Number(hallForm.rows);
+    const cols = Number(hallForm.cols);
+    return Number.isInteger(rows) && rows > 0 && Number.isInteger(cols) && cols > 0 ? rows * cols : 0;
+  }, [hallForm.rows, hallForm.cols]);
 
   const handleChange = (key) => (value) => {
     setForm((previous) => ({
@@ -224,6 +263,131 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     setSubmitError(null);
     setAdminIssueReport(null);
     setCopiedIssueReport(false);
+  };
+
+  const resetHallFormState = () => {
+    setHallForm(initialHallForm);
+    setEditingHall(null);
+    setHallSubmitError(null);
+  };
+
+  const openHallDialog = () => {
+    resetHallFormState();
+    setShowHallDialog(true);
+  };
+
+  const openEditHallDialog = (showroom) => {
+    setEditingHall(showroom);
+    setHallForm(buildHallFormState(showroom));
+    setHallSubmitError(null);
+    setShowHallDialog(true);
+  };
+
+  const closeHallDialog = () => {
+    setShowHallDialog(false);
+    resetHallFormState();
+  };
+
+  const handleHallChange = (key) => (value) => {
+    const nextValue =
+      key === "rows" || key === "cols"
+        ? String(value ?? "").replace(/\D/g, "").slice(0, 3)
+        : String(value ?? "");
+
+    setHallForm((previous) => ({
+      ...previous,
+      [key]: nextValue
+    }));
+    setHallSubmitError(null);
+  };
+
+  const validateHallForm = () => {
+    const name = hallForm.name.trim();
+    const rows = Number(hallForm.rows);
+    const cols = Number(hallForm.cols);
+
+    if (!name) return "Hall name is required.";
+    if (!Number.isInteger(rows) || rows <= 0) return "Rows must be a positive whole number.";
+    if (!Number.isInteger(cols) || cols <= 0) return "Seats per row must be a positive whole number.";
+
+    return null;
+  };
+
+  const handleSaveHall = async () => {
+    const validationError = validateHallForm();
+    if (validationError) {
+      setHallSubmitError(validationError);
+      return;
+    }
+
+    setIsSavingHall(true);
+    setHallSubmitError(null);
+
+    try {
+      const payload = {
+        name: hallForm.name.trim(),
+        layout: {
+          rows: Number(hallForm.rows),
+          cols: Number(hallForm.cols)
+        }
+      };
+
+      if (editingHall) {
+        await updateShowroom(editingHall.showroomId, payload);
+      } else {
+        await createShowroom(payload);
+      }
+
+      await Promise.all([loadShowrooms(), fetchAllAdminShowtimes().then((data) => setAllScheduledShows(Array.isArray(data) ? data : [])).catch(() => setAllScheduledShows([]))]);
+      setSelectedHall("");
+      closeHallDialog();
+    } catch (error) {
+      setHallSubmitError(getMeaningfulErrorMessage(error, "admin"));
+    } finally {
+      setIsSavingHall(false);
+    }
+  };
+
+  const handleDeleteHall = async (showroom) => {
+    if (!showroom) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete "${showroom.name}"? This only works if no movies or showtimes are assigned to it.`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingHallId(showroom.showroomId);
+    setHallSubmitError(null);
+
+    try {
+      await deleteShowroom(showroom.showroomId);
+      await Promise.all([loadShowrooms(), fetchAllAdminShowtimes().then((data) => setAllScheduledShows(Array.isArray(data) ? data : [])).catch(() => setAllScheduledShows([]))]);
+      setSelectedHall((previous) => (previous === showroom.name ? "" : previous));
+      setScheduleSelectedRoom((previous) => (previous === showroom.showroomId ? "" : previous));
+      setAvailableShowrooms((previous) =>
+        Array.isArray(previous)
+          ? previous.filter((room) => room.showroomId !== showroom.showroomId)
+          : []
+      );
+      setForm((previous) =>
+        previous.showroomId === showroom.showroomId
+          ? { ...previous, showroomId: "" }
+          : previous
+      );
+
+      if (editingHall?.showroomId === showroom.showroomId) {
+        closeHallDialog();
+      }
+    } catch (error) {
+      setHallSubmitError(getMeaningfulErrorMessage(error, "admin"));
+      setShowHallDialog(true);
+    } finally {
+      setDeletingHallId("");
+    }
   };
 
   const openCreateDialog = () => {
@@ -655,6 +819,19 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     durationMinuteOptions,
     showrooms,
     isLoadingShowrooms,
+    showHallDialog,
+    hallForm,
+    editingHall,
+    hallSubmitError,
+    hallTotalSeats,
+    isSavingHall,
+    deletingHallId,
+    openHallDialog,
+    openEditHallDialog,
+    closeHallDialog,
+    handleHallChange,
+    handleSaveHall,
+    handleDeleteHall,
     showPromotionDialog,
     promotionForm,
     isSendingPromotion,

@@ -57,7 +57,8 @@ export const API_ENDPOINTS = {
     remove: (movieId) => `${API_ROUTES.favorites}/${movieId}`
   },
   showrooms: {
-    list: API_ROUTES.showrooms
+    list: API_ROUTES.showrooms,
+    detail: (showroomId) => `${API_ROUTES.showrooms}/${showroomId}`
   }
 };
 export const QUERY_KEYS = {
