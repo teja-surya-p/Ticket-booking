@@ -9,3 +9,11 @@ export function validatePromoCode(payload) {
     body: payload
   });
 }
+
+export function fetchAvailablePromoCodes(userId) {
+  return APICallHandler({
+    url: API_ENDPOINTS.promoCodes.available(userId),
+    method: "GET",
+    operation: "Fetch available promo codes"
+  });
+}

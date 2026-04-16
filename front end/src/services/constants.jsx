@@ -18,7 +18,8 @@ export const API_ENDPOINTS = {
     list: API_ROUTES.movies,
     detail: movieId => `${API_ROUTES.movies}/${movieId}`,
     genres: `${API_ROUTES.movies}/genres`,
-    showtimes: movieId => `${API_ROUTES.movies}/${movieId}/showtimes`
+    showtimes: movieId => `${API_ROUTES.movies}/${movieId}/showtimes`,
+    notify: movieId => `${API_ROUTES.movies}/${movieId}/notify`
   },
   bookings: {
     seats: `${API_ROUTES.bookings}/seats`,
@@ -41,7 +42,8 @@ export const API_ENDPOINTS = {
     promoCode: `${API_ROUTES.admin}/promo-codes`
   },
   promoCodes: {
-    validate: `${API_ROUTES.promoCodes}/validate`
+    validate: `${API_ROUTES.promoCodes}/validate`,
+    available: (userId) => `${API_ROUTES.promoCodes}/available${userId ? `?userId=${encodeURIComponent(userId)}` : ""}`
   },
   auth: {
     register: `${API_ROUTES.auth}/register`,

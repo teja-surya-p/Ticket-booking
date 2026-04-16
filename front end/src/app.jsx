@@ -157,6 +157,7 @@ export default function App() {
             onAddToCart={handleAddToCart}
             favoriteMovieIds={favoriteMovieIds}
             favoritePendingMovieIds={favoritePendingMovieIds}
+            currentUser={currentUser}
           />
         )}
       </main>

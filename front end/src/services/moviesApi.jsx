@@ -69,3 +69,12 @@ export function fetchMovieShowtimes(movieId) {
     operation: "Fetch movie showtimes"
   });
 }
+
+export function subscribeToMovieNotification(movieId, payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.movies.notify(movieId),
+    method: "POST",
+    operation: "Subscribe to movie notification",
+    body: payload
+  });
+}

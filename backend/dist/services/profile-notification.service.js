@@ -248,6 +248,91 @@ class ProfileNotificationService {
     return await this.dispatchEmailMessage(message, "promotion");
   }
 
+  /**
+   * Sends a "showtimes now available" notification email to a subscriber.
+   * @param {string} toEmail
+   * @param {string} displayName
+   * @param {string} movieTitle
+   * @param {Array<{startAt: string, showroomName: string}>} showtimes - sorted ascending by startAt
+   */
+  async sendShowtimeNotificationEmail(toEmail, displayName, movieTitle, showtimes) {
+    if (typeof toEmail !== "string" || toEmail.trim().length === 0) {
+      return { sent: false, reason: "missing-recipient" };
+    }
+
+    const name = this.sanitizeHeaderText(displayName, "Valued Customer");
+    const safeTitle = this.sanitizeHeaderText(movieTitle, "the movie");
+
+    // Group showtimes by date
+    const byDate = {};
+    for (const st of showtimes) {
+      const dateKey = st.startAt.slice(0, 10); // "YYYY-MM-DD"
+      if (!byDate[dateKey]) byDate[dateKey] = [];
+      byDate[dateKey].push(st);
+    }
+
+    const dateEntries = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b));
+
+    // Plain-text version
+    const textLines = [
+      `Hi ${name},`,
+      "",
+      `Great news! Showtimes for "${safeTitle}" are now available.`,
+      "",
+      "Available showtimes:"
+    ];
+    for (const [dateKey, slots] of dateEntries) {
+      const displayDate = new Date(dateKey + "T00:00:00Z").toLocaleDateString("en-US", {
+        weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "UTC"
+      });
+      textLines.push("", displayDate);
+      for (const slot of slots) {
+        const time = new Date(slot.startAt).toLocaleTimeString("en-US", {
+          hour: "numeric", minute: "2-digit", hour12: true
+        });
+        textLines.push(`  ${time} — ${slot.showroomName}`);
+      }
+    }
+    textLines.push("", "Visit CineBook to book your tickets now!");
+
+    // HTML version
+    let slotRowsHtml = "";
+    for (const [dateKey, slots] of dateEntries) {
+      const displayDate = new Date(dateKey + "T00:00:00Z").toLocaleDateString("en-US", {
+        weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "UTC"
+      });
+      slotRowsHtml += `<div style="margin-bottom:1rem">
+        <p style="font-weight:700;font-size:1rem;color:#111827;margin:0 0 0.4rem">${displayDate}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem">`;
+      for (const slot of slots) {
+        const time = new Date(slot.startAt).toLocaleTimeString("en-US", {
+          hour: "numeric", minute: "2-digit", hour12: true
+        });
+        slotRowsHtml += `<span style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:0.375rem;padding:0.3rem 0.75rem;font-size:0.875rem;color:#374151">
+          ${time} &mdash; ${slot.showroomName}
+        </span>`;
+      }
+      slotRowsHtml += `</div></div>`;
+    }
+
+    const message = {
+      toEmail: toEmail.trim(),
+      subject: `Showtimes now available: "${safeTitle}"`,
+      text: textLines.join("\n"),
+      html: [
+        `<p>Hi ${name},</p>`,
+        `<p>Great news! Showtimes for <strong>${safeTitle}</strong> are now available.</p>`,
+        `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1.25rem;margin:1rem 0">`,
+        `<p style="font-weight:600;margin:0 0 1rem">Available Showtimes</p>`,
+        slotRowsHtml,
+        `</div>`,
+        `<p>Visit CineBook to book your tickets now!</p>`
+      ].join("")
+    };
+
+    return await this.dispatchEmailMessage(message, "showtime-notification");
+  }
+
   async dispatchEmailMessage(message, category = "notification") {
     const deliveryMode = this.resolveDeliveryMode();
 

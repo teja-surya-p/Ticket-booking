@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/router";
-import { ArrowLeft, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { ArrowLeft, Minus, Plus, ShoppingCart, Tag, Trash2, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SeatSelectionDialog } from "@/components/seat-selection-dialog";
 import { useSeatSelectionCheckoutController } from "@/controllers/useSeatSelectionCheckoutController";
@@ -74,7 +75,9 @@ export function CartPage({
     promoCodeInput,
     setPromoCodeInput,
     appliedPromo,
+    setAppliedPromo,
     promoError,
+    setPromoError,
     isApplyingPromo,
     applyPromoCode,
     showOrderSummaryStep,
@@ -102,6 +105,8 @@ export function CartPage({
     return sum + item.tickets.adult * ticketPrices.adult + item.tickets.child * ticketPrices.child + item.tickets.senior * ticketPrices.senior;
   }, 0);
   const totalTickets = items.reduce((sum, item) => sum + item.tickets.adult + item.tickets.child + item.tickets.senior, 0);
+  const discountAmount = appliedPromo ? +(cartTotal * appliedPromo.discountPercent / 100).toFixed(2) : 0;
+  const discountedTotal = +(cartTotal - discountAmount).toFixed(2);
   return <div className={styles["cart-page-class-1"]}>
       <Button variant="ghost" size="sm" onClick={onBack} className={styles["cart-page-class-2"]}>
         <ArrowLeft className={styles["cart-page-class-3"]} />
@@ -194,10 +199,64 @@ export function CartPage({
 
             <div className={styles["cart-page-class-33"]} />
 
+            {/* Promo code section */}
+            <div style={{ marginBottom: "1rem" }}>
+              <p style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.6, marginBottom: "0.4rem" }}>
+                Promo Code
+              </p>
+              {appliedPromo ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.45rem 0.65rem", borderRadius: "0.375rem", background: "color-mix(in srgb, var(--color-primary, #e05a7a) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--color-primary, #e05a7a) 35%, transparent)" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.8rem", fontWeight: 600, color: "var(--color-primary, #e05a7a)" }}>
+                    <Tag size={13} />
+                    {appliedPromo.code} — {appliedPromo.discountPercent}% off
+                  </span>
+                  <button onClick={() => { setPromoCodeInput(""); setAppliedPromo(null); setPromoError(null); }} style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.6, display: "flex", alignItems: "center" }} aria-label="Remove promo code">
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: "0.4rem" }}>
+                  <Input
+                    value={promoCodeInput}
+                    onChange={e => setPromoCodeInput(e.target.value.toUpperCase())}
+                    onKeyDown={e => e.key === "Enter" && applyPromoCode()}
+                    placeholder="Enter code"
+                    style={{ flex: 1, height: "2rem", fontSize: "0.8rem", textTransform: "uppercase" }}
+                    disabled={isApplyingPromo}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={applyPromoCode}
+                    disabled={isApplyingPromo || !promoCodeInput.trim()}
+                    style={{ height: "2rem", fontSize: "0.75rem", whiteSpace: "nowrap" }}
+                  >
+                    {isApplyingPromo ? "..." : "Apply"}
+                  </Button>
+                </div>
+              )}
+              {promoError && (
+                <p style={{ fontSize: "0.75rem", color: "var(--color-destructive, #ef4444)", marginTop: "0.3rem" }}>{promoError}</p>
+              )}
+            </div>
+
+            {appliedPromo && (
+              <div className={styles["cart-page-class-32"]} style={{ marginBottom: "0.4rem", fontSize: "0.85rem" }}>
+                <span style={{ opacity: 0.65 }}>Subtotal</span>
+                <span style={{ opacity: 0.65 }}>${cartTotal.toFixed(2)}</span>
+              </div>
+            )}
+            {appliedPromo && (
+              <div className={styles["cart-page-class-32"]} style={{ marginBottom: "0.4rem", fontSize: "0.85rem" }}>
+                <span style={{ color: "var(--color-primary, #e05a7a)" }}>Discount ({appliedPromo.discountPercent}%)</span>
+                <span style={{ color: "var(--color-primary, #e05a7a)" }}>−${discountAmount.toFixed(2)}</span>
+              </div>
+            )}
+
             <div className={styles["cart-page-class-32"]}>
               <span className={styles["cart-page-class-34"]}>Total</span>
               <span className={styles["cart-page-class-35"]}>
-                ${cartTotal.toFixed(2)}
+                ${discountedTotal.toFixed(2)}
               </span>
             </div>
 

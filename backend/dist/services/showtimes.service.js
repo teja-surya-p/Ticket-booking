@@ -140,6 +140,18 @@ class ShowtimesService {
     return snapshot.docs.map((doc) => toShowtimeEntity(doc.data()));
   }
 
+  async deleteById(showtimeId) {
+    if (!showtimeId || typeof showtimeId !== "string") {
+      throw new BadRequestException("showtimeId is required");
+    }
+    const ref = this.collection().doc(showtimeId.trim());
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new BadRequestException(`Showtime "${showtimeId}" not found`);
+    }
+    await ref.delete();
+  }
+
   async findByShowroomAndStartAt(showroomId, startAt) {
     const snapshot = await this.collection()
       .where("showroomId", "==", showroomId)

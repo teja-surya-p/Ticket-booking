@@ -14,7 +14,7 @@ import {
   DialogTitle
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { fetchMovieShowtimes } from "@/services/moviesApi";
+import { fetchMovieShowtimes, subscribeToMovieNotification } from "@/services/moviesApi";
 import styles from "./home-page.module.css";
 
 const NO_OP = () => {};
@@ -36,13 +36,17 @@ export function HomePage({
   onToggleFavorite = NO_OP,
   onAddToCart = NO_OP,
   favoriteMovieIds = [],
-  favoritePendingMovieIds = []
+  favoritePendingMovieIds = [],
+  currentUser = null
 }) {
   const normalizedSearchQuery = String(searchQuery || "").trim();
   const hasSearchQuery = normalizedSearchQuery.length > 0;
   const hasGenreFilter = selectedGenre !== "all";
   const isFocusedMode = hasSearchQuery || hasGenreFilter;
   const [notifyMovie, setNotifyMovie] = useState(null);
+  const [notifyLoading, setNotifyLoading] = useState(false);
+  const [notifyDone, setNotifyDone] = useState(false);
+  const [notifyError, setNotifyError] = useState("");
   const [bookNowMovie, setBookNowMovie] = useState(null);
   const [bookNowShowtimes, setBookNowShowtimes] = useState([]);
   const [bookNowLoading, setBookNowLoading] = useState(false);
@@ -66,6 +70,30 @@ export function HomePage({
       .catch(() => setBookNowError("Failed to load showtimes. Please try again."))
       .finally(() => setBookNowLoading(false));
   }, [bookNowMovie]);
+
+  const handleOpenNotify = (movie) => {
+    setNotifyMovie(movie);
+    setNotifyDone(false);
+    setNotifyError("");
+  };
+
+  const handleNotifyMe = async () => {
+    if (!currentUser?.uid) return;
+    setNotifyLoading(true);
+    setNotifyError("");
+    try {
+      await subscribeToMovieNotification(notifyMovie.id, {
+        userId: currentUser.uid,
+        email: currentUser.email ?? "",
+        displayName: currentUser.displayName ?? currentUser.email ?? ""
+      });
+      setNotifyDone(true);
+    } catch {
+      setNotifyError("Could not save your notification request. Please try again.");
+    } finally {
+      setNotifyLoading(false);
+    }
+  };
 
   const handleBookNow = (movie) => {
     setBookNowAdded(false);
@@ -206,7 +234,7 @@ export function HomePage({
                 movie={movie}
                 onClick={onMovieClick}
                 onBookNow={handleBookNow}
-                onNotifyMe={setNotifyMovie}
+                onNotifyMe={handleOpenNotify}
                 isFavorite={favoriteMovieIdSet.has(String(movie.id))}
                 isFavoriteBusy={favoritePendingMovieIdSet.has(String(movie.id))}
                 onToggleFavorite={onToggleFavorite}
@@ -239,7 +267,7 @@ export function HomePage({
                 key={movie.id}
                 movie={movie}
                 onClick={onMovieClick}
-                onNotifyMe={setNotifyMovie}
+                onNotifyMe={handleOpenNotify}
                 isFavorite={favoriteMovieIdSet.has(String(movie.id))}
                 isFavoriteBusy={favoritePendingMovieIdSet.has(String(movie.id))}
                 onToggleFavorite={onToggleFavorite}
@@ -266,7 +294,7 @@ export function HomePage({
                 key={movie.id}
                 movie={movie}
                 onClick={onMovieClick}
-                onNotifyMe={setNotifyMovie}
+                onNotifyMe={handleOpenNotify}
                 isFavorite={favoriteMovieIdSet.has(String(movie.id))}
                 isFavoriteBusy={favoritePendingMovieIdSet.has(String(movie.id))}
                 onToggleFavorite={onToggleFavorite}
@@ -284,23 +312,55 @@ export function HomePage({
       )}
 
       <Dialog open={Boolean(notifyMovie)} onOpenChange={(open) => {
-        if (!open) {
-          setNotifyMovie(null);
-        }
+        if (!open) { setNotifyMovie(null); setNotifyDone(false); setNotifyError(""); }
       }}>
         <DialogContent className={styles["home-notify-dialog"]}>
           <DialogHeader>
-            <DialogTitle>Notification requested</DialogTitle>
+            <DialogTitle>
+              {notifyDone ? "You're on the list!" : "Get notified"}
+            </DialogTitle>
             <DialogDescription className={styles["home-notify-copy"]}>
-              {notifyMovie
-                ? `We will notify you when "${notifyMovie.title}" is released.`
-                : "We will notify you when the movie is released."}
+              {notifyDone
+                ? `We'll email you as soon as showtimes for "${notifyMovie?.title}" are scheduled.`
+                : notifyMovie
+                  ? `Want to know when showtimes for "${notifyMovie.title}" go live? We'll send you an email the moment the first slot is added.`
+                  : ""}
             </DialogDescription>
           </DialogHeader>
+
+          {!notifyDone && (
+            <div style={{ paddingTop: "0.25rem" }}>
+              {!currentUser?.uid ? (
+                <p style={{ fontSize: "0.85rem", opacity: 0.7 }}>
+                  Please sign in to register for notifications.
+                </p>
+              ) : (
+                <p style={{ fontSize: "0.85rem", opacity: 0.7 }}>
+                  Notification will be sent to <strong>{currentUser.email}</strong>.
+                </p>
+              )}
+              {notifyError && (
+                <p style={{ fontSize: "0.8rem", color: "var(--color-destructive, #ef4444)", marginTop: "0.4rem" }}>
+                  {notifyError}
+                </p>
+              )}
+            </div>
+          )}
+
           <DialogFooter className={styles["home-notify-actions"]}>
-            <Button type="button" onClick={() => setNotifyMovie(null)}>
-              Close
+            <Button type="button" variant="outline" onClick={() => { setNotifyMovie(null); setNotifyDone(false); setNotifyError(""); }}>
+              {notifyDone ? "Close" : "Cancel"}
             </Button>
+            {!notifyDone && currentUser?.uid && (
+              <Button type="button" onClick={handleNotifyMe} disabled={notifyLoading}>
+                {notifyLoading ? "Saving…" : "Notify Me"}
+              </Button>
+            )}
+            {!notifyDone && !currentUser?.uid && (
+              <Button type="button" onClick={() => { setNotifyMovie(null); window.location.href = "/login?mode=login"; }}>
+                Sign In
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

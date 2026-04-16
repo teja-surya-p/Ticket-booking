@@ -19,9 +19,10 @@ class PromoCodesService {
     this.firestoreService = firestoreService;
   }
 
-  async create({ code, discountPercent }) {
+  async create({ code, discountPercent, expiresAt }) {
     const normalizedCode = this.normalizeCode(code);
     const percent = this.normalizeDiscountPercent(discountPercent);
+    const normalizedExpiresAt = this.normalizeExpiresAt(expiresAt);
 
     const existing = await this.collection()
       .where("code", "==", normalizedCode)
@@ -39,7 +40,8 @@ class PromoCodesService {
       code: normalizedCode,
       discountPercent: percent,
       usedByUserIds: [],
-      createdAt: now
+      createdAt: now,
+      ...(normalizedExpiresAt ? { expiresAt: normalizedExpiresAt } : {})
     };
 
     await this.collection().doc(codeId).set(record);
@@ -61,15 +63,58 @@ class PromoCodesService {
 
     const data = snapshot.docs[0].data();
 
+    // Check expiry first
+    if (data.expiresAt) {
+      const expiry = new Date(data.expiresAt);
+      if (!isNaN(expiry.getTime()) && new Date() > expiry) {
+        throw new ConflictException("This promotion has expired.");
+      }
+    }
+
+    // Check per-user usage
     if (
       normalizedUserId &&
       Array.isArray(data.usedByUserIds) &&
       data.usedByUserIds.includes(normalizedUserId)
     ) {
-      throw new ConflictException("This promo code has already been used.");
+      throw new ConflictException("You have already used this promotion.");
     }
 
     return { codeId: data.codeId, discountPercent: data.discountPercent };
+  }
+
+  /**
+   * Returns all promo codes that are neither expired nor already used by the given user.
+   * Filters in memory to avoid composite Firestore indexes.
+   */
+  async findAvailable(userId) {
+    const snapshot = await this.collection().get();
+    const now = new Date();
+    const normalizedUserId = typeof userId === "string" ? userId.trim() : "";
+
+    return snapshot.docs
+      .map((doc) => doc.data())
+      .filter((data) => {
+        // Filter out expired codes
+        if (data.expiresAt) {
+          const expiry = new Date(data.expiresAt);
+          if (!isNaN(expiry.getTime()) && now > expiry) return false;
+        }
+        // Filter out codes already used by this user
+        if (
+          normalizedUserId &&
+          Array.isArray(data.usedByUserIds) &&
+          data.usedByUserIds.includes(normalizedUserId)
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .map((data) => ({
+        code: data.code,
+        discountPercent: data.discountPercent,
+        ...(data.expiresAt ? { expiresAt: data.expiresAt } : {})
+      }));
   }
 
   async markUsed(codeId, userId) {
@@ -98,6 +143,18 @@ class PromoCodesService {
       throw new BadRequestException("discountPercent must be an integer between 1 and 100");
     }
     return num;
+  }
+
+  normalizeExpiresAt(value) {
+    if (value === undefined || value === null || value === "") return null;
+    const date = new Date(value);
+    if (isNaN(date.getTime())) {
+      throw new BadRequestException("expiresAt must be a valid date/time");
+    }
+    if (date <= new Date()) {
+      throw new BadRequestException("expiresAt must be in the future");
+    }
+    return date.toISOString();
   }
 }
 

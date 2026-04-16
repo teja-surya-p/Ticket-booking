@@ -4,6 +4,7 @@ import { FIRESTORE_COLLECTIONS } from "../common/constants.js";
 import { decorateClass } from "../common/nest-metadata.js";
 import { FirestoreService } from "../config/firestore.service.js";
 import { BookingsService } from "./bookings.service.js";
+import { MovieNotificationsService } from "./movie-notifications.service.js";
 import { MoviesService } from "./movies.service.js";
 import { ProfileNotificationService } from "./profile-notification.service.js";
 import { PromoCodesService } from "./promo-codes.service.js";
@@ -17,7 +18,7 @@ import { ShowtimesService } from "./showtimes.service.js";
  * scheduling. Delegates persistence to specialised services.
  */
 class AdminService {
-  constructor(moviesService, bookingsService, showtimesService, showroomsService, profileNotificationService, firestoreService, promoCodesService) {
+  constructor(moviesService, bookingsService, showtimesService, showroomsService, profileNotificationService, firestoreService, promoCodesService, movieNotificationsService) {
     this.moviesService = moviesService;
     this.bookingsService = bookingsService;
     this.showtimesService = showtimesService;
@@ -25,6 +26,7 @@ class AdminService {
     this.profileNotificationService = profileNotificationService;
     this.firestoreService = firestoreService;
     this.promoCodesService = promoCodesService;
+    this.movieNotificationsService = movieNotificationsService;
   }
 
   async getDashboardStats() {
@@ -64,7 +66,54 @@ class AdminService {
       }
     }
 
-    return await this.showtimesService.create(dto);
+    const created = await this.showtimesService.create(dto);
+
+    // Fire-and-forget: notify subscribed users that showtimes are now available
+    this._notifyMovieSubscribers(dto.movieId, movie.title).catch(() => {});
+
+    return created;
+  }
+
+  /**
+   * Sends showtime notification emails to all subscribers for a movie,
+   * then clears the subscriptions so they are not emailed again.
+   */
+  async _notifyMovieSubscribers(movieId, movieTitle) {
+    const subscribers = await this.movieNotificationsService.getSubscribers(movieId);
+    if (!subscribers.length) return;
+
+    const [allShowtimes, showrooms] = await Promise.all([
+      this.showtimesService.findByMovieId(Number(movieId)),
+      this.showroomsService.findAll()
+    ]);
+
+    const showroomMap = Object.fromEntries(showrooms.map((r) => [r.showroomId, r.name]));
+
+    // Only upcoming showtimes, sorted ascending
+    const now = new Date().toISOString();
+    const upcoming = allShowtimes
+      .filter((st) => st.startAt >= now)
+      .sort((a, b) => a.startAt.localeCompare(b.startAt))
+      .map((st) => ({
+        startAt: st.startAt,
+        showroomName: showroomMap[st.showroomId] ?? st.showroomId
+      }));
+
+    if (!upcoming.length) return;
+
+    await Promise.all(
+      subscribers.map((sub) =>
+        this.profileNotificationService.sendShowtimeNotificationEmail(
+          sub.email,
+          sub.displayName,
+          movieTitle,
+          upcoming
+        )
+      )
+    );
+
+    // Clear subscriptions so users don't receive duplicate emails for subsequent slots
+    await this.movieNotificationsService.clearSubscribers(movieId);
   }
 
   /**
@@ -105,6 +154,7 @@ class AdminService {
     const message = typeof dto?.message === "string" ? dto.message.trim() : "";
     const promoCode = typeof dto?.promoCode === "string" ? dto.promoCode.trim() : "";
     const discountPercent = dto?.discountPercent !== undefined ? dto.discountPercent : null;
+    const expiresAt = dto?.expiresAt ?? null;
 
     if (!title) throw new BadRequestException("title is required");
     if (!message) throw new BadRequestException("message is required");
@@ -117,7 +167,8 @@ class AdminService {
       }
       createdPromoCode = await this.promoCodesService.create({
         code: promoCode,
-        discountPercent: Number(discountPercent)
+        discountPercent: Number(discountPercent),
+        expiresAt: expiresAt || null
       });
     }
 
@@ -174,7 +225,8 @@ decorateClass(AdminService, [Injectable()], [
   ShowroomsService,
   ProfileNotificationService,
   FirestoreService,
-  PromoCodesService
+  PromoCodesService,
+  MovieNotificationsService
 ]);
 
 export { AdminService };

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { decorateClass } from "../common/nest-metadata.js";
 import { AdminController } from "../controllers/admin.controller.js";
 import { AdminService } from "../services/admin.service.js";
+import { MovieNotificationsService } from "../services/movie-notifications.service.js";
 import { ProfileNotificationService } from "../services/profile-notification.service.js";
 import { BookingsModule } from "./bookings.module.js";
 import { MoviesModule } from "./movies.module.js";
@@ -15,7 +16,7 @@ decorateClass(AdminModule, [
   Module({
     imports: [MoviesModule, BookingsModule, ShowtimesModule, ShowroomsModule, PromoCodesModule],
     controllers: [AdminController],
-    providers: [AdminService, ProfileNotificationService]
+    providers: [AdminService, ProfileNotificationService, MovieNotificationsService]
   })
 ]);
 

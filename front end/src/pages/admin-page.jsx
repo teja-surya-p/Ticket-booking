@@ -293,7 +293,7 @@ export function AdminPage({
         </div>
       </div>
 
-      {/* No Showtimes section */}
+      {/* No Showtimes section — currently running */}
       {moviesWithoutShowtimes.length > 0 && (
         <div className={styles["admin-no-showtimes-section"]}>
           <div className={styles["admin-no-showtimes-header"]}>
@@ -330,6 +330,7 @@ export function AdminPage({
         </div>
       )}
 
+
       <Dialog open={showAddDialog} onOpenChange={open => open ? setShowAddDialog(true) : closeDialog()}>
         <DialogContent className={styles["admin-dialog"]}>
           <DialogHeader>
@@ -342,11 +343,13 @@ export function AdminPage({
           </DialogHeader>
 
           <div className={styles["admin-form"]}>
+            {/* Title */}
             <div className={styles["admin-form-field"]}>
               <label className={styles["admin-field-label"]}>Title <span style={{ color: "red" }}>*</span></label>
               <Input value={form.title} onChange={event => handleChange("title")(event.target.value)} placeholder="Movie title" className={styles["admin-field-control"]} />
             </div>
 
+            {/* Showroom — always visible, prominent for coming soon → currently playing */}
             <div className={styles["admin-form-field"]}>
               <label className={styles["admin-field-label"]}>Showroom <span style={{ color: "red" }}>*</span></label>
               <Select value={form.showroomId} onValueChange={value => handleChange("showroomId")(value)} disabled={isLoadingShowrooms}>
@@ -361,51 +364,55 @@ export function AdminPage({
                   ))}
                 </SelectContent>
               </Select>
+              <p className={styles["admin-muted-text"]}>Determines the seating capacity and layout for this movie.</p>
+            </div>
+
+            {/* Genres — full width */}
+            <div className={styles["admin-form-field"]}>
+              <label className={styles["admin-field-label"]}>Genres <span style={{ color: "red" }}>*</span></label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="outline" className={styles["admin-field-control"]} style={{ justifyContent: "space-between" }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {form.genres.length > 0 ? form.genres.join(", ") : "Select genres"}
+                    </span>
+                    <ChevronDown className={styles["admin-icon"]} style={{ flexShrink: 0 }} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {genreOptions.map((genre) => (
+                    <DropdownMenuCheckboxItem key={genre} checked={form.genres.includes(genre)} onCheckedChange={() => handleToggleGenre(genre)} onSelect={event => event.preventDefault()}>
+                      {genre}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <p className={styles["admin-muted-text"]}>
-                Determines the seating capacity and layout for this movie.
+                {form.genres.length > 0 ? `${form.genres.length} genre${form.genres.length > 1 ? "s" : ""} selected` : "Select one or more genres"}
               </p>
             </div>
 
-            <div className={styles["admin-form-grid-meta"]}>
+            {/* Rating + Status — 2 columns */}
+            <div className={styles["admin-form-grid-duration"]}>
               <div className={styles["admin-form-field"]}>
-                <label className={styles["admin-field-label"]}>Genres <span style={{ color: "red" }}>*</span></label>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button type="button" variant="outline" className={styles["admin-field-control"]}>
-                      <span>{form.genres.length > 0 ? form.genres.join(", ") : "Select genres"}</span>
-                      <ChevronDown className={styles["admin-icon"]} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {genreOptions.map((genre) => <DropdownMenuCheckboxItem key={genre} checked={form.genres.includes(genre)} onCheckedChange={() => handleToggleGenre(genre)} onSelect={event => event.preventDefault()}>
-                        {genre}
-                      </DropdownMenuCheckboxItem>)}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <p className={styles["admin-muted-text"]}>
-                  {form.genres.length > 0 ? `${form.genres.length} genre${form.genres.length > 1 ? "s" : ""} selected` : "Select one or more genres"}
-                </p>
-              </div>
-
-              {form.status === "currently_running" ? <div className={styles["admin-form-field"]}>
-                  <label className={styles["admin-field-label"]}>Rating</label>
+                <label className={styles["admin-field-label"]}>Rating</label>
+                {form.status === "currently_running" ? (
                   <Select value={form.rating} onValueChange={value => handleChange("rating")(value)}>
                     <SelectTrigger className={styles["admin-field-control"]}>
-                      <SelectValue placeholder="Rating" />
+                      <SelectValue placeholder="Select rating" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ratingOptions.map(rating => <SelectItem key={rating} value={rating}>
-                          {rating}
-                        </SelectItem>)}
+                      {ratingOptions.map(rating => (
+                        <SelectItem key={rating} value={rating}>{rating}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div> : <div className={styles["admin-form-field"]}>
-                  <label className={styles["admin-field-label"]}>Rating</label>
-                  <p className={styles["admin-muted-text"]}>
-                    Rating is only required for currently playing movies.
+                ) : (
+                  <p className={styles["admin-muted-text"]} style={{ paddingTop: "0.4rem" }}>
+                    Only required for currently playing movies.
                   </p>
-                </div>}
-
+                )}
+              </div>
               <div className={styles["admin-form-field"]}>
                 <label className={styles["admin-field-label"]}>Status <span style={{ color: "red" }}>*</span></label>
                 <Select value={form.status} onValueChange={value => handleChange("status")(value)}>
@@ -418,19 +425,22 @@ export function AdminPage({
                   </SelectContent>
                 </Select>
               </div>
-              {form.status === "coming_soon" && (
-                <div className={styles["admin-form-field"]}>
-                  <label className={styles["admin-field-label"]}>Release Date <span style={{ color: "red" }}>*</span></label>
-                  <Input
-                    type="date"
-                    value={form.releaseDate}
-                    onChange={(e) => handleChange("releaseDate")(e.target.value)}
-                    className={styles["admin-field-control"]}
-                  />
-                </div>
-              )}
             </div>
 
+            {/* Release Date — only for coming soon */}
+            {form.status === "coming_soon" && (
+              <div className={styles["admin-form-field"]}>
+                <label className={styles["admin-field-label"]}>Release Date <span style={{ color: "red" }}>*</span></label>
+                <Input
+                  type="date"
+                  value={form.releaseDate}
+                  onChange={(e) => handleChange("releaseDate")(e.target.value)}
+                  className={styles["admin-field-control"]}
+                />
+              </div>
+            )}
+
+            {/* Duration + Director — 2 columns */}
             <div className={styles["admin-form-grid-duration"]}>
               <div className={styles["admin-form-field"]}>
                 <label className={styles["admin-field-label"]}>Duration <span style={{ color: "red" }}>*</span></label>
@@ -440,9 +450,9 @@ export function AdminPage({
                       <SelectValue placeholder="Hours" />
                     </SelectTrigger>
                     <SelectContent>
-                      {durationHourOptions.map(hours => <SelectItem key={`duration-hour-${hours}`} value={hours}>
-                          {hours}h
-                        </SelectItem>)}
+                      {durationHourOptions.map(hours => (
+                        <SelectItem key={`duration-hour-${hours}`} value={hours}>{hours}h</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Select value={form.durationMinutes} onValueChange={value => handleChange("durationMinutes")(value)}>
@@ -450,9 +460,9 @@ export function AdminPage({
                       <SelectValue placeholder="Minutes" />
                     </SelectTrigger>
                     <SelectContent>
-                      {durationMinuteOptions.map(minutes => <SelectItem key={`duration-minute-${minutes}`} value={minutes}>
-                          {minutes}m
-                        </SelectItem>)}
+                      {durationMinuteOptions.map(minutes => (
+                        <SelectItem key={`duration-minute-${minutes}`} value={minutes}>{minutes}m</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -466,31 +476,61 @@ export function AdminPage({
               </div>
             </div>
 
+            {/* Cast */}
             <div className={styles["admin-form-field"]}>
               <label className={styles["admin-field-label"]}>Cast (comma separated) <span style={{ color: "red" }}>*</span></label>
               <Input value={form.cast} onChange={event => handleChange("cast")(event.target.value)} placeholder="Actor 1, Actor 2, Actor 3" className={styles["admin-field-control"]} />
             </div>
 
+            {/* Scheduled Shows — grouped by date */}
             {editingMovie && (
               <div className={styles["admin-form-field"]}>
                 <label className={styles["admin-field-label"]}>Scheduled Shows</label>
                 {editingMovieShowtimes.length === 0 ? (
-                  <p className={styles["admin-muted-text"]}>No shows scheduled yet. Use "Schedule Show" to add.</p>
+                  <p className={styles["admin-muted-text"]}>No shows scheduled yet. Use "Manage Shows" to add.</p>
                 ) : (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                    {editingMovieShowtimes.map((st) => (
-                      <span
-                        key={st.showtimeId}
-                        style={{
-                          padding: "0.2rem 0.6rem",
-                          borderRadius: "0.25rem",
-                          background: "var(--color-muted, #f3f4f6)",
-                          fontSize: "0.8rem"
-                        }}
-                      >
-                        {new Date(st.startAt).toLocaleString()}
-                      </span>
-                    ))}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    {(() => {
+                      const now = new Date();
+                      const upcoming = editingMovieShowtimes
+                        .filter(st => new Date(st.startAt) >= now)
+                        .sort((a, b) => a.startAt.localeCompare(b.startAt));
+                      if (upcoming.length === 0) return (
+                        <p className={styles["admin-muted-text"]}>No upcoming shows. All scheduled shows are in the past.</p>
+                      );
+                      // Group by date key YYYY-MM-DD
+                      const byDate = {};
+                      for (const st of upcoming) {
+                        const dk = st.startAt.slice(0, 10);
+                        if (!byDate[dk]) byDate[dk] = [];
+                        byDate[dk].push(st);
+                      }
+                      return Object.entries(byDate).map(([dateKey, slots]) => {
+                        const displayDate = new Date(dateKey + "T00:00:00").toLocaleDateString("en-US", {
+                          weekday: "short", month: "short", day: "numeric", year: "numeric"
+                        });
+                        return (
+                          <div key={dateKey}>
+                            <p style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.55, marginBottom: "0.3rem" }}>
+                              {displayDate}
+                            </p>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+                              {slots.map(st => (
+                                <span key={st.showtimeId} style={{
+                                  padding: "0.2rem 0.6rem",
+                                  borderRadius: "0.25rem",
+                                  background: "var(--color-secondary, #f3f4f6)",
+                                  border: "1px solid var(--color-border, #e5e7eb)",
+                                  fontSize: "0.8rem"
+                                }}>
+                                  {new Date(st.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 )}
               </div>
@@ -700,39 +740,49 @@ export function AdminPage({
                   All Scheduled Shows
                   {isLoadingAllShows && <span style={{ fontWeight: 400, opacity: 0.6, marginLeft: "0.5rem", fontSize: "0.8rem" }}>Loading...</span>}
                 </p>
-                {/* Hall selector */}
-                {(() => {
-                  const hallNames = Array.from(new Set(allScheduledShows.map((s) => s.showroomName || s.showroomId).filter(Boolean)));
-                  if (hallNames.length === 0) return null;
-                  return (
-                    <select
-                      value={selectedHall}
-                      onChange={(e) => setSelectedHall(e.target.value)}
-                      style={{ fontSize: "0.8rem", padding: "0.3rem 0.5rem", borderRadius: "0.4rem", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", cursor: "pointer" }}
-                    >
-                      <option value="">All Halls</option>
-                      {hallNames.map((name) => <option key={name} value={name}>{name}</option>)}
-                    </select>
-                  );
-                })()}
+                {/* Hall selector — uses showrooms list so halls with zero bookings still appear */}
+                {showrooms.length > 0 && (
+                  <select
+                    value={selectedHall}
+                    onChange={(e) => setSelectedHall(e.target.value)}
+                    style={{ fontSize: "0.8rem", padding: "0.3rem 0.5rem", borderRadius: "0.4rem", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", cursor: "pointer" }}
+                  >
+                    <option value="">All Halls</option>
+                    {showrooms.map((r) => <option key={r.showroomId} value={r.name}>{r.name}</option>)}
+                  </select>
+                )}
               </div>
 
-              {!isLoadingAllShows && allScheduledShows.length === 0 ? (
-                <p className={styles["admin-muted-text"]}>No upcoming shows scheduled.</p>
-              ) : (() => {
+              {(() => {
+                // hall → dateKey → timeKey → show
                 const bookedSet = {};
                 for (const s of allScheduledShows) {
                   const hall = s.showroomName || s.showroomId || "Unknown Hall";
-                  const dateKey = s.startAt.slice(0, 10);
-                  const timeKey = s.startAt.slice(11, 16); // "HH:MM"
+                  const dk = s.startAt.slice(0, 10);
+                  const tk = s.startAt.slice(11, 16);
                   if (!bookedSet[hall]) bookedSet[hall] = {};
-                  if (!bookedSet[hall][dateKey]) bookedSet[hall][dateKey] = {};
-                  bookedSet[hall][dateKey][timeKey] = s;
+                  if (!bookedSet[hall][dk]) bookedSet[hall][dk] = {};
+                  bookedSet[hall][dk][tk] = s;
                 }
 
-                const hallsToShow = selectedHall
-                  ? [selectedHall]
+                // "dateKey_timeKey" → show, for the currently selected movie across ALL halls
+                const selectedMovieId = scheduleForm.movieId ? Number(scheduleForm.movieId) : null;
+                const selectedMovieByTime = {};
+                if (selectedMovieId) {
+                  for (const s of allScheduledShows) {
+                    if (Number(s.movieId) === selectedMovieId) {
+                      const dk = s.startAt.slice(0, 10);
+                      const tk = s.startAt.slice(11, 16);
+                      selectedMovieByTime[`${dk}_${tk}`] = s;
+                    }
+                  }
+                }
+
+                // Show all halls from showrooms list; fall back to booked-set keys
+                const allHallNames = showrooms.length > 0
+                  ? showrooms.map((r) => r.name)
                   : Object.keys(bookedSet);
+                const hallsToShow = selectedHall ? [selectedHall] : allHallNames;
 
                 // Date range: today + next 13 days
                 const today = new Date();
@@ -743,18 +793,28 @@ export function AdminPage({
                   return d.toISOString().slice(0, 10);
                 });
 
-                const slots = TIME_SLOT_OPTIONS; // [{label, value}] e.g. "10:00", "14:00"
+                const slots = TIME_SLOT_OPTIONS;
+
+                if (hallsToShow.length === 0) {
+                  return <p className={styles["admin-muted-text"]}>No halls found.</p>;
+                }
 
                 return (
                   <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem", maxHeight: "300px", overflowY: "auto", paddingRight: "0.25rem" }}>
+                    {/* Legend */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", fontSize: "0.7rem", opacity: 0.8 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "var(--primary)", display: "inline-block" }} /> Booked (other movie)</span>
+                      {selectedMovieId && <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "#3b82f6", display: "inline-block" }} /> Selected movie</span>}
+                      {selectedMovieId && <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "#f59e0b", display: "inline-block" }} /> Movie in another hall</span>}
+                      <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "rgba(34,197,94,0.3)", border: "1px solid #22c55e", display: "inline-block" }} /> Selected</span>
+                    </div>
+
                     {hallsToShow.map((hall) => (
                       <div key={hall}>
-                        {/* Hall header */}
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
                           <span style={{ fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--primary)" }}>{hall}</span>
                           <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
                         </div>
-                        {/* Date rows */}
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                           {dates.map((dateKey) => {
                             const dateLabel = new Date(dateKey + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -763,23 +823,42 @@ export function AdminPage({
                               <div key={dateKey} style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                                 <span style={{ fontSize: "0.75rem", color: "var(--muted-foreground)", width: "6.5rem", flexShrink: 0 }}>{dateLabel}</span>
                                 {slots.map((slot) => {
-                                  const booked = dayBookings[slot.value];
-                                  const isPending = !booked && pendingSlots.some((s) => s.key === `${dateKey}_${slot.value}`);
+                                  const slotKey = `${dateKey}_${slot.value}`;
+                                  const booked = dayBookings[slot.value]; // any show in this hall
+                                  const isThisMovieHere = booked && selectedMovieId && Number(booked.movieId) === selectedMovieId;
+                                  const isOtherMovieHere = booked && !isThisMovieHere;
+                                  const isThisMovieElsewhere = !booked && selectedMovieId && !!selectedMovieByTime[slotKey];
+                                  const isPending = !booked && !isThisMovieElsewhere && pendingSlots.some((s) => s.key === slotKey);
+
+                                  let borderColor, background, color, cursor, titleText;
+                                  if (isThisMovieHere) {
+                                    borderColor = "#3b82f6"; background = "#3b82f6"; color = "#fff";
+                                    cursor = "pointer"; titleText = `${booked.movieTitle} — already scheduled here. Click to cancel.`;
+                                  } else if (isOtherMovieHere) {
+                                    borderColor = "var(--primary)"; background = "var(--primary)"; color = "var(--primary-foreground)";
+                                    cursor = "pointer"; titleText = `${booked.movieTitle} — click to cancel`;
+                                  } else if (isThisMovieElsewhere) {
+                                    const elsewhere = selectedMovieByTime[slotKey];
+                                    borderColor = "#f59e0b"; background = "rgba(245,158,11,0.15)"; color = "#f59e0b";
+                                    cursor = "not-allowed"; titleText = `Already scheduled in ${elsewhere.showroomName} — same movie can't run in two halls at once`;
+                                  } else if (isPending) {
+                                    borderColor = "#22c55e"; background = "rgba(34,197,94,0.18)"; color = "#22c55e";
+                                    cursor = "pointer"; titleText = `Deselect ${slot.label}`;
+                                  } else {
+                                    borderColor = "var(--border)"; background = "transparent"; color = "var(--muted-foreground)";
+                                    cursor = "pointer"; titleText = `Add ${slot.label} to schedule`;
+                                  }
+
                                   return (
                                     <button
                                       key={slot.value}
                                       type="button"
-                                      title={
-                                        booked
-                                          ? `${booked.movieTitle} — click to cancel`
-                                          : isPending
-                                            ? `Deselect ${slot.label}`
-                                            : `Add ${slot.label} to schedule`
-                                      }
+                                      title={titleText}
+                                      disabled={isThisMovieElsewhere}
                                       onClick={() => {
-                                        if (booked) {
+                                        if (isThisMovieHere || isOtherMovieHere) {
                                           setCancelTarget(booked);
-                                        } else {
+                                        } else if (!isThisMovieElsewhere) {
                                           togglePendingSlot(dateKey, slot.value, hall);
                                           scheduleFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                                         }
@@ -787,25 +866,26 @@ export function AdminPage({
                                       style={{
                                         padding: "0.25rem 0.55rem",
                                         borderRadius: "0.35rem",
-                                        border: "1px solid",
+                                        border: `1px solid ${borderColor}`,
                                         fontSize: "0.72rem",
                                         fontWeight: 500,
-                                        cursor: "pointer",
+                                        cursor,
                                         whiteSpace: "nowrap",
                                         transition: "background 0.15s, color 0.15s, border-color 0.15s",
-                                        borderColor: booked ? "var(--primary)" : isPending ? "#22c55e" : "var(--border)",
-                                        background: booked ? "var(--primary)" : isPending ? "rgba(34,197,94,0.18)" : "transparent",
-                                        color: booked ? "var(--primary-foreground)" : isPending ? "#22c55e" : "var(--muted-foreground)",
+                                        background,
+                                        color,
+                                        opacity: isThisMovieElsewhere ? 0.7 : 1,
                                       }}
                                       onMouseEnter={(e) => {
-                                        if (!booked && !isPending) { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.color = "#22c55e"; }
+                                        if (!booked && !isPending && !isThisMovieElsewhere) { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.color = "#22c55e"; }
                                       }}
                                       onMouseLeave={(e) => {
-                                        if (!booked && !isPending) { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--muted-foreground)"; }
+                                        if (!booked && !isPending && !isThisMovieElsewhere) { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.color = color; }
                                       }}
                                     >
                                       {slot.label}
-                                      {booked && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem", opacity: 0.8 }}>✕</span>}
+                                      {(isThisMovieHere || isOtherMovieHere) && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem", opacity: 0.85 }}>✕</span>}
+                                      {isThisMovieElsewhere && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem" }}>⊘</span>}
                                       {isPending && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem" }}>✓</span>}
                                     </button>
                                   );
@@ -911,6 +991,21 @@ export function AdminPage({
                   />
                 </div>
               </div>
+              {promotionForm.promoCode.trim() && (
+                <div className={styles["admin-form-field"]} style={{ marginTop: "0.5rem" }}>
+                  <label className={styles["admin-field-label"]}>Expiry Date &amp; Time (optional)</label>
+                  <Input
+                    type="datetime-local"
+                    value={promotionForm.expiresAt}
+                    onChange={event => handlePromotionChange("expiresAt")(event.target.value)}
+                    min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                    className={styles["admin-field-control"]}
+                  />
+                  <p style={{ fontSize: "0.75rem", opacity: 0.55, marginTop: "0.25rem" }}>
+                    If set, the promo code will stop working after this date/time.
+                  </p>
+                </div>
+              )}
             </div>
 
             {promotionError && (

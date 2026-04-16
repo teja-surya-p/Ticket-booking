@@ -11,7 +11,7 @@ import {
   MOVIE_GENRE_OPTIONS
 } from "@/models/movie-model";
 
-const initialPromotionForm = { title: "", message: "", promoCode: "", discountPercent: "" };
+const initialPromotionForm = { title: "", message: "", promoCode: "", discountPercent: "", expiresAt: "" };
 
 export const TIME_SLOT_OPTIONS = [
   { label: "10:00 AM", value: "10:00" },
@@ -172,6 +172,7 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
       (movie) => movie.status === "currently_running" && !scheduledMovieIds.has(Number(movie.id))
     );
   }, [movies, allScheduledShows]);
+
 
   const selectedDuration = useMemo(
     () => formatDurationLabel(form.durationHours, form.durationMinutes),
@@ -378,13 +379,19 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   };
 
   const handleSendPromotion = async () => {
-    const { title, message, promoCode, discountPercent } = promotionForm;
+    const { title, message, promoCode, discountPercent, expiresAt } = promotionForm;
     if (!title.trim()) { setPromotionError("Title is required."); return; }
     if (!message.trim()) { setPromotionError("Message is required."); return; }
     if (promoCode.trim()) {
       const pct = Number(discountPercent);
       if (!discountPercent || isNaN(pct) || pct < 1 || pct > 100) {
         setPromotionError("Discount % must be a number between 1 and 100 when a promo code is set.");
+        return;
+      }
+    }
+    if (expiresAt && promoCode.trim()) {
+      if (new Date(expiresAt) <= new Date()) {
+        setPromotionError("Expiry date/time must be in the future.");
         return;
       }
     }
@@ -398,6 +405,7 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
       if (promoCode.trim()) {
         payload.promoCode = promoCode.trim().toUpperCase();
         payload.discountPercent = Number(discountPercent);
+        if (expiresAt) payload.expiresAt = new Date(expiresAt).toISOString();
       }
       const result = await sendPromotion(payload);
       setPromotionSendResult(result);

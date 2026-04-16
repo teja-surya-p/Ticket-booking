@@ -28,6 +28,8 @@ import {
   updateSavedCard as updateSavedCardRequest,
   updateCurrentUserProfile
 } from "@/services";
+import { fetchAvailablePromoCodes } from "@/services/promoCodesApi";
+import { Check, Copy, Tag } from "lucide-react";
 import styles from "./profile.module.css";
 
 function createEmptyForm() {
@@ -229,6 +231,9 @@ export default function ProfilePage() {
   const [editCardSaving, setEditCardSaving] = useState(false);
   const [deleteCardSaving, setDeleteCardSaving] = useState(false);
   const [deleteTargetCardId, setDeleteTargetCardId] = useState("");
+  const [availablePromoCodes, setAvailablePromoCodes] = useState([]);
+  const [promoCodesLoading, setPromoCodesLoading] = useState(false);
+  const [copiedCode, setCopiedCode] = useState("");
 
   useEffect(() => {
     const unsubscribe = subscribeToAuthState((user) => {
@@ -401,6 +406,25 @@ export default function ProfilePage() {
       cancelled = true;
     };
   }, [currentUser?.uid, currentUser?.email]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) {
+      setAvailablePromoCodes([]);
+      return;
+    }
+    setPromoCodesLoading(true);
+    fetchAvailablePromoCodes(currentUser.uid)
+      .then((data) => setAvailablePromoCodes(Array.isArray(data) ? data : []))
+      .catch(() => setAvailablePromoCodes([]))
+      .finally(() => setPromoCodesLoading(false));
+  }, [currentUser?.uid]);
+
+  const handleCopyCode = (code) => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(""), 2000);
+    });
+  };
 
   const hasMissingProfileFields = useMemo(() => {
     return (
@@ -1299,6 +1323,66 @@ export default function ProfilePage() {
                                 </form>
                               ) : null}
                             </article>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+
+                    <section className={styles.savedCardsSection}>
+                      <div className={styles.savedCardsHeader}>
+                        <h3 className={styles.savedCardsTitle}>Available Promotions</h3>
+                        {availablePromoCodes.length > 0 && (
+                          <p className={styles.savedCardsCount}>{availablePromoCodes.length} available</p>
+                        )}
+                      </div>
+                      {promoCodesLoading ? (
+                        <p className={styles.savedCardsHint}>Loading promotions...</p>
+                      ) : availablePromoCodes.length === 0 ? (
+                        <p className={styles.savedCardsHint}>No active promotions at the moment.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
+                          {availablePromoCodes.map((promo) => (
+                            <div
+                              key={promo.code}
+                              onClick={() => handleCopyCode(promo.code)}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                padding: "0.6rem 0.85rem",
+                                borderRadius: "0.5rem",
+                                border: "1px dashed color-mix(in srgb, var(--color-primary, #e05a7a) 45%, transparent)",
+                                background: "color-mix(in srgb, var(--color-primary, #e05a7a) 7%, transparent)",
+                                cursor: "pointer",
+                                userSelect: "none"
+                              }}
+                              title="Click to copy code"
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <Tag size={14} style={{ color: "var(--color-primary, #e05a7a)", flexShrink: 0 }} />
+                                <span style={{ fontWeight: 700, letterSpacing: "0.07em", fontSize: "0.9rem" }}>
+                                  {promo.code}
+                                </span>
+                                <span style={{ fontSize: "0.8rem", opacity: 0.7 }}>
+                                  — {promo.discountPercent}% off
+                                </span>
+                                {promo.expiresAt && (
+                                  <span style={{ fontSize: "0.7rem", opacity: 0.5 }}>
+                                    · Expires {new Date(promo.expiresAt).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleCopyCode(promo.code); }}
+                                style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", color: copiedCode === promo.code ? "var(--color-success, #22c55e)" : "var(--color-primary, #e05a7a)", padding: "0.2rem" }}
+                                aria-label={copiedCode === promo.code ? "Copied!" : "Copy code"}
+                                title={copiedCode === promo.code ? "Copied!" : "Copy code"}
+                              >
+                                {copiedCode === promo.code
+                                  ? <Check size={15} />
+                                  : <Copy size={15} />}
+                              </button>
+                            </div>
                           ))}
                         </div>
                       )}

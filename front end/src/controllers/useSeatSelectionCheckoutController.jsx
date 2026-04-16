@@ -1121,7 +1121,9 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     promoCodeInput,
     setPromoCodeInput,
     appliedPromo,
+    setAppliedPromo,
     promoError,
+    setPromoError,
     isApplyingPromo,
     applyPromoCode,
     showroomNameMap

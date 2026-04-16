@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Param, Post, Query } from "@nestjs/common";
 import { decorateClass, decorateMethod, parameterDecorator } from "../common/nest-metadata.js";
 import { AuthGuardService } from "../services/auth-guard.service.js";
 import { PromoCodesService } from "../services/promo-codes.service.js";
@@ -34,6 +34,10 @@ class AdminController {
 
   async getAllShowtimes() {
     return await this.adminService.getAllShowtimes();
+  }
+
+  async cancelShowtime(showtimeId) {
+    await this.adminService.cancelShowtime(showtimeId);
   }
 }
 
@@ -79,6 +83,13 @@ decorateMethod(AdminController.prototype, "getAllShowtimes", [Get("showtimes")],
   paramTypes: [],
   returnType: Promise
 });
+
+decorateMethod(
+  AdminController.prototype,
+  "cancelShowtime",
+  [Delete("showtimes/:id"), HttpCode(HttpStatus.NO_CONTENT), parameterDecorator(0, Param("id"))],
+  { paramTypes: [String], returnType: Promise }
+);
 
 decorateClass(AdminController, [Controller("admin")], [AdminService, PromoCodesService, AuthGuardService]);
 
