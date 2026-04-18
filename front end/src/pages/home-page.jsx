@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Check, Clock, Film, Play, Search, Sparkles } from "lucide-react";
+import { Calendar, Clock, Film, Play, Search, Sparkles } from "lucide-react";
 import { HomeHeroCarousel } from "@/components/home-hero-carousel";
 import { MovieCard } from "@/components/movie-card";
 import { MovieFilters } from "@/components/movie-filters";
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { fetchMovieShowtimes, subscribeToMovieNotification } from "@/services/moviesApi";
+import { fetchShowrooms } from "@/services/showroomsApi";
+import { toast } from "@/hooks/use-toast";
 import styles from "./home-page.module.css";
 
 const NO_OP = () => {};
@@ -51,7 +53,6 @@ export function HomePage({
   const [bookNowShowtimes, setBookNowShowtimes] = useState([]);
   const [bookNowLoading, setBookNowLoading] = useState(false);
   const [bookNowError, setBookNowError] = useState("");
-  const [bookNowAdded, setBookNowAdded] = useState(false);
 
   useEffect(() => {
     if (!bookNowMovie) {
@@ -61,11 +62,27 @@ export function HomePage({
     }
     setBookNowLoading(true);
     setBookNowError("");
-    fetchMovieShowtimes(bookNowMovie.id)
-      .then((data) => {
+    const movieTitle = bookNowMovie.title;
+    Promise.all([fetchMovieShowtimes(bookNowMovie.id), fetchShowrooms()])
+      .then(([data, rooms]) => {
+        const roomMap = {};
+        if (Array.isArray(rooms)) {
+          rooms.forEach((r) => { if (r.showroomId) roomMap[r.showroomId] = r.name ?? r.showroomId; });
+        }
         const now = new Date();
         const list = Array.isArray(data) ? data : [];
-        setBookNowShowtimes(list.filter((st) => new Date(st.startAt) > now));
+        const upcoming = list
+          .filter((st) => new Date(st.startAt) > now)
+          .map((st) => ({ ...st, hallName: roomMap[st.showroomId] ?? null }));
+        if (upcoming.length === 0) {
+          setBookNowMovie(null);
+          toast({
+            description: `No showtimes available for "${movieTitle}".`,
+            duration: 3500
+          });
+          return;
+        }
+        setBookNowShowtimes(upcoming);
       })
       .catch(() => setBookNowError("Failed to load showtimes. Please try again."))
       .finally(() => setBookNowLoading(false));
@@ -96,14 +113,13 @@ export function HomePage({
   };
 
   const handleBookNow = (movie) => {
-    setBookNowAdded(false);
     setBookNowMovie(movie);
   };
 
   const handleSelectShowtime = (showtime) => {
-    onAddToCart(bookNowMovie, showtime.startAt);
-    setBookNowAdded(true);
-    setTimeout(() => setBookNowMovie(null), 1400);
+    const movie = bookNowMovie;
+    setBookNowMovie(null); // close the showtime picker immediately
+    onAddToCart(movie, showtime.startAt); // opens the ticket picker dialog
   };
   const focusedEyebrow = hasSearchQuery
     ? "Focused result"
@@ -390,18 +406,12 @@ export function HomePage({
                 {bookNowError}
               </p>
             )}
-            {bookNowAdded && (
-              <p style={{ fontSize: "0.875rem", color: "var(--primary)", display: "flex", alignItems: "center", gap: "0.4rem", justifyContent: "center", padding: "0.75rem 0" }}>
-                <Check style={{ width: "1rem", height: "1rem" }} />
-                Added to cart!
-              </p>
-            )}
-            {!bookNowLoading && !bookNowError && !bookNowAdded && bookNowShowtimes.length === 0 && (
+            {!bookNowLoading && !bookNowError && bookNowShowtimes.length === 0 && (
               <p style={{ fontSize: "0.875rem", color: "var(--muted-foreground)", textAlign: "center", padding: "1.5rem 0" }}>
                 No upcoming showtimes available for this movie.
               </p>
             )}
-            {!bookNowLoading && !bookNowAdded && bookNowShowtimes.length > 0 && (() => {
+            {!bookNowLoading && bookNowShowtimes.length > 0 && (() => {
               // Group showtimes by calendar date key "YYYY-MM-DD"
               const groups = [];
               const seen = {};
@@ -416,7 +426,7 @@ export function HomePage({
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", maxHeight: "20rem", overflowY: "auto", paddingRight: "0.25rem" }}>
                   {groups.map(({ dateKey, showtimes }) => {
-                    const dateLabel = new Date(dateKey + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+                    const dateLabel = new Date(dateKey + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" });
                     return (
                       <div key={dateKey}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.6rem" }}>
@@ -428,7 +438,8 @@ export function HomePage({
                         </div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                           {showtimes.map((st) => {
-                            const timeLabel = new Date(st.startAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                            const timeLabel = new Date(st.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" });
+                            const hallName = st.hallName ?? null;
                             return (
                               <button
                                 key={st.showtimeId ?? st.startAt}
@@ -436,23 +447,28 @@ export function HomePage({
                                 onClick={() => handleSelectShowtime(st)}
                                 style={{
                                   display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "0.4rem",
+                                  flexDirection: "column",
+                                  alignItems: "flex-start",
+                                  gap: "0.15rem",
                                   padding: "0.45rem 0.9rem",
                                   borderRadius: "0.6rem",
                                   border: "1px solid var(--border)",
                                   background: "var(--secondary)",
                                   cursor: "pointer",
-                                  fontSize: "0.875rem",
-                                  fontWeight: 500,
-                                  color: "var(--foreground)",
                                   transition: "background 0.15s, border-color 0.15s"
                                 }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--primary)"; e.currentTarget.style.color = "var(--primary-foreground)"; e.currentTarget.style.borderColor = "var(--primary)"; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = "var(--secondary)"; e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--primary)"; e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.querySelector("[data-time]").style.color = "var(--primary-foreground)"; if (e.currentTarget.querySelector("[data-hall]")) e.currentTarget.querySelector("[data-hall]").style.color = "rgba(255,255,255,0.8)"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = "var(--secondary)"; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.querySelector("[data-time]").style.color = "var(--foreground)"; if (e.currentTarget.querySelector("[data-hall]")) e.currentTarget.querySelector("[data-hall]").style.color = "var(--muted-foreground)"; }}
                               >
-                                <Clock style={{ width: "0.8rem", height: "0.8rem" }} />
-                                {timeLabel}
+                                <span data-time style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>
+                                  <Clock style={{ width: "0.8rem", height: "0.8rem", flexShrink: 0 }} />
+                                  {timeLabel}
+                                </span>
+                                {hallName && (
+                                  <span data-hall style={{ fontSize: "0.72rem", color: "var(--muted-foreground)", paddingLeft: "1.2rem" }}>
+                                    {hallName}
+                                  </span>
+                                )}
                               </button>
                             );
                           })}

@@ -7,8 +7,8 @@ function formatShowtime(value) {
   if (!value) return "";
   const date = new Date(value);
   if (!isNaN(date.getTime()) && value.includes("T")) {
-    const datePart = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-    const timePart = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    const datePart = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+    const timePart = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" });
     return `${datePart} · ${timePart}`;
   }
   return value;
@@ -101,7 +101,10 @@ export function SeatSelectionDialog({
   promoError,
   isApplyingPromo,
   onApplyPromoCode,
-  showroomNameMap
+  showroomNameMap,
+  itemShowroomMap,
+  activeShowroomId,
+  activeShowroomName
 }) {
   const [deleteTargetCardId, setDeleteTargetCardId] = useState("");
   const selectedCount = selectedSeatIds.length;
@@ -218,6 +221,16 @@ export function SeatSelectionDialog({
               {currentItem && (
                 <p className={styles["seat-dialog-class-4"]}>
                   {currentItem.movie.title} - {formatShowtime(currentItem.showtime)}
+                  {(() => {
+                    const perItem = itemShowroomMap?.[currentItem.id];
+                    const hallName =
+                      perItem?.showroomName ||
+                      (perItem?.showroomId && showroomNameMap?.[perItem.showroomId]) ||
+                      activeShowroomName ||
+                      (activeShowroomId && showroomNameMap?.[activeShowroomId]) ||
+                      null;
+                    return hallName ? ` · ${hallName}` : "";
+                  })()}
                 </p>
               )}
             </div>
@@ -312,6 +325,34 @@ export function SeatSelectionDialog({
                 </div>
 
                 <section className={styles["seat-dialog-class-15"]}>
+                  {(() => {
+                    const perItem = itemShowroomMap?.[currentItem?.id];
+                    const hallName =
+                      perItem?.showroomName ||
+                      (perItem?.showroomId && showroomNameMap?.[perItem.showroomId]) ||
+                      activeShowroomName ||
+                      (activeShowroomId && showroomNameMap?.[activeShowroomId]) ||
+                      null;
+                    return hallName ? (
+                      <div style={{ display: "flex", justifyContent: "center", marginBottom: "0.5rem" }}>
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.35rem",
+                          padding: "0.25rem 0.75rem",
+                          borderRadius: "999px",
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          background: "color-mix(in srgb, var(--color-primary, #e05a7a) 12%, transparent)",
+                          border: "1px solid color-mix(in srgb, var(--color-primary, #e05a7a) 35%, transparent)",
+                          color: "var(--color-primary, #e05a7a)"
+                        }}>
+                          <MonitorPlay size={12} />
+                          {hallName} &nbsp;·&nbsp; {ROWS} rows × {COLS} seats
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
                   <div className={styles["seat-dialog-class-16"]}>
                     <div className={styles["seat-dialog-class-17"]} />
                     <div className={styles["seat-dialog-class-18"]}>
@@ -397,12 +438,21 @@ export function SeatSelectionDialog({
                     <div key={item.id} style={{ border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                       <p style={{ fontWeight: 600, fontSize: "1rem", margin: 0 }}>{item.movie?.title}</p>
                       <p style={{ fontSize: "0.875rem", opacity: 0.7, margin: 0 }}>{formatShowtime(item.showtime)}</p>
-                      {item.movie?.showroomId && (showroomNameMap?.[item.movie.showroomId] ?? item.movie.showroomId) && (
-                        <p style={{ fontSize: "0.875rem", margin: 0 }}>
-                          <span style={{ fontWeight: 500 }}>Show Room: </span>
-                          {showroomNameMap?.[item.movie.showroomId] ?? item.movie.showroomId}
-                        </p>
-                      )}
+                      {(() => {
+                        const perItem = itemShowroomMap?.[item.id];
+                        const hallId = perItem?.showroomId || item.movie?.showroomId || null;
+                        const hallName =
+                          perItem?.showroomName ||
+                          (hallId && showroomNameMap?.[hallId]) ||
+                          hallId ||
+                          null;
+                        return hallName ? (
+                          <p style={{ fontSize: "0.875rem", margin: 0 }}>
+                            <span style={{ fontWeight: 500 }}>Show Room: </span>
+                            {hallName}
+                          </p>
+                        ) : null;
+                      })()}
                       {seatLabels.length > 0 && (
                         <p style={{ fontSize: "0.875rem", margin: 0 }}>
                           <span style={{ fontWeight: 500 }}>Seats: </span>{seatLabels.join(", ")}

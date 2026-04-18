@@ -99,29 +99,33 @@ export function Navbar({
             <Moon className={styles["navbar-class-13"]} />
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onNavigateCart}
-            className={styles["navbar-class-14"]}
-            aria-label="Open cart"
-          >
-            <ShoppingCart className={styles["navbar-class-15"]} />
-            <span className={styles["navbar-class-16"]}>Cart</span>
-            {cartCount > 0 && <span className={styles["navbar-class-17"]}>{cartCount}</span>}
-          </Button>
+          {!isAdmin ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onNavigateCart}
+                className={styles["navbar-class-14"]}
+                aria-label="Open cart"
+              >
+                <ShoppingCart className={styles["navbar-class-15"]} />
+                <span className={styles["navbar-class-16"]}>Cart</span>
+                {cartCount > 0 && <span className={styles["navbar-class-17"]}>{cartCount}</span>}
+              </Button>
 
-          <Button
-            variant={isFavoritesView ? "default" : "outline"}
-            size="sm"
-            onClick={onNavigateFavorites}
-            className={styles["navbar-class-18"]}
-            aria-label="Open favorites"
-          >
-            <Heart className={styles["navbar-class-15"]} />
-            <span className={styles["navbar-class-16"]}>Favorites</span>
-            {favoriteCount > 0 && <span className={styles["navbar-class-17"]}>{favoriteCount}</span>}
-          </Button>
+              <Button
+                variant={isFavoritesView ? "default" : "outline"}
+                size="sm"
+                onClick={onNavigateFavorites}
+                className={styles["navbar-class-18"]}
+                aria-label="Open favorites"
+              >
+                <Heart className={styles["navbar-class-15"]} />
+                <span className={styles["navbar-class-16"]}>Favorites</span>
+                {favoriteCount > 0 && <span className={styles["navbar-class-17"]}>{favoriteCount}</span>}
+              </Button>
+            </>
+          ) : null}
         </div>
       </div>
 

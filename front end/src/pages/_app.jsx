@@ -1,5 +1,6 @@
 import { Manrope, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import styles from "./_app.module.css";
 const manrope = Manrope({
@@ -19,6 +20,7 @@ export default function App({
   return <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
       <div className={[manrope.variable, spaceGrotesk.variable, styles.appRoot].filter(Boolean).join(" ")}>
         <Component {...pageProps} />
+        <Toaster />
       </div>
     </ThemeProvider>;
 }

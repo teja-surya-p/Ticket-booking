@@ -12,6 +12,39 @@ import { TIME_SLOT_OPTIONS, useAdminPageController } from "@/controllers/useAdmi
 import { getMoviePosterUrl } from "@/models/movie-media";
 import { getMovieGenreList, shouldShowMovieRating } from "@/models/movie-model";
 import styles from "./admin-page.module.css";
+
+function toLocalDateKey(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value).slice(0, 10);
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toLocalTimeKey(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value).slice(11, 16);
+  }
+
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function isPastScheduleSlot(dateKey, timeValue) {
+  const slotDate = new Date(`${dateKey}T${timeValue}:00.000Z`);
+  if (Number.isNaN(slotDate.getTime())) {
+    return false;
+  }
+
+  return slotDate.getTime() < Date.now();
+}
+
 export function AdminPage({
   movies,
   onViewMovie,
@@ -67,10 +100,6 @@ export function AdminPage({
     editingMovieShowtimes,
     showScheduleDialog,
     scheduleForm,
-    scheduleSelectedRoom,
-    setScheduleSelectedRoom,
-    availableShowrooms,
-    isCheckingRooms,
     isScheduling,
     scheduleError,
     scheduleSuccess,
@@ -85,7 +114,9 @@ export function AdminPage({
     selectedHall,
     setSelectedHall,
     pendingSlots,
+    showScheduleMovieHint,
     togglePendingSlot,
+    triggerScheduleMovieHint,
     cancelTarget,
     setCancelTarget,
     isCancelling,
@@ -109,6 +140,9 @@ export function AdminPage({
   });
 
   const scheduleFormRef = useRef(null);
+  const selectedScheduleMovieId = Number.parseInt(scheduleForm.movieId, 10);
+  const scheduleMovieSelected =
+    Number.isInteger(selectedScheduleMovieId) && selectedScheduleMovieId > 0;
 
   return <div className={styles["admin-dashboard"]}>
       <div className={styles["admin-header"]}>
@@ -666,8 +700,8 @@ export function AdminPage({
                         byDate[dk].push(st);
                       }
                       return Object.entries(byDate).map(([dateKey, slots]) => {
-                        const displayDate = new Date(dateKey + "T00:00:00").toLocaleDateString("en-US", {
-                          weekday: "short", month: "short", day: "numeric", year: "numeric"
+                        const displayDate = new Date(dateKey + "T00:00:00Z").toLocaleDateString("en-US", {
+                          weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC"
                         });
                         return (
                           <div key={dateKey}>
@@ -683,7 +717,7 @@ export function AdminPage({
                                   border: "1px solid var(--color-border, #e5e7eb)",
                                   fontSize: "0.8rem"
                                 }}>
-                                  {new Date(st.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                                  {new Date(st.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" })}
                                 </span>
                               ))}
                             </div>
@@ -779,6 +813,34 @@ export function AdminPage({
             </DialogDescription>
           </DialogHeader>
 
+          {showScheduleMovieHint && (
+            <div
+              style={{
+                position: "sticky",
+                top: "0.5rem",
+                zIndex: 30,
+                display: "flex",
+                justifyContent: "center",
+                pointerEvents: "none",
+                marginBottom: "0.5rem"
+              }}
+            >
+              <div
+                style={{
+                  background: "#111827",
+                  color: "#ffffff",
+                  padding: "0.65rem 0.9rem",
+                  borderRadius: "999px",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  boxShadow: "0 12px 30px rgba(17, 24, 39, 0.22)"
+                }}
+              >
+                Please select a movie first
+              </div>
+            </div>
+          )}
+
           <div className={styles["admin-form"]} ref={scheduleFormRef}>
             <p style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Add a Show</p>
 
@@ -789,79 +851,18 @@ export function AdminPage({
                   <SelectValue placeholder="Select a movie" />
                 </SelectTrigger>
                 <SelectContent>
-                  {movies.map((m) => (
+                  {movies.filter((m) => m.status === "currently_running").map((m) => (
                     <SelectItem key={m.id} value={String(m.id)}>
                       {m.title}
-                      {m.status === "coming_soon" && m.releaseDate ? ` (from ${m.releaseDate})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className={styles["admin-form-grid-duration"]}>
-              <div className={styles["admin-form-field"]}>
-                <label className={styles["admin-field-label"]}>Date <span style={{ color: "red" }}>*</span></label>
-                <Input
-                  type="date"
-                  value={scheduleForm.date}
-                  min={new Date().toISOString().slice(0, 10)}
-                  onChange={event => handleScheduleFormChange("date", event.target.value)}
-                  className={styles["admin-field-control"]}
-                />
-              </div>
-
-              <div className={styles["admin-form-field"]}>
-                <label className={styles["admin-field-label"]}>Time Slot <span style={{ color: "red" }}>*</span></label>
-                <Select value={scheduleForm.timeSlot} onValueChange={value => handleScheduleFormChange("timeSlot", value)}>
-                  <SelectTrigger className={styles["admin-field-control"]}>
-                    <SelectValue placeholder="Select time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIME_SLOT_OPTIONS.map((slot) => (
-                      <SelectItem key={slot.value} value={slot.value}>{slot.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {scheduleForm.date && scheduleForm.timeSlot && (
-              <div className={styles["admin-form-field"]}>
-                <label className={styles["admin-field-label"]}>Available Showrooms</label>
-                {isCheckingRooms ? (
-                  <p className={styles["admin-muted-text"]}>Checking availability...</p>
-                ) : availableShowrooms.length === 0 ? (
-                  <p className={styles["admin-muted-text"]}>No showrooms available at this time slot.</p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                    {availableShowrooms.map((room) => (
-                      <button
-                        key={room.showroomId}
-                        type="button"
-                        onClick={() => setScheduleSelectedRoom(room.showroomId)}
-                        style={{
-                          padding: "0.5rem 0.75rem",
-                          borderRadius: "0.375rem",
-                          border: scheduleSelectedRoom === room.showroomId ? "2px solid var(--color-primary, #2563eb)" : "1px solid var(--color-border, #e5e7eb)",
-                          background: scheduleSelectedRoom === room.showroomId ? "var(--color-primary-light, #eff6ff)" : "transparent",
-                          cursor: "pointer",
-                          textAlign: "left",
-                          fontSize: "0.875rem"
-                        }}
-                      >
-                        {room.name}
-                        {room.layout && (
-                          <span style={{ marginLeft: "0.5rem", opacity: 0.6 }}>
-                            ({room.layout.totalSeats} seats)
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            <p className={styles["admin-muted-text"]}>
+              Click slots in the hall grid below to choose the hall, date, and time for this movie.
+            </p>
 
             {pendingSlots.length > 0 && (
               <div style={{ padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "1px solid #22c55e", background: "rgba(34,197,94,0.08)" }}>
@@ -870,14 +871,14 @@ export function AdminPage({
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem" }}>
                   {pendingSlots.map((s) => {
-                    const dateLabel = new Date(s.dateKey + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                    const dateLabel = new Date(s.dateKey + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
                     const timeLabel = TIME_SLOT_OPTIONS.find((o) => o.value === s.slotValue)?.label ?? s.slotValue;
                     return (
                       <span
                         key={s.key}
                         style={{ fontSize: "0.72rem", padding: "0.15rem 0.5rem", borderRadius: "0.3rem", background: "rgba(34,197,94,0.18)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.4)" }}
                       >
-                        {dateLabel} · {timeLabel}
+                        {s.hallName} · {dateLabel} · {timeLabel}
                       </span>
                     );
                   })}
@@ -900,16 +901,17 @@ export function AdminPage({
                   All Scheduled Shows
                   {isLoadingAllShows && <span style={{ fontWeight: 400, opacity: 0.6, marginLeft: "0.5rem", fontSize: "0.8rem" }}>Loading...</span>}
                 </p>
-                {/* Hall selector — uses showrooms list so halls with zero bookings still appear */}
                 {showrooms.length > 0 && (
-                  <select
-                    value={selectedHall}
-                    onChange={(e) => setSelectedHall(e.target.value)}
-                    style={{ fontSize: "0.8rem", padding: "0.3rem 0.5rem", borderRadius: "0.4rem", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", cursor: "pointer" }}
-                  >
-                    <option value="">All Halls</option>
-                    {showrooms.map((r) => <option key={r.showroomId} value={r.name}>{r.name}</option>)}
-                  </select>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <span style={{ fontSize: "0.75rem", opacity: 0.6 }}>Hall:</span>
+                    <select
+                      value={selectedHall || showrooms[0]?.name || ""}
+                      onChange={(e) => setSelectedHall(e.target.value)}
+                      style={{ fontSize: "0.8rem", padding: "0.3rem 0.5rem", borderRadius: "0.4rem", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", cursor: "pointer" }}
+                    >
+                      {showrooms.map((r) => <option key={r.showroomId} value={r.name}>{r.name}</option>)}
+                    </select>
+                  </div>
                 )}
               </div>
 
@@ -918,40 +920,32 @@ export function AdminPage({
                 const bookedSet = {};
                 for (const s of allScheduledShows) {
                   const hall = s.showroomName || s.showroomId || "Unknown Hall";
-                  const dk = s.startAt.slice(0, 10);
-                  const tk = s.startAt.slice(11, 16);
+                  const dk = toLocalDateKey(s.startAt);
+                  const tk = toLocalTimeKey(s.startAt);
                   if (!bookedSet[hall]) bookedSet[hall] = {};
                   if (!bookedSet[hall][dk]) bookedSet[hall][dk] = {};
                   bookedSet[hall][dk][tk] = s;
                 }
 
-                // "dateKey_timeKey" → show, for the currently selected movie across ALL halls
-                const selectedMovieId = scheduleForm.movieId ? Number(scheduleForm.movieId) : null;
-                const selectedMovieByTime = {};
-                if (selectedMovieId) {
-                  for (const s of allScheduledShows) {
-                    if (Number(s.movieId) === selectedMovieId) {
-                      const dk = s.startAt.slice(0, 10);
-                      const tk = s.startAt.slice(11, 16);
-                      selectedMovieByTime[`${dk}_${tk}`] = s;
-                    }
-                  }
-                }
+                const selectedMovieId = selectedScheduleMovieId;
+                const hasSelectedMovie = scheduleMovieSelected;
 
-                // Show all halls from showrooms list; fall back to booked-set keys
+                // Always show exactly one hall at a time; fall back to first available
                 const allHallNames = showrooms.length > 0
                   ? showrooms.map((r) => r.name)
                   : Object.keys(bookedSet);
-                const hallsToShow = selectedHall ? [selectedHall] : allHallNames;
+                const activeHall = selectedHall || allHallNames[0] || "";
+                const hallsToShow = activeHall ? [activeHall] : [];
 
-                // Date range: today + next 13 days
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const dates = Array.from({ length: 14 }, (_, i) => {
-                  const d = new Date(today);
-                  d.setDate(today.getDate() + i);
-                  return d.toISOString().slice(0, 10);
-                });
+                const dates = (() => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  return Array.from({ length: 30 }, (_, i) => {
+                    const d = new Date(today);
+                    d.setDate(today.getDate() + i);
+                    return toLocalDateKey(d);
+                  });
+                })();
 
                 const slots = TIME_SLOT_OPTIONS;
 
@@ -960,12 +954,27 @@ export function AdminPage({
                 }
 
                 return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem", maxHeight: "300px", overflowY: "auto", paddingRight: "0.25rem" }}>
+                  <div style={{ position: "relative" }}>
+                    {!scheduleMovieSelected && (
+                      <button
+                        type="button"
+                        aria-label="Select a movie first"
+                        onClick={triggerScheduleMovieHint}
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          zIndex: 5,
+                          border: "none",
+                          background: "transparent",
+                          cursor: "not-allowed"
+                        }}
+                      />
+                    )}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem", maxHeight: "300px", overflowY: "auto", paddingRight: "0.25rem", opacity: scheduleMovieSelected ? 1 : 0.78 }}>
                     {/* Legend */}
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", fontSize: "0.7rem", opacity: 0.8 }}>
                       <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "var(--primary)", display: "inline-block" }} /> Booked (other movie)</span>
-                      {selectedMovieId && <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "#3b82f6", display: "inline-block" }} /> Selected movie</span>}
-                      {selectedMovieId && <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "#f59e0b", display: "inline-block" }} /> Movie in another hall</span>}
+                      {hasSelectedMovie && <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "#3b82f6", display: "inline-block" }} /> Selected movie</span>}
                       <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "rgba(34,197,94,0.3)", border: "1px solid #22c55e", display: "inline-block" }} /> Selected</span>
                     </div>
 
@@ -977,30 +986,39 @@ export function AdminPage({
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                           {dates.map((dateKey) => {
-                            const dateLabel = new Date(dateKey + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                            const dateLabel = new Date(dateKey + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
                             const dayBookings = bookedSet[hall]?.[dateKey] ?? {};
                             return (
                               <div key={dateKey} style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                                 <span style={{ fontSize: "0.75rem", color: "var(--muted-foreground)", width: "6.5rem", flexShrink: 0 }}>{dateLabel}</span>
                                 {slots.map((slot) => {
-                                  const slotKey = `${dateKey}_${slot.value}`;
+                                  const hallShowroomId =
+                                    showrooms.find((room) => room.name === hall)?.showroomId ?? hall;
+                                  const pendingSlotKey = `${hallShowroomId}_${dateKey}_${slot.value}`;
                                   const booked = dayBookings[slot.value]; // any show in this hall
-                                  const isThisMovieHere = booked && selectedMovieId && Number(booked.movieId) === selectedMovieId;
+                                  const isPastSlot = isPastScheduleSlot(dateKey, slot.value);
+                                  const isThisMovieHere =
+                                    Boolean(booked) &&
+                                    hasSelectedMovie &&
+                                    Number(booked.movieId) === selectedMovieId;
                                   const isOtherMovieHere = booked && !isThisMovieHere;
-                                  const isThisMovieElsewhere = !booked && selectedMovieId && !!selectedMovieByTime[slotKey];
-                                  const isPending = !booked && !isThisMovieElsewhere && pendingSlots.some((s) => s.key === slotKey);
+                                  const pendingInThisHall =
+                                    pendingSlots.find((s) => s.key === pendingSlotKey) ?? null;
+                                  const isPending = !booked && Boolean(pendingInThisHall);
 
                                   let borderColor, background, color, cursor, titleText;
-                                  if (isThisMovieHere) {
+                                  if (isPastSlot) {
+                                    borderColor = "var(--border)";
+                                    background = "rgba(148, 163, 184, 0.08)";
+                                    color = "var(--muted-foreground)";
+                                    cursor = "not-allowed";
+                                    titleText = `${slot.label} has already passed`;
+                                  } else if (isThisMovieHere) {
                                     borderColor = "#3b82f6"; background = "#3b82f6"; color = "#fff";
                                     cursor = "pointer"; titleText = `${booked.movieTitle} — already scheduled here. Click to cancel.`;
                                   } else if (isOtherMovieHere) {
                                     borderColor = "var(--primary)"; background = "var(--primary)"; color = "var(--primary-foreground)";
                                     cursor = "pointer"; titleText = `${booked.movieTitle} — click to cancel`;
-                                  } else if (isThisMovieElsewhere) {
-                                    const elsewhere = selectedMovieByTime[slotKey];
-                                    borderColor = "#f59e0b"; background = "rgba(245,158,11,0.15)"; color = "#f59e0b";
-                                    cursor = "not-allowed"; titleText = `Already scheduled in ${elsewhere.showroomName} — same movie can't run in two halls at once`;
                                   } else if (isPending) {
                                     borderColor = "#22c55e"; background = "rgba(34,197,94,0.18)"; color = "#22c55e";
                                     cursor = "pointer"; titleText = `Deselect ${slot.label}`;
@@ -1014,11 +1032,14 @@ export function AdminPage({
                                       key={slot.value}
                                       type="button"
                                       title={titleText}
-                                      disabled={isThisMovieElsewhere}
+                                      disabled={isPastSlot}
                                       onClick={() => {
+                                        if (isPastSlot) {
+                                          return;
+                                        }
                                         if (isThisMovieHere || isOtherMovieHere) {
                                           setCancelTarget(booked);
-                                        } else if (!isThisMovieElsewhere) {
+                                        } else {
                                           togglePendingSlot(dateKey, slot.value, hall);
                                           scheduleFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                                         }
@@ -1034,18 +1055,17 @@ export function AdminPage({
                                         transition: "background 0.15s, color 0.15s, border-color 0.15s",
                                         background,
                                         color,
-                                        opacity: isThisMovieElsewhere ? 0.7 : 1,
+                                        opacity: isPastSlot ? 0.65 : 1,
                                       }}
                                       onMouseEnter={(e) => {
-                                        if (!booked && !isPending && !isThisMovieElsewhere) { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.color = "#22c55e"; }
+                                        if (!booked && !isPending && !isPastSlot) { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.color = "#22c55e"; }
                                       }}
                                       onMouseLeave={(e) => {
-                                        if (!booked && !isPending && !isThisMovieElsewhere) { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.color = color; }
+                                        if (!booked && !isPending && !isPastSlot) { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.color = color; }
                                       }}
                                     >
                                       {slot.label}
                                       {(isThisMovieHere || isOtherMovieHere) && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem", opacity: 0.85 }}>✕</span>}
-                                      {isThisMovieElsewhere && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem" }}>⊘</span>}
                                       {isPending && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem" }}>✓</span>}
                                     </button>
                                   );
@@ -1056,6 +1076,7 @@ export function AdminPage({
                         </div>
                       </div>
                     ))}
+                    </div>
                   </div>
                 );
               })()}
@@ -1064,7 +1085,11 @@ export function AdminPage({
 
           <DialogFooter>
             <Button variant="outline" onClick={closeScheduleDialog} disabled={isScheduling}>Close</Button>
-            <Button onClick={handleScheduleShow} disabled={isScheduling} className={styles["admin-submit-button"]}>
+            <Button
+              onClick={handleScheduleShow}
+              disabled={isScheduling}
+              className={styles["admin-submit-button"]}
+            >
               {isScheduling
                 ? "Scheduling..."
                 : pendingSlots.length > 1
@@ -1085,9 +1110,9 @@ export function AdminPage({
                 <>
                   Are you sure you want to cancel <strong>{cancelTarget.movieTitle}</strong> at{" "}
                   <strong>
-                    {new Date(cancelTarget.startAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                    {new Date(cancelTarget.startAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}
                     {" · "}
-                    {new Date(cancelTarget.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                    {new Date(cancelTarget.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" })}
                   </strong>{" "}
                   in <strong>{cancelTarget.showroomName}</strong>? This cannot be undone.
                 </>

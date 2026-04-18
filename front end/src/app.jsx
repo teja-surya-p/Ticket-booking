@@ -8,6 +8,7 @@ import { AdminPage } from "@/pages/admin-page";
 import { CheckoutPage } from "@/pages/checkout-page";
 import { FavoritesPage } from "@/pages/favorites-page";
 import { useCinemaAppController } from "@/controllers/useCinemaAppController";
+import { TicketPickerDialog } from "@/components/ticket-picker-dialog";
 import styles from "./app.module.css";
 
 export default function App() {
@@ -40,7 +41,10 @@ export default function App() {
     authMessage,
     handleMovieClick,
     handleWatchTrailer,
+    pendingCartItem,
     handleAddToCart,
+    handleConfirmAddToCart,
+    handleCancelAddToCart,
     handleCreateMovie,
     handleUpdateMovie,
     handleDeleteMovie,
@@ -89,6 +93,13 @@ export default function App() {
         authBusy={authBusy}
         authMessage={authMessage}
         onSignOut={handleSignOut}
+      />
+
+      <TicketPickerDialog
+        pendingItem={pendingCartItem}
+        cartItems={cartItems}
+        onConfirm={handleConfirmAddToCart}
+        onCancel={handleCancelAddToCart}
       />
 
       <main>

@@ -48,19 +48,54 @@ const loginSchema = z.object({
 
 const registerSchema = z
   .object({
-    firstName: z.string().trim().min(1, "First name is required."),
-    lastName: z.string().trim().min(1, "Last name is required."),
+    firstName: z
+      .string()
+      .trim()
+      .min(1, "First name is required.")
+      .max(50, "First name must be 50 characters or fewer.")
+      .regex(/^[a-zA-Z\s'\-]+$/, "First name can only contain letters, spaces, hyphens, or apostrophes."),
+    lastName: z
+      .string()
+      .trim()
+      .min(1, "Last name is required.")
+      .max(50, "Last name must be 50 characters or fewer.")
+      .regex(/^[a-zA-Z\s'\-]+$/, "Last name can only contain letters, spaces, hyphens, or apostrophes."),
     email: z.string().trim().min(1, "Email is required.").email("Enter a valid email address."),
-    phone: z.string().trim()
-      .min(10, "Phone number must be at least 10 digits.")
-      .regex(/^[+]?[\d\s\-().]+$/, "Enter a valid phone number."),
+    phone: z
+      .string()
+      .trim()
+      .min(1, "Phone number is required.")
+      .regex(/^[+]?[\d\s\-().]+$/, "Enter a valid phone number.")
+      .refine((val) => val.replace(/\D/g, "").length >= 10, "Phone number must have at least 10 digits."),
     password: passwordSchema,
     confirmPassword: z.string().min(1, "Confirm password is required."),
     promotionsOptIn: z.boolean().default(false),
-    street: z.string().trim().optional(),
-    city: z.string().trim().optional(),
-    state: z.string().trim().optional(),
-    zip: z.string().trim().optional()
+    street: z
+      .string()
+      .trim()
+      .max(100, "Street must be 100 characters or fewer.")
+      .optional()
+      .or(z.literal("")),
+    city: z
+      .string()
+      .trim()
+      .max(100, "City must be 100 characters or fewer.")
+      .regex(/^[a-zA-Z\s'\-]*$/, "City can only contain letters and spaces.")
+      .optional()
+      .or(z.literal("")),
+    state: z
+      .string()
+      .trim()
+      .max(50, "State must be 50 characters or fewer.")
+      .regex(/^[a-zA-Z\s]*$/, "State can only contain letters.")
+      .optional()
+      .or(z.literal("")),
+    zip: z
+      .string()
+      .trim()
+      .regex(/^(\d{5}(-\d{4})?)?$/, "Enter a valid ZIP code (e.g. 12345 or 12345-6789).")
+      .optional()
+      .or(z.literal(""))
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match.",
@@ -284,7 +319,11 @@ export default function LoginPage() {
     }
 
     setStatusMessage("Signed in successfully. Redirecting...");
-    void router.push("/");
+    const destination =
+      typeof router.query.returnTo === "string" && router.query.returnTo.startsWith("/")
+        ? router.query.returnTo
+        : "/";
+    void router.push(destination);
   };
 
   const handleToggleForgotPassword = () => {
@@ -438,7 +477,11 @@ export default function LoginPage() {
       loading: false,
       message: "Google sign-in successful."
     });
-    void router.push("/");
+    const destination =
+      typeof router.query.returnTo === "string" && router.query.returnTo.startsWith("/")
+        ? router.query.returnTo
+        : "/";
+    void router.push(destination);
   };
 
   const handleResendVerification = async () => {

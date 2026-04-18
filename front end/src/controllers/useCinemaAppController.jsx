@@ -238,9 +238,37 @@ export function useCinemaAppController() {
     }
 
     try {
-      const raw = window.localStorage.getItem(cartStorageKey);
-      const parsed = raw ? JSON.parse(raw) : [];
-      setCartItems(Array.isArray(parsed) ? parsed : []);
+      const guestKey = "cinebook:cart:guest";
+      let cartToLoad;
+
+      if (cartStorageKey !== guestKey) {
+        // Transitioning from guest → logged-in user: merge any guest cart items in
+        let guestItems = [];
+        let userItems = [];
+        try {
+          const guestRaw = window.localStorage.getItem(guestKey);
+          const parsed = guestRaw ? JSON.parse(guestRaw) : [];
+          guestItems = Array.isArray(parsed) ? parsed : [];
+        } catch { /* ignore */ }
+        try {
+          const userRaw = window.localStorage.getItem(cartStorageKey);
+          const parsed = userRaw ? JSON.parse(userRaw) : [];
+          userItems = Array.isArray(parsed) ? parsed : [];
+        } catch { /* ignore */ }
+
+        if (guestItems.length > 0) {
+          const existingIds = new Set(userItems.map((item) => item.id));
+          cartToLoad = [...userItems, ...guestItems.filter((item) => !existingIds.has(item.id))];
+          window.localStorage.removeItem(guestKey);
+        } else {
+          cartToLoad = userItems;
+        }
+      } else {
+        const raw = window.localStorage.getItem(cartStorageKey);
+        cartToLoad = raw ? JSON.parse(raw) : [];
+      }
+
+      setCartItems(Array.isArray(cartToLoad) ? cartToLoad : []);
     } catch {
       setCartItems([]);
     } finally {
@@ -300,13 +328,22 @@ export function useCinemaAppController() {
     });
   };
 
-  const handleAddToCart = (movie, showtime) => {
-    if (!showtime) {
-      return;
-    }
+  const [pendingCartItem, setPendingCartItem] = useState(null);
 
+  const handleAddToCart = (movie, showtime) => {
+    if (!showtime) return;
     setAuthMessage("");
-    setCartItems((previous) => addMovieToCart(previous, movie, showtime));
+    setPendingCartItem({ movie, showtime });
+  };
+
+  const handleConfirmAddToCart = (tickets) => {
+    if (!pendingCartItem) return;
+    setCartItems((previous) => addMovieToCart(previous, pendingCartItem.movie, pendingCartItem.showtime, tickets));
+    setPendingCartItem(null);
+  };
+
+  const handleCancelAddToCart = () => {
+    setPendingCartItem(null);
   };
 
   const handleCreateMovie = async (payload) => {
@@ -490,7 +527,10 @@ export function useCinemaAppController() {
     cartCount,
     handleMovieClick,
     handleWatchTrailer,
+    pendingCartItem,
     handleAddToCart,
+    handleConfirmAddToCart,
+    handleCancelAddToCart,
     handleCreateMovie,
     handleUpdateMovie,
     handleDeleteMovie,

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   InternalServerErrorException,
@@ -12,6 +13,7 @@ import {
 import { decorateClass } from "../common/nest-metadata.js";
 import { FirestoreService } from "../config/firestore.service.js";
 import { toMovieEntity } from "../entities/movie.entity.js";
+import { ShowtimesService } from "./showtimes.service.js";
 
 const SEED_MOVIES = [
   {
@@ -102,8 +104,9 @@ const SEED_MOVIES = [
 ];
 
 class MoviesService {
-  constructor(firestoreService) {
+  constructor(firestoreService, showtimesService) {
     this.firestoreService = firestoreService;
+    this.showtimesService = showtimesService;
   }
 
   async onModuleInit() {
@@ -191,6 +194,19 @@ class MoviesService {
       throw new NotFoundException(`Movie with id ${id} not found`);
     }
 
+    // Enforce: a movie can only be set to currently_running if it has at least 1 upcoming showtime
+    const incomingStatus = dto.status;
+    if (incomingStatus === "currently_running" && existing.status !== "currently_running") {
+      const now = new Date().toISOString();
+      const allShowtimes = await this.showtimesService.findByMovieId(id);
+      const upcomingShowtimes = allShowtimes.filter((st) => st.startAt >= now);
+      if (upcomingShowtimes.length === 0) {
+        throw new BadRequestException(
+          "Cannot set a movie to 'Currently Running' without at least one upcoming showtime. Please schedule a showtime first."
+        );
+      }
+    }
+
     const showroomToCheck = dto.showroomId ?? existing.showroomId;
     if (showroomToCheck) {
       await this.assertShowroomExists(showroomToCheck);
@@ -224,6 +240,7 @@ class MoviesService {
 
     const movieToDelete = this.normalizeMovie(snapshot.data(), id);
     await this.deleteMovieAssetsFromStorage(movieToDelete);
+    await this.showtimesService.deleteByMovieId(movieToDelete.id);
     await docRef.delete();
   }
 
@@ -485,6 +502,6 @@ class MoviesService {
   }
 }
 
-decorateClass(MoviesService, [Injectable()], [FirestoreService]);
+decorateClass(MoviesService, [Injectable()], [FirestoreService, ShowtimesService]);
 
 export { MoviesService };

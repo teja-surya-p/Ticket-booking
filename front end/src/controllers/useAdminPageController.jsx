@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { buildAdminIssueReport, getMeaningfulErrorMessage } from "@/services/apiErrorUtils";
 import { uploadMovieAssetToStorage } from "@/services/firebaseStorage";
-import { cancelAdminShowtime, fetchAllAdminShowtimes, fetchAvailableShowrooms, scheduleShowtime, sendPromotion } from "@/services/adminApi";
+import { cancelAdminShowtime, fetchAllAdminShowtimes, scheduleShowtime, sendPromotion } from "@/services/adminApi";
 import { fetchMovieShowtimes } from "@/services/moviesApi";
 import {
   createShowroom,
@@ -159,8 +159,6 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [scheduleForm, setScheduleForm] = useState(initialScheduleForm);
   const [scheduleSelectedRoom, setScheduleSelectedRoom] = useState("");
-  const [availableShowrooms, setAvailableShowrooms] = useState([]);
-  const [isCheckingRooms, setIsCheckingRooms] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState(null);
   const [scheduleSuccess, setScheduleSuccess] = useState(null);
@@ -168,9 +166,11 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   const [isLoadingAllShows, setIsLoadingAllShows] = useState(false);
   const [selectedHall, setSelectedHall] = useState("");
   const [pendingSlots, setPendingSlots] = useState([]);
+  const [showScheduleMovieHint, setShowScheduleMovieHint] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  const scheduleMovieHintTimeoutRef = useRef(null);
 
   const loadShowrooms = async () => {
     setIsLoadingShowrooms(true);
@@ -196,6 +196,19 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
       .catch(() => setAllScheduledShows([]))
       .finally(() => setIsLoadingAllShows(false));
   }, []);
+
+  useEffect(() => () => {
+    if (scheduleMovieHintTimeoutRef.current) {
+      window.clearTimeout(scheduleMovieHintTimeoutRef.current);
+    }
+  }, []);
+
+  // When schedule dialog is open and showrooms finish loading, default to first hall
+  useEffect(() => {
+    if (showScheduleDialog && showrooms.length > 0 && !selectedHall) {
+      setSelectedHall(showrooms[0].name);
+    }
+  }, [showScheduleDialog, showrooms, selectedHall]);
 
   const currentlyRunning = movies.filter((movie) => movie.status === "currently_running").length;
   const comingSoon = movies.filter((movie) => movie.status === "coming_soon").length;
@@ -368,11 +381,6 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
       await Promise.all([loadShowrooms(), fetchAllAdminShowtimes().then((data) => setAllScheduledShows(Array.isArray(data) ? data : [])).catch(() => setAllScheduledShows([]))]);
       setSelectedHall((previous) => (previous === showroom.name ? "" : previous));
       setScheduleSelectedRoom((previous) => (previous === showroom.showroomId ? "" : previous));
-      setAvailableShowrooms((previous) =>
-        Array.isArray(previous)
-          ? previous.filter((room) => room.showroomId !== showroom.showroomId)
-          : []
-      );
       setForm((previous) =>
         previous.showroomId === showroom.showroomId
           ? { ...previous, showroomId: "" }
@@ -588,6 +596,17 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
       .finally(() => setIsLoadingAllShows(false));
   };
 
+  const triggerScheduleMovieHint = () => {
+    setShowScheduleMovieHint(true);
+    if (scheduleMovieHintTimeoutRef.current) {
+      window.clearTimeout(scheduleMovieHintTimeoutRef.current);
+    }
+    scheduleMovieHintTimeoutRef.current = window.setTimeout(() => {
+      setShowScheduleMovieHint(false);
+      scheduleMovieHintTimeoutRef.current = null;
+    }, 3000);
+  };
+
   const handleCancelShow = async () => {
     if (!cancelTarget) return;
     setIsCancelling(true);
@@ -609,9 +628,10 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
       : initialScheduleForm
     );
     setScheduleSelectedRoom("");
-    setAvailableShowrooms([]);
+    setSelectedHall(showrooms[0]?.name ?? "");
     setScheduleError(null);
     setScheduleSuccess(null);
+    setShowScheduleMovieHint(false);
     setShowScheduleDialog(true);
     loadAllScheduledShows();
   };
@@ -619,33 +639,22 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   const closeScheduleDialog = () => {
     setShowScheduleDialog(false);
     setPendingSlots([]);
+    setShowScheduleMovieHint(false);
+    if (scheduleMovieHintTimeoutRef.current) {
+      window.clearTimeout(scheduleMovieHintTimeoutRef.current);
+      scheduleMovieHintTimeoutRef.current = null;
+    }
   };
 
   const buildStartAtFromForm = (date, timeSlot) => {
     if (!date || !timeSlot) return "";
-    return `${date}T${timeSlot}`;
-  };
-
-  const handleFetchAvailableShowrooms = async (startAt) => {
-    if (!startAt) {
-      setAvailableShowrooms([]);
-      return;
-    }
-    setIsCheckingRooms(true);
-    setScheduleSelectedRoom("");
-    try {
-      const data = await fetchAvailableShowrooms(startAt);
-      setAvailableShowrooms(Array.isArray(data) ? data : []);
-    } catch {
-      setAvailableShowrooms([]);
-    } finally {
-      setIsCheckingRooms(false);
-    }
+    // Append seconds + Z so the time is treated as UTC directly, preventing
+    // browser timezone offset from shifting the stored value.
+    return `${date}T${timeSlot}:00.000Z`;
   };
 
   const prefillScheduleForm = (date, timeSlot, hallName = null) => {
     setScheduleForm((prev) => ({ ...prev, date, timeSlot }));
-    setAvailableShowrooms([]);
     // Auto-select showroom by hall name
     if (hallName) {
       const room = showrooms.find((r) => r.name === hallName);
@@ -653,37 +662,41 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
         setScheduleSelectedRoom(room.showroomId);
       }
     }
-    if (date && timeSlot) {
-      void handleFetchAvailableShowrooms(buildStartAtFromForm(date, timeSlot));
-    }
   };
 
   const togglePendingSlot = (dateKey, slotValue, hallName) => {
-    const key = `${dateKey}_${slotValue}`;
+    if (!scheduleForm.movieId) {
+      triggerScheduleMovieHint();
+      return;
+    }
+
+    const room = showrooms.find((r) => r.name === hallName);
+    if (!room) {
+      setScheduleError("Selected hall could not be found.");
+      return;
+    }
+
+    const key = `${room.showroomId}_${dateKey}_${slotValue}`;
     setPendingSlots((prev) => {
       const exists = prev.some((s) => s.key === key);
       if (exists) return prev.filter((s) => s.key !== key);
-      return [...prev, { key, dateKey, slotValue, hallName }];
+      return [...prev, { key, dateKey, slotValue, hallName, showroomId: room.showroomId }];
     });
-    // Auto-select hall in the form for the most recently clicked slot
-    const room = showrooms.find((r) => r.name === hallName);
-    if (room) setScheduleSelectedRoom(room.showroomId);
+    setScheduleError(null);
+    setScheduleSelectedRoom(room.showroomId);
     setScheduleForm((prev) => ({ ...prev, date: dateKey, timeSlot: slotValue }));
-    if (dateKey && slotValue) {
-      void handleFetchAvailableShowrooms(buildStartAtFromForm(dateKey, slotValue));
-    }
   };
 
   const handleScheduleFormChange = (key, value) => {
     setScheduleForm((prev) => {
       const next = { ...prev, [key]: value };
-      const date = key === "date" ? value : next.date;
-      const timeSlot = key === "timeSlot" ? value : next.timeSlot;
-      if (date && timeSlot) {
-        void handleFetchAvailableShowrooms(buildStartAtFromForm(date, timeSlot));
-      } else {
-        setAvailableShowrooms([]);
+
+      if (key === "movieId") {
+        setPendingSlots([]);
         setScheduleSelectedRoom("");
+        setScheduleError(null);
+        setScheduleSuccess(null);
+        setShowScheduleMovieHint(false);
       }
       return next;
     });
@@ -693,60 +706,52 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     setScheduleError(null);
     setScheduleSuccess(null);
 
-    if (!scheduleForm.movieId) { setScheduleError("Please select a movie."); return; }
-    if (!scheduleSelectedRoom) { setScheduleError("Please select an available showroom."); return; }
-
-    const movieId = Number(scheduleForm.movieId);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Multi-slot path
-    if (pendingSlots.length > 0) {
-      setIsScheduling(true);
-      const errors = [];
-      let successCount = 0;
-      for (const slot of pendingSlots) {
-        const startAt = new Date(buildStartAtFromForm(slot.dateKey, slot.slotValue)).toISOString();
-        try {
-          await scheduleShowtime({ movieId, showroomId: scheduleSelectedRoom, startAt });
-          successCount++;
-        } catch (err) {
-          errors.push(getMeaningfulErrorMessage(err, "admin"));
-        }
-      }
-      setIsScheduling(false);
-      setPendingSlots([]);
-      loadAllScheduledShows();
-      if (errors.length === 0) {
-        setScheduleSuccess(`${successCount} show${successCount !== 1 ? "s" : ""} scheduled successfully!`);
-      } else if (successCount > 0) {
-        setScheduleSuccess(`${successCount} scheduled. ${errors.length} failed: ${errors[0]}`);
-      } else {
-        setScheduleError(errors[0] ?? "Scheduling failed.");
-      }
+    if (!scheduleForm.movieId) { triggerScheduleMovieHint(); return; }
+    if (pendingSlots.length === 0) {
+      setScheduleError("Please select at least one hall slot from the schedule grid.");
       return;
     }
 
-    // Single-slot path (manual form)
-    if (!scheduleForm.date) { setScheduleError("Please select a date."); return; }
-    if (!scheduleForm.timeSlot) { setScheduleError("Please select a time slot."); return; }
-
-    const startAtLocal = buildStartAtFromForm(scheduleForm.date, scheduleForm.timeSlot);
-    const startDate = new Date(startAtLocal);
-    if (startDate < today) { setScheduleError("Cannot schedule shows for past dates."); return; }
+    const movieId = Number(scheduleForm.movieId);
+    const now = new Date();
 
     setIsScheduling(true);
-    try {
-      await scheduleShowtime({ movieId, showroomId: scheduleSelectedRoom, startAt: startDate.toISOString() });
-      setScheduleSuccess("Show scheduled successfully!");
-      setScheduleForm(initialScheduleForm);
-      setScheduleSelectedRoom("");
-      setAvailableShowrooms([]);
-      loadAllScheduledShows();
-    } catch (error) {
-      setScheduleError(getMeaningfulErrorMessage(error, "admin"));
-    } finally {
-      setIsScheduling(false);
+    const errors = [];
+    let successCount = 0;
+    for (const slot of pendingSlots) {
+      const startDate = new Date(buildStartAtFromForm(slot.dateKey, slot.slotValue));
+      if (Number.isNaN(startDate.getTime()) || startDate < now) {
+        errors.push(`${slot.hallName} ${slot.dateKey} ${slot.slotValue} is no longer available.`);
+        continue;
+      }
+
+      try {
+        await scheduleShowtime({
+          movieId,
+          showroomId: slot.showroomId,
+          startAt: startDate.toISOString()
+        });
+        successCount++;
+      } catch (err) {
+        errors.push(getMeaningfulErrorMessage(err, "admin"));
+      }
+    }
+
+    setIsScheduling(false);
+    setPendingSlots([]);
+    setScheduleSelectedRoom("");
+    setScheduleForm((prev) => ({
+      ...prev,
+      date: "",
+      timeSlot: ""
+    }));
+    loadAllScheduledShows();
+    if (errors.length === 0) {
+      setScheduleSuccess(`${successCount} show${successCount !== 1 ? "s" : ""} scheduled successfully!`);
+    } else if (successCount > 0) {
+      setScheduleSuccess(`${successCount} scheduled. ${errors.length} failed: ${errors[0]}`);
+    } else {
+      setScheduleError(errors[0] ?? "Scheduling failed.");
     }
   };
 
@@ -782,6 +787,13 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
 
     try {
       await onDeleteMovie(movie.id);
+      if (String(movie.id) === String(scheduleForm.movieId)) {
+        setScheduleForm(initialScheduleForm);
+        setScheduleSelectedRoom("");
+        setSelectedHall("");
+        setPendingSlots([]);
+      }
+      loadAllScheduledShows();
     } catch (error) {
       setSubmitError(getMeaningfulErrorMessage(error, "admin"));
       setAdminIssueReport(
@@ -845,9 +857,6 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     showScheduleDialog,
     scheduleForm,
     scheduleSelectedRoom,
-    setScheduleSelectedRoom,
-    availableShowrooms,
-    isCheckingRooms,
     isScheduling,
     scheduleError,
     scheduleSuccess,
@@ -861,7 +870,9 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     selectedHall,
     setSelectedHall,
     pendingSlots,
+    showScheduleMovieHint,
     togglePendingSlot,
+    triggerScheduleMovieHint,
     cancelTarget,
     setCancelTarget,
     isCancelling,

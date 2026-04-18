@@ -85,6 +85,23 @@ function getCustomerNameFromUser(user) {
   return "";
 }
 
+function getPromoErrorMessage(error) {
+  if (!isAPICallError(error)) {
+    return "Could not apply promo code. Please try again.";
+  }
+  // Always prefer a specific server message when it's available
+  const serverMessage = typeof error?.message === "string" ? error.message.trim() : "";
+  if (serverMessage.length > 0) {
+    return serverMessage;
+  }
+  // Fall back to promo-specific status messages
+  if (error.status === 404) return "Promo code not found. Please check the code and try again.";
+  if (error.status === 400 || error.status === 422) return "This promo code is invalid or has expired.";
+  if (error.status === 409) return "This promo code has already been used.";
+  if (error.status === 429) return "Too many attempts. Please wait a moment and try again.";
+  return "Could not apply promo code. Please try again.";
+}
+
 function getPaymentErrorMessage(error) {
   if (isAPICallError(error)) {
     const serverMessage = typeof error?.message === "string" ? error.message.trim() : "";
@@ -180,6 +197,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const [seatRows, setSeatRows] = useState(BOOKING_SEAT_ROWS);
   const [seatCols, setSeatCols] = useState(BOOKING_SEAT_COLS);
   const [showroomNameMap, setShowroomNameMap] = useState({});
+  const [itemShowroomMap, setItemShowroomMap] = useState({});
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [promoError, setPromoError] = useState(null);
@@ -223,29 +241,33 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setCustomerName(resolvedUserName);
   }, [resolvedUserEmail, resolvedUserName]);
 
+  const activeShowroomId =
+    (currentItem && itemShowroomMap[currentItem.id]?.showroomId) ||
+    currentItem?.movie?.showroomId ||
+    null;
+
   useEffect(() => {
-    const showroomId = currentItem?.movie?.showroomId;
-    if (!showroomId) {
+    if (!activeShowroomId) {
       setSeatRows(BOOKING_SEAT_ROWS);
       setSeatCols(BOOKING_SEAT_COLS);
       return;
     }
 
-    fetchShowroomById(showroomId)
+    fetchShowroomById(activeShowroomId)
       .then((data) => {
         if (data?.layout?.rows && data?.layout?.cols) {
           setSeatRows(data.layout.rows);
           setSeatCols(data.layout.cols);
         }
-        if (data?.name && showroomId) {
-          setShowroomNameMap((prev) => ({ ...prev, [showroomId]: data.name }));
+        if (data?.name) {
+          setShowroomNameMap((prev) => ({ ...prev, [activeShowroomId]: data.name }));
         }
       })
       .catch(() => {
         setSeatRows(BOOKING_SEAT_ROWS);
         setSeatCols(BOOKING_SEAT_COLS);
       });
-  }, [currentItem?.movie?.showroomId]);
+  }, [activeShowroomId]);
 
   const loadReservedSeatsForItem = async (item) => {
     if (!item) {
@@ -259,6 +281,24 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     try {
       const data = await fetchReservedSeats(item.movie.id, item.showtime);
       setReservedSeats(new Set(data.reservedSeats));
+      // Use the showtime-specific hall returned by the server so the seat
+      // grid and hall label always reflect the actual scheduled hall.
+      if (data?.showroomId) {
+        setItemShowroomMap((prev) => ({
+          ...prev,
+          [item.id]: { showroomId: data.showroomId, showroomName: data.showroomName ?? null }
+        }));
+        if (data.showroomName) {
+          setShowroomNameMap((prev) => ({ ...prev, [data.showroomId]: data.showroomName }));
+        }
+        // Apply hall dimensions directly from the response so we don't need
+        // a separate fetchShowroomById call, and layout always matches the
+        // actual hall (even if admin changed rows/cols since last load).
+        if (data.rows && data.cols) {
+          setSeatRows(data.rows);
+          setSeatCols(data.cols);
+        }
+      }
     } catch (error) {
       setLoadError(getMeaningfulErrorMessage(error, "user"));
       setReservedSeats(new Set());
@@ -336,7 +376,12 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
       setEditCardForm(createEmptyEditCardForm());
       setEditCardFieldErrors(createEmptyEditCardFieldErrors());
       setIsUpdatingCard(false);
-      setPaymentError(getPaymentErrorMessage(error));
+      // If auth token is unavailable the user is not signed in — show login prompt
+      if (typeof currentUser?.getIdToken !== "function") {
+        setNeedsLogin(true);
+      } else {
+        setPaymentError(getPaymentErrorMessage(error));
+      }
     } finally {
       setIsCheckingCards(false);
     }
@@ -578,15 +623,30 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
 
     const cardholderName = cardForm.cardholderName.trim() || customerName.trim();
     if (cardholderName.length === 0) {
-      nextFieldErrors.cardholderName = "Card holder name is required.";
+      nextFieldErrors.cardholderName = "Cardholder name is required.";
+    } else if (!/^[a-zA-Z\s'\-]+$/.test(cardholderName)) {
+      nextFieldErrors.cardholderName = "Name can only contain letters, spaces, hyphens, or apostrophes.";
+    } else if (cardholderName.length > 100) {
+      nextFieldErrors.cardholderName = "Name must be 100 characters or fewer.";
     }
 
     if (!cardForm.cardNumber) {
       nextFieldErrors.cardNumber = "Card number is required.";
+    } else {
+      const digits = cardForm.cardNumber.replace(/\s/g, "");
+      if (!/^\d+$/.test(digits)) {
+        nextFieldErrors.cardNumber = "Card number must contain digits only.";
+      } else if (digits.length < 13 || digits.length > 19) {
+        nextFieldErrors.cardNumber = "Card number must be between 13 and 19 digits.";
+      }
     }
+
     if (!cardForm.cvv) {
       nextFieldErrors.cvv = "CVV is required.";
+    } else if (!/^\d{3,4}$/.test(cardForm.cvv)) {
+      nextFieldErrors.cvv = "CVV must be 3 or 4 digits.";
     }
+
     if (!cardForm.expMonth) {
       nextFieldErrors.expMonth = "Expiry month is required.";
     } else {
@@ -595,8 +655,15 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
         nextFieldErrors.expMonth = "Month must be between 01 and 12.";
       }
     }
+
     if (!cardForm.expYear) {
       nextFieldErrors.expYear = "Expiry year is required.";
+    } else {
+      const year = Number(cardForm.expYear);
+      const currentYear = new Date().getFullYear();
+      if (!Number.isInteger(year) || year < currentYear || year > currentYear + 20) {
+        nextFieldErrors.expYear = `Year must be between ${currentYear} and ${currentYear + 20}.`;
+      }
     }
 
     if (!nextFieldErrors.expMonth && !nextFieldErrors.expYear && cardForm.expMonth && cardForm.expYear) {
@@ -785,15 +852,41 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     const expYearValue = editCardForm.expYear.trim();
 
     if (cardholderName.length === 0) {
-      nextFieldErrors.cardholderName = "Card holder name is required.";
+      nextFieldErrors.cardholderName = "Cardholder name is required.";
+    } else if (!/^[a-zA-Z\s'\-]+$/.test(cardholderName)) {
+      nextFieldErrors.cardholderName = "Name can only contain letters, spaces, hyphens, or apostrophes.";
+    } else if (cardholderName.length > 100) {
+      nextFieldErrors.cardholderName = "Name must be 100 characters or fewer.";
     }
 
     if (expMonthValue.length === 0) {
       nextFieldErrors.expMonth = "Expiry month is required.";
+    } else {
+      const month = Number(expMonthValue);
+      if (!Number.isInteger(month) || month < 1 || month > 12) {
+        nextFieldErrors.expMonth = "Month must be between 01 and 12.";
+      }
     }
 
     if (expYearValue.length === 0) {
       nextFieldErrors.expYear = "Expiry year is required.";
+    } else {
+      const year = Number(expYearValue);
+      const currentYear = new Date().getFullYear();
+      if (!Number.isInteger(year) || year < currentYear || year > currentYear + 20) {
+        nextFieldErrors.expYear = `Year must be between ${currentYear} and ${currentYear + 20}.`;
+      }
+    }
+
+    if (!nextFieldErrors.expMonth && !nextFieldErrors.expYear && expMonthValue && expYearValue) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const month = Number(expMonthValue);
+      const year = Number(expYearValue);
+      if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        nextFieldErrors.expYear = "This card has expired.";
+      }
     }
 
     if (Object.values(nextFieldErrors).some(Boolean)) {
@@ -1003,7 +1096,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
       const result = await validatePromoCode({ code: trimmedCode, userId: customerUid || undefined });
       setAppliedPromo({ code: trimmedCode, discountPercent: result.discountPercent });
     } catch (error) {
-      setPromoError(getMeaningfulErrorMessage(error, "user"));
+      setPromoError(getPromoErrorMessage(error));
     } finally {
       setIsApplyingPromo(false);
     }
@@ -1026,14 +1119,14 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
         return;
       }
 
+      if (!currentUser) {
+        setNeedsLogin(true);
+        return;
+      }
+
       setIsOrderSummaryStep(false);
       setPaymentError(null);
       setIsPaymentStep(true);
-      return;
-    }
-
-    if (!currentUser) {
-      setNeedsLogin(true);
       return;
     }
 
@@ -1126,6 +1219,9 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setPromoError,
     isApplyingPromo,
     applyPromoCode,
-    showroomNameMap
+    showroomNameMap,
+    itemShowroomMap,
+    activeShowroomId,
+    activeShowroomName: activeShowroomId ? showroomNameMap[activeShowroomId] ?? null : null
   };
 }

@@ -149,6 +149,12 @@ class ShowtimesService {
     return snapshot.docs.map((doc) => toShowtimeEntity(doc.data()));
   }
 
+  async findById(showtimeId) {
+    if (!showtimeId || typeof showtimeId !== "string") return null;
+    const snap = await this.collection().doc(showtimeId.trim()).get();
+    return snap.exists ? toShowtimeEntity(snap.data()) : null;
+  }
+
   async deleteById(showtimeId) {
     if (!showtimeId || typeof showtimeId !== "string") {
       throw new BadRequestException("showtimeId is required");
@@ -159,6 +165,34 @@ class ShowtimesService {
       throw new BadRequestException(`Showtime "${showtimeId}" not found`);
     }
     await ref.delete();
+  }
+
+  async deleteByMovieId(movieId) {
+    const normalizedMovieId = this.normalizeMovieId(movieId);
+    const snapshot = await this.collection()
+      .where("movieId", "==", normalizedMovieId)
+      .get();
+
+    if (snapshot.empty) {
+      return;
+    }
+
+    const batch = this.firestoreService.db().batch();
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+  }
+
+  async findByMovieAndStartAt(movieId, startAt) {
+    const normalizedMovieId = this.normalizeMovieId(movieId);
+    const normalizedStartAt = this.normalizeStartAt(startAt);
+    const snapshot = await this.collection()
+      .where("movieId", "==", normalizedMovieId)
+      .where("startAt", "==", normalizedStartAt)
+      .limit(1)
+      .get();
+    return snapshot.empty ? null : toShowtimeEntity(snapshot.docs[0].data());
   }
 
   async findByShowroomAndStartAt(showroomId, startAt) {

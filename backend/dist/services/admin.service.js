@@ -142,6 +142,27 @@ class AdminService {
   }
 
   async cancelShowtime(showtimeId) {
+    const showtime = await this.showtimesService.findById(showtimeId);
+    if (!showtime) {
+      throw new BadRequestException(`Showtime "${showtimeId}" not found`);
+    }
+
+    if (showtime.movieId != null) {
+      const movie = await this.moviesService.findById(Number(showtime.movieId)).catch(() => null);
+      if (movie?.status === "currently_running") {
+        const now = new Date().toISOString();
+        const allShowtimes = await this.showtimesService.findByMovieId(showtime.movieId);
+        const remainingUpcoming = allShowtimes.filter(
+          (st) => st.startAt >= now && st.showtimeId !== showtimeId
+        );
+        if (remainingUpcoming.length === 0) {
+          throw new BadRequestException(
+            `Cannot cancel the last upcoming showtime for "${movie.title}". Set the movie to 'Coming Soon' first, or schedule another showtime.`
+          );
+        }
+      }
+    }
+
     await this.showtimesService.deleteById(showtimeId);
   }
 

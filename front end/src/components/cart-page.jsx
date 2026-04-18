@@ -84,7 +84,10 @@ export function CartPage({
     customerEmail,
     setCustomerEmail,
     seatSelections,
-    showroomNameMap
+    showroomNameMap,
+    itemShowroomMap,
+    activeShowroomId,
+    activeShowroomName
   } = useSeatSelectionCheckoutController({
     items,
     onCheckout,
@@ -94,11 +97,6 @@ export function CartPage({
     typeof currentUser?.uid === "string" && currentUser.uid.trim().length > 0;
 
   const handleCheckoutClick = () => {
-    if (!isAuthenticatedForCheckout) {
-      void router.push("/login?mode=login");
-      return;
-    }
-
     openDialog();
   };
   const cartTotal = items.reduce((sum, item) => {
@@ -138,7 +136,13 @@ export function CartPage({
                         {item.movie.title}
                       </p>
                       <p className={styles["cart-page-class-17"]}>
-                        Showtime: {item.showtime}
+                        {(() => {
+                          const d = new Date(item.showtime);
+                          if (Number.isNaN(d.getTime())) return `Showtime: ${item.showtime}`;
+                          const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+                          const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" });
+                          return `Showtime: ${date} · ${time}`;
+                        })()}
                       </p>
                       <p className={styles["cart-page-class-18"]}>
                         Genre: {getMovieGenreLabel(item.movie)}
@@ -264,9 +268,7 @@ export function CartPage({
               Checkout
             </Button>
             <p className={styles["cart-page-class-17"]}>
-              {isAuthenticatedForCheckout
-                ? "Seat selection opens in the next step and must match the ticket count."
-                : "Sign in to continue checkout and map cart, payments, and bookings to your account."}
+              Seat selection opens in the next step and must match the ticket count.
             </p>
           </div>
         </div>}
@@ -325,6 +327,11 @@ export function CartPage({
         onUpdateCard={updateSavedCardById}
         onDeleteCard={deleteSavedCardById}
         onClose={closeDialog}
+        onLogin={() => {
+          closeDialog();
+          const returnTo = encodeURIComponent(router.asPath || "/");
+          void router.push(`/login?mode=login&returnTo=${returnTo}`);
+        }}
         onToggleSeat={toggleSeat}
         onContinue={continueCheckout}
         onBack={goToPreviousItem}
@@ -335,6 +342,9 @@ export function CartPage({
         isApplyingPromo={isApplyingPromo}
         onApplyPromoCode={applyPromoCode}
         showroomNameMap={showroomNameMap}
+        itemShowroomMap={itemShowroomMap}
+        activeShowroomId={activeShowroomId}
+        activeShowroomName={activeShowroomName}
       />
     </div>;
 }

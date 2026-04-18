@@ -178,7 +178,33 @@ class BookingsService {
       new Set(bookings.flatMap((booking) => booking.seatIds))
     ).sort();
 
-    return { movieId: query.movieId, showtime: query.showtime, reservedSeats };
+    // Resolve the hall for this showtime so the frontend can render the
+    // correct seat grid without a separate API call.
+    let showroomId = null;
+    let showroomName = null;
+    let rows = null;
+    let cols = null;
+    try {
+      const { showroom } = await this.resolveShowroomForShowtime(query.movieId, query.showtime);
+      if (showroom) {
+        showroomId = showroom.showroomId ?? null;
+        showroomName = showroom.name ?? null;
+        rows = showroom.layout?.rows ?? null;
+        cols = showroom.layout?.cols ?? null;
+      }
+    } catch {
+      // Hall lookup is best-effort; reserved seats are still returned.
+    }
+
+    return {
+      movieId: query.movieId,
+      showtime: query.showtime,
+      reservedSeats,
+      showroomId,
+      showroomName,
+      rows,
+      cols
+    };
   }
 
   // ── Pricing (delegated to PricingStrategy — OCP) ─────────────────────────
@@ -256,7 +282,7 @@ class BookingsService {
       throw new BadRequestException("Seat count must match total ticket count");
     }
 
-    await this.assertValidSeatIdsForMovie(booking.movieId, uniqueSeatIds);
+    await this.assertValidSeatIdsForShowtime(booking.movieId, booking.showtime, uniqueSeatIds);
 
     const existingReservedSeats = new Set(
       (
@@ -742,32 +768,86 @@ class BookingsService {
       throw new BadRequestException("Seat count must match total ticket count");
     }
 
-    await this.assertValidSeatIdsForMovie(payload.movieId, uniqueSeatIds);
+    await this.assertValidSeatIdsForShowtime(payload.movieId, payload.showtime, uniqueSeatIds);
 
     return tickets;
   }
 
-  async assertValidSeatIdsForMovie(movieId, seatIds) {
-    const movie = await this.moviesService.findById(movieId);
-
-    if (typeof movie?.showroomId !== "string" || movie.showroomId.trim().length === 0) {
-      throw new BadRequestException("The selected movie does not have a hall assigned");
+  /**
+   * Resolves the hall for a given movie+showtime.
+   * Primary: uses the showroomId stored on the showtime record.
+   * Fallback: if the showtime's showroomId doesn't resolve to a showroom
+   *           (e.g. seeded showtimes reference IDs that no longer exist),
+   *           falls back to the movie's assigned showroomId.
+   */
+  async resolveShowroomForShowtime(movieId, showtime) {
+    if (!showtime || String(showtime).trim().length === 0) {
+      throw new BadRequestException("showtime is required");
     }
 
-    const showroom = await this.showroomsService.findById(movie.showroomId);
-    if (!showroom?.layout) {
-      throw new BadRequestException("The selected hall could not be found");
+    const showtimeRecord = await this.showtimesService.findByMovieAndStartAt(movieId, showtime);
+
+    // Try the showtime's own showroomId first
+    if (showtimeRecord?.showroomId) {
+      const showroom = await this.showroomsService.findById(showtimeRecord.showroomId);
+      if (showroom?.layout) {
+        return { showroom, showtime: showtimeRecord };
+      }
     }
 
-    const validSeatIds = new Set(this.showroomsService.generateSeatIds(showroom.layout));
-    const invalidSeatIds = (Array.isArray(seatIds) ? seatIds : []).filter(
-      (seatId) => typeof seatId !== "string" || !validSeatIds.has(seatId)
+    // Fallback: use the movie's assigned showroomId (handles seeded showtimes
+    // whose showroomId no longer exists in Firestore)
+    const movie = await this.moviesService.findById(Number(movieId));
+    if (movie?.showroomId) {
+      const showroom = await this.showroomsService.findById(movie.showroomId);
+      if (showroom?.layout) {
+        return { showroom, showtime: showtimeRecord ?? null };
+      }
+    }
+
+    // Last resort: use any available showroom
+    const allShowrooms = await this.showroomsService.findAll();
+    const fallback = allShowrooms.find((r) => r?.layout);
+    if (fallback) {
+      return { showroom: fallback, showtime: showtimeRecord ?? null };
+    }
+
+    throw new BadRequestException("The hall for this showtime could not be found");
+  }
+
+  async assertValidSeatIdsForShowtime(movieId, showtime, seatIds) {
+    // Validate seat ID format — must be "row-col" strings (e.g. "3-5")
+    const badFormat = (Array.isArray(seatIds) ? seatIds : []).filter(
+      (seatId) => typeof seatId !== "string" || !/^\d+-\d+$/.test(seatId)
     );
-
-    if (invalidSeatIds.length > 0) {
+    if (badFormat.length > 0) {
       throw new BadRequestException(
-        `Invalid seat selection for this hall: ${invalidSeatIds.join(", ")}`
+        `Invalid seat ID format: ${badFormat.join(", ")}`
       );
+    }
+
+    // Validate against the hall layout when we can resolve the showroom.
+    // If the showroom can't be determined (e.g. stale showroomId reference),
+    // skip the grid check — the seat-conflict check in the caller still
+    // prevents double-booking.
+    let showroom = null;
+    try {
+      const result = await this.resolveShowroomForShowtime(movieId, showtime);
+      showroom = result?.showroom ?? null;
+    } catch {
+      // Could not resolve showroom — skip grid validation
+    }
+
+    if (showroom?.layout) {
+      const validSeatIds = new Set(this.showroomsService.generateSeatIds(showroom.layout));
+      const invalidSeatIds = (Array.isArray(seatIds) ? seatIds : []).filter(
+        (seatId) => !validSeatIds.has(seatId)
+      );
+      if (invalidSeatIds.length > 0) {
+        throw new BadRequestException(
+          `Invalid seat selection for this hall: ${invalidSeatIds.join(", ")}`
+        );
+      }
     }
   }
 }

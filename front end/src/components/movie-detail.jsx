@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useState } from "react";
 import { fetchMovieShowtimes } from "@/services";
+import { toast } from "@/hooks/use-toast";
 import { getMovieGenreList, shouldShowMovieRating } from "@/models/movie-model";
 import {
   buildAutoplayTrailerUrl,
@@ -17,12 +18,12 @@ import styles from "./movie-detail.module.css";
 
 function formatShowtimeDate(isoString) {
   const date = new Date(isoString);
-  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 function formatShowtimeTime(isoString) {
   const date = new Date(isoString);
-  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" });
 }
 
 function extractDateKey(isoString) {
@@ -86,6 +87,11 @@ export function MovieDetail({
         setScheduledShowtimes(list);
         if (list.length > 0) {
           setSelectedDate(extractDateKey(list[0].startAt));
+        } else {
+          toast({
+            description: "No showtimes available for this movie.",
+            duration: 3500
+          });
         }
       })
       .catch(() => {

@@ -11,8 +11,8 @@ function formatShowtime(value) {
   // If it looks like an ISO timestamp, format it as "Mon, Apr 15 · 2:00 PM"
   const date = new Date(value);
   if (!isNaN(date.getTime()) && value.includes("T")) {
-    const datePart = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-    const timePart = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    const datePart = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+    const timePart = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" });
     return `${datePart} · ${timePart}`;
   }
   return value;

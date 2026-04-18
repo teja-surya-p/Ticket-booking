@@ -690,20 +690,58 @@ export default function ProfilePage() {
     const fallbackName = [form.firstName.trim(), form.lastName.trim()].filter(Boolean).join(" ");
     const cardholderName = addCardForm.cardholderName.trim() || fallbackName;
     if (cardholderName.length === 0) {
-      nextFieldErrors.cardholderName = "Card holder name is required.";
+      nextFieldErrors.cardholderName = "Cardholder name is required.";
+    } else if (!/^[a-zA-Z\s'\-]+$/.test(cardholderName)) {
+      nextFieldErrors.cardholderName = "Name can only contain letters, spaces, hyphens, or apostrophes.";
+    } else if (cardholderName.length > 100) {
+      nextFieldErrors.cardholderName = "Name must be 100 characters or fewer.";
     }
 
     if (!addCardForm.cardNumber) {
       nextFieldErrors.cardNumber = "Card number is required.";
+    } else {
+      const digits = addCardForm.cardNumber.replace(/\s/g, "");
+      if (!/^\d+$/.test(digits)) {
+        nextFieldErrors.cardNumber = "Card number must contain digits only.";
+      } else if (digits.length < 13 || digits.length > 19) {
+        nextFieldErrors.cardNumber = "Card number must be between 13 and 19 digits.";
+      }
     }
+
     if (!addCardForm.cvv) {
       nextFieldErrors.cvv = "CVV is required.";
+    } else if (!/^\d{3,4}$/.test(addCardForm.cvv)) {
+      nextFieldErrors.cvv = "CVV must be 3 or 4 digits.";
     }
+
     if (!addCardForm.expMonth) {
       nextFieldErrors.expMonth = "Expiry month is required.";
+    } else {
+      const month = Number(addCardForm.expMonth);
+      if (!Number.isInteger(month) || month < 1 || month > 12) {
+        nextFieldErrors.expMonth = "Month must be between 01 and 12.";
+      }
     }
+
     if (!addCardForm.expYear) {
       nextFieldErrors.expYear = "Expiry year is required.";
+    } else {
+      const year = Number(addCardForm.expYear);
+      const currentYear = new Date().getFullYear();
+      if (!Number.isInteger(year) || year < currentYear || year > currentYear + 20) {
+        nextFieldErrors.expYear = `Year must be between ${currentYear} and ${currentYear + 20}.`;
+      }
+    }
+
+    if (!nextFieldErrors.expMonth && !nextFieldErrors.expYear && addCardForm.expMonth && addCardForm.expYear) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const month = Number(addCardForm.expMonth);
+      const year = Number(addCardForm.expYear);
+      if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        nextFieldErrors.expYear = "This card has expired.";
+      }
     }
 
     if (Object.values(nextFieldErrors).some(Boolean)) {
@@ -854,15 +892,41 @@ export default function ProfilePage() {
     const expYearValue = editCardForm.expYear.trim();
 
     if (cardholderName.length === 0) {
-      nextFieldErrors.cardholderName = "Card holder name is required.";
+      nextFieldErrors.cardholderName = "Cardholder name is required.";
+    } else if (!/^[a-zA-Z\s'\-]+$/.test(cardholderName)) {
+      nextFieldErrors.cardholderName = "Name can only contain letters, spaces, hyphens, or apostrophes.";
+    } else if (cardholderName.length > 100) {
+      nextFieldErrors.cardholderName = "Name must be 100 characters or fewer.";
     }
 
     if (expMonthValue.length === 0) {
       nextFieldErrors.expMonth = "Expiry month is required.";
+    } else {
+      const month = Number(expMonthValue);
+      if (!Number.isInteger(month) || month < 1 || month > 12) {
+        nextFieldErrors.expMonth = "Month must be between 01 and 12.";
+      }
     }
 
     if (expYearValue.length === 0) {
       nextFieldErrors.expYear = "Expiry year is required.";
+    } else {
+      const year = Number(expYearValue);
+      const currentYear = new Date().getFullYear();
+      if (!Number.isInteger(year) || year < currentYear || year > currentYear + 20) {
+        nextFieldErrors.expYear = `Year must be between ${currentYear} and ${currentYear + 20}.`;
+      }
+    }
+
+    if (!nextFieldErrors.expMonth && !nextFieldErrors.expYear && expMonthValue && expYearValue) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const month = Number(expMonthValue);
+      const year = Number(expYearValue);
+      if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        nextFieldErrors.expYear = "This card has expired.";
+      }
     }
 
     if (Object.values(nextFieldErrors).some(Boolean)) {
