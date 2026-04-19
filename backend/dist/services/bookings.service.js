@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException
 } from "@nestjs/common";
@@ -16,6 +17,7 @@ import { toBookingEntity } from "../entities/booking.entity.js";
 import { AuthGuardService } from "./auth-guard.service.js";
 import { DefaultPricingStrategy } from "./pricing.strategy.js";
 import { MoviesService } from "./movies.service.js";
+import { ProfileNotificationService } from "./profile-notification.service.js";
 import { PromoCodesService } from "./promo-codes.service.js";
 import { ShowroomsService } from "./showrooms.service.js";
 import { ShowtimesService } from "./showtimes.service.js";
@@ -34,7 +36,7 @@ import { ShowtimesService } from "./showtimes.service.js";
  *      (promotions, taxes) without modifying this class.
  */
 class BookingsService {
-  constructor(firestoreService, moviesService, authGuardService, pricingStrategy, showtimesService, promoCodesService, showroomsService) {
+  constructor(firestoreService, moviesService, authGuardService, pricingStrategy, showtimesService, promoCodesService, showroomsService, profileNotificationService) {
     this.firestoreService = firestoreService;
     this.moviesService = moviesService;
     this.authGuardService = authGuardService;
@@ -42,6 +44,7 @@ class BookingsService {
     this.showtimesService = showtimesService;
     this.promoCodesService = promoCodesService;
     this.showroomsService = showroomsService;
+    this.profileNotificationService = profileNotificationService;
   }
 
   // ── Card management ──────────────────────────────────────────────────────
@@ -417,7 +420,142 @@ class BookingsService {
       await this.promoCodesService.markUsed(appliedPromoCodeId, customerUid);
     }
 
+    // Fire-and-forget: send booking confirmation email
+    this._sendBookingConfirmationEmail(booking, savedCard).catch((err) => {
+      console.error("[BookingsService] Booking confirmation email failed:", err?.message ?? err);
+    });
+
     return { bookingId: booking.bookingId, status: booking.status, total: booking.total };
+  }
+
+  async getMyBookings(authorization) {
+    const { customerEmail, customerUid } = await this.authGuardService.requireAuthenticatedCustomer(
+      authorization,
+      {}
+    );
+
+    const bookings = await this.findByCustomer(customerEmail, customerUid);
+
+    // Enrich with movie title and poster (batch, best-effort)
+    const uniqueMovieIds = [...new Set(bookings.map((b) => Number(b.movieId)).filter(Number.isFinite))];
+    const movieCache = {};
+    await Promise.all(
+      uniqueMovieIds.map(async (id) => {
+        try {
+          const movie = await this.moviesService.findById(id);
+          movieCache[id] = { title: movie.title, poster: movie.poster };
+        } catch {
+          movieCache[id] = { title: "Unknown Movie", poster: null };
+        }
+      })
+    );
+
+    return bookings.map((b) => {
+      const movie = movieCache[Number(b.movieId)] ?? { title: "Unknown Movie", poster: null };
+      return {
+        bookingId: b.bookingId,
+        movieId: b.movieId,
+        movieTitle: movie.title,
+        moviePoster: movie.poster,
+        showtime: b.showtime,
+        seatIds: b.seatIds ?? [],
+        tickets: b.tickets ?? {},
+        total: b.total,
+        status: b.status,
+        paymentCard: b.paymentCard
+          ? { brand: b.paymentCard.brand, last4: b.paymentCard.last4 }
+          : null,
+        promoCode: b.promoCode ?? null,
+        discountPercent: b.discountPercent ?? null,
+        createdAt: b.createdAt,
+        cancelledAt: b.cancelledAt ?? null,
+        refundPercent: b.refundPercent ?? null,
+        refundAmount: b.refundAmount ?? null
+      };
+    });
+  }
+
+  async cancelBooking(bookingId, authorization) {
+    const { customerEmail, customerUid } = await this.authGuardService.requireAuthenticatedCustomer(
+      authorization,
+      {}
+    );
+
+    const docRef = this.collection().doc(bookingId);
+    const doc = await docRef.get();
+    if (!doc.exists) throw new NotFoundException("Booking not found");
+    const booking = doc.data();
+
+    // Ownership check
+    const normalizedUid = this.authGuardService.normalizeCustomerUid(customerUid);
+    const normalizedEmail = typeof customerEmail === "string" ? customerEmail.trim().toLowerCase() : "";
+    const ownsBooking =
+      (normalizedUid && booking.customerUid === normalizedUid) ||
+      (normalizedEmail && booking.customerEmail === normalizedEmail);
+    if (!ownsBooking) throw new ForbiddenException("Not your booking");
+
+    // Already cancelled — idempotent
+    if (booking.status === "cancelled") {
+      return {
+        bookingId,
+        status: "cancelled",
+        refundAmount: booking.refundAmount ?? 0,
+        refundPercent: booking.refundPercent ?? 0
+      };
+    }
+    if (booking.status !== "confirmed") {
+      throw new BadRequestException("Only confirmed bookings can be cancelled");
+    }
+
+    // Refund policy
+    const hoursUntilShow = (new Date(booking.showtime) - Date.now()) / 3_600_000;
+    const refundPercent = hoursUntilShow >= 24 ? 100 : hoursUntilShow >= 12 ? 40 : 0;
+    const refundAmount = Math.round(booking.total * refundPercent) / 100;
+
+    await docRef.update({
+      status: "cancelled",
+      cancelledAt: new Date().toISOString(),
+      refundPercent,
+      refundAmount
+    });
+
+    return { bookingId, status: "cancelled", refundAmount, refundPercent };
+  }
+
+  async findByCustomer(customerEmail, customerUid) {
+    const normalizedEmail =
+      typeof customerEmail === "string" ? customerEmail.trim().toLowerCase() : "";
+    const normalizedUid = this.authGuardService.normalizeCustomerUid(customerUid);
+
+    const queries = [];
+    if (normalizedUid) {
+      queries.push(this.collection().where("customerUid", "==", normalizedUid).get());
+    }
+    if (normalizedEmail) {
+      queries.push(this.collection().where("customerEmail", "==", normalizedEmail).get());
+    }
+
+    if (queries.length === 0) return [];
+
+    const snapshots = await Promise.all(queries);
+    const seen = new Set();
+    const docs = [];
+    for (const snapshot of snapshots) {
+      for (const doc of snapshot.docs) {
+        if (!seen.has(doc.id)) {
+          seen.add(doc.id);
+          docs.push(doc.data());
+        }
+      }
+    }
+
+    return docs
+      .filter((b) => b.status === "confirmed" || b.status === "cancelled")
+      .sort((a, b) => {
+        const aTime = typeof a.showtime === "string" ? a.showtime : "";
+        const bTime = typeof b.showtime === "string" ? b.showtime : "";
+        return aTime.localeCompare(bTime); // ascending by showtime
+      });
   }
 
   async getRevenue() {
@@ -815,6 +953,48 @@ class BookingsService {
     throw new BadRequestException("The hall for this showtime could not be found");
   }
 
+  async _sendBookingConfirmationEmail(booking, savedCard) {
+    if (!this.profileNotificationService) {
+      console.warn("[BookingsService] profileNotificationService not injected — skipping confirmation email.");
+      return;
+    }
+    if (typeof booking.customerEmail !== "string" || booking.customerEmail.trim().length === 0) return;
+    console.log(`[BookingsService] Sending booking confirmation email to ${booking.customerEmail} for booking ${booking.bookingId}`);
+
+    let hallName = "N/A";
+    try {
+      const { showroom } = await this.resolveShowroomForShowtime(booking.movieId, booking.showtime);
+      if (showroom?.name) hallName = showroom.name;
+    } catch {
+      // best-effort
+    }
+
+    let movieTitle = "your movie";
+    try {
+      const movie = await this.moviesService.findById(Number(booking.movieId));
+      if (movie?.title) movieTitle = movie.title;
+    } catch {
+      // best-effort
+    }
+
+    await this.profileNotificationService.sendBookingConfirmationEmail({
+      toEmail: booking.customerEmail,
+      customerName: booking.customerName ?? booking.customerEmail,
+      bookingId: booking.bookingId,
+      movieTitle,
+      showtime: booking.showtime,
+      hallName,
+      seatIds: booking.seatIds ?? [],
+      tickets: booking.tickets ?? {},
+      total: booking.total,
+      paymentCard: savedCard
+        ? { brand: savedCard.brand, last4: savedCard.last4 }
+        : null,
+      promoCode: booking.promoCode ?? null,
+      discountPercent: booking.discountPercent ?? 0
+    });
+  }
+
   async assertValidSeatIdsForShowtime(movieId, showtime, seatIds) {
     // Validate seat ID format — must be "row-col" strings (e.g. "3-5")
     const badFormat = (Array.isArray(seatIds) ? seatIds : []).filter(
@@ -862,7 +1042,8 @@ decorateClass(
     DefaultPricingStrategy,
     ShowtimesService,
     PromoCodesService,
-    ShowroomsService
+    ShowroomsService,
+    ProfileNotificationService
   ]
 );
 

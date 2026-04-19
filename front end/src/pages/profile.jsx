@@ -29,7 +29,8 @@ import {
   updateCurrentUserProfile
 } from "@/services";
 import { fetchAvailablePromoCodes } from "@/services/promoCodesApi";
-import { Check, Copy, Tag } from "lucide-react";
+import { cancelBooking, fetchUserBookings } from "@/services/bookingApi";
+import { Check, Clock, Copy, Tag, Ticket } from "lucide-react";
 import styles from "./profile.module.css";
 
 function createEmptyForm() {
@@ -234,6 +235,11 @@ export default function ProfilePage() {
   const [availablePromoCodes, setAvailablePromoCodes] = useState([]);
   const [promoCodesLoading, setPromoCodesLoading] = useState(false);
   const [copiedCode, setCopiedCode] = useState("");
+  const [userBookings, setUserBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelInProgress, setCancelInProgress] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   useEffect(() => {
     const unsubscribe = subscribeToAuthState((user) => {
@@ -418,6 +424,21 @@ export default function ProfilePage() {
       .catch(() => setAvailablePromoCodes([]))
       .finally(() => setPromoCodesLoading(false));
   }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setUserBookings([]);
+      return;
+    }
+    let cancelled = false;
+    setBookingsLoading(true);
+    currentUser.getIdToken()
+      .then((token) => fetchUserBookings(token))
+      .then((data) => { if (!cancelled) setUserBookings(Array.isArray(data) ? data : []); })
+      .catch(() => { if (!cancelled) setUserBookings([]); })
+      .finally(() => { if (!cancelled) setBookingsLoading(false); });
+    return () => { cancelled = true; };
+  }, [currentUser]);
 
   const handleCopyCode = (code) => {
     navigator.clipboard.writeText(code).then(() => {
@@ -1019,6 +1040,25 @@ export default function ProfilePage() {
       setAddCardError(getCardErrorMessage(deleteCardError));
     } finally {
       setDeleteCardSaving(false);
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!cancelTarget || !currentUser) return;
+    setCancelInProgress(true);
+    setCancelError("");
+    try {
+      const token = await currentUser.getIdToken();
+      await cancelBooking(cancelTarget.bookingId, token);
+      const fresh = await fetchUserBookings(token);
+      setUserBookings(Array.isArray(fresh) ? fresh : []);
+      setCancelTarget(null);
+    } catch (err) {
+      const msg = err?.message ?? "Something went wrong. Please try again.";
+      setCancelError(msg);
+      console.error("[CancelBooking]", err);
+    } finally {
+      setCancelInProgress(false);
     }
   };
 
@@ -1651,6 +1691,220 @@ export default function ProfilePage() {
             </div>
           </section>
         ) : null}
+
+        {currentUser && (
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <div className={styles.panelIcon}><Ticket size={18} /></div>
+              <div>
+                <h2 className={styles.panelTitle}>My Bookings</h2>
+                <p className={styles.panelSubtitle}>Your upcoming and past movie bookings.</p>
+              </div>
+            </div>
+
+            <div className={styles.panelBody}>
+              {bookingsLoading ? (
+                <p className={styles.muted}>Loading bookings…</p>
+              ) : userBookings.length === 0 ? (
+                <p className={styles.muted}>No bookings yet.</p>
+              ) : (() => {
+                const now = new Date();
+
+                const computeRefund = (showtime, total) => {
+                  const hours = (new Date(showtime) - now) / 3_600_000;
+                  const pct = hours >= 24 ? 100 : hours >= 12 ? 40 : 0;
+                  return { pct, amount: Math.round(Number(total) * pct) / 100 };
+                };
+
+                const formatShowtime = (iso) => {
+                  const d = new Date(iso);
+                  if (isNaN(d.getTime())) return iso;
+                  const date = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+                  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" });
+                  return `${date} · ${time}`;
+                };
+
+                const formatTickets = (tickets) => {
+                  const parts = [];
+                  if (tickets?.adult > 0) parts.push(`${tickets.adult} Adult`);
+                  if (tickets?.child > 0) parts.push(`${tickets.child} Child`);
+                  if (tickets?.senior > 0) parts.push(`${tickets.senior} Senior`);
+                  return parts.join(", ") || "—";
+                };
+
+                const getBadge = (booking) => {
+                  if (booking.status === "cancelled") {
+                    return { label: "Cancelled", bg: "color-mix(in oklch, #ef4444 15%, transparent)", color: "#ef4444" };
+                  }
+                  if (new Date(booking.showtime) > now) {
+                    return { label: "Upcoming", bg: "color-mix(in oklch, var(--primary) 15%, transparent)", color: "var(--primary)" };
+                  }
+                  return { label: "Completed", bg: "var(--muted)", color: "var(--muted-foreground)" };
+                };
+
+                const sorted = [...userBookings].sort(
+                  (a, b) => new Date(a.showtime) - new Date(b.showtime)
+                );
+
+                const BookingCard = ({ booking }) => {
+                  const badge = getBadge(booking);
+                  const isCancellable = booking.status === "confirmed" && new Date(booking.showtime) > now;
+                  const refund = isCancellable ? computeRefund(booking.showtime, booking.total) : null;
+
+                  return (
+                    <div style={{
+                      display: "flex", gap: "0.875rem", padding: "1rem",
+                      borderRadius: "0.75rem", border: "1px solid var(--border)",
+                      background: "var(--card)", alignItems: "flex-start"
+                    }}>
+                      {booking.moviePoster ? (
+                        <img
+                          src={booking.moviePoster}
+                          alt={booking.movieTitle}
+                          style={{ width: "3.5rem", height: "5rem", objectFit: "cover", borderRadius: "0.375rem", flexShrink: 0 }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: "3.5rem", height: "5rem", borderRadius: "0.375rem", flexShrink: 0,
+                          background: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center"
+                        }}>
+                          <Ticket size={20} style={{ color: "var(--muted-foreground)" }} />
+                        </div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", flexWrap: "wrap" }}>
+                          <p style={{ fontWeight: 600, fontSize: "0.9375rem", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {booking.movieTitle}
+                          </p>
+                          <span style={{
+                            fontSize: "0.7rem", fontWeight: 600, padding: "0.15rem 0.6rem",
+                            borderRadius: "999px", flexShrink: 0,
+                            background: badge.bg, color: badge.color
+                          }}>
+                            {badge.label}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: "0.8125rem", color: "var(--muted-foreground)", margin: "0.2rem 0 0", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <Clock size={12} style={{ flexShrink: 0 }} />
+                          {formatShowtime(booking.showtime)}
+                        </p>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(10rem, 1fr))", gap: "0.25rem 1.5rem", marginTop: "0.5rem" }}>
+                          {booking.seatIds?.length > 0 && (
+                            <p style={{ fontSize: "0.8rem", margin: 0, color: "var(--foreground)" }}>
+                              <span style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>Seats: </span>
+                              {booking.seatIds.map((id) => {
+                                const parts = id.split("-");
+                                if (parts.length === 2) {
+                                  const row = String.fromCharCode(64 + Number(parts[0]));
+                                  return `${row}${parts[1]}`;
+                                }
+                                return id;
+                              }).join(", ")}
+                            </p>
+                          )}
+                          <p style={{ fontSize: "0.8rem", margin: 0, color: "var(--foreground)" }}>
+                            <span style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>Tickets: </span>
+                            {formatTickets(booking.tickets)}
+                          </p>
+                          <p style={{ fontSize: "0.8rem", margin: 0, color: "var(--foreground)" }}>
+                            <span style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>Total: </span>
+                            ${Number(booking.total).toFixed(2)}
+                          </p>
+                          {booking.paymentCard && (
+                            <p style={{ fontSize: "0.8rem", margin: 0, color: "var(--foreground)" }}>
+                              <span style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>Card: </span>
+                              {booking.paymentCard.brand} ···· {booking.paymentCard.last4}
+                            </p>
+                          )}
+                          {booking.status === "cancelled" && booking.refundAmount != null && (
+                            <p style={{ fontSize: "0.8rem", margin: 0, color: "#ef4444" }}>
+                              <span style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>Refund: </span>
+                              ${Number(booking.refundAmount).toFixed(2)} ({booking.refundPercent}%)
+                            </p>
+                          )}
+                        </div>
+                        {isCancellable && (
+                          <button
+                            onClick={() => setCancelTarget({ ...booking, _refund: refund })}
+                            style={{
+                              marginTop: "0.75rem", fontSize: "0.775rem", fontWeight: 500,
+                              padding: "0.3rem 0.85rem", borderRadius: "0.5rem", cursor: "pointer",
+                              border: "1px solid #ef4444", background: "transparent", color: "#ef4444"
+                            }}
+                          >
+                            Cancel Ticket
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                };
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    {sorted.map((b) => <BookingCard key={b.bookingId} booking={b} />)}
+                  </div>
+                );
+              })()}
+            </div>
+          </section>
+        )}
+
+        <AlertDialog
+          open={cancelTarget !== null}
+          onOpenChange={(open) => {
+            if (!open && !cancelInProgress) { setCancelTarget(null); setCancelError(""); }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Booking?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div>
+                  {cancelTarget && (
+                    <>
+                      <p style={{ margin: "0 0 0.5rem" }}>
+                        <strong>{cancelTarget.movieTitle}</strong>
+                        {" — "}{new Date(cancelTarget.showtime).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}
+                        {" · "}{new Date(cancelTarget.showtime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" })}
+                      </p>
+                      {cancelTarget._refund?.pct === 100 && (
+                        <p style={{ margin: 0 }}>
+                          You will receive a <strong>full refund of ${Number(cancelTarget._refund.amount).toFixed(2)}</strong> (100%) since the showtime is more than 24 hours away.
+                        </p>
+                      )}
+                      {cancelTarget._refund?.pct === 40 && (
+                        <p style={{ margin: 0 }}>
+                          You will receive a <strong>partial refund of ${Number(cancelTarget._refund.amount).toFixed(2)}</strong> (40%) since the showtime is within 12–24 hours.
+                        </p>
+                      )}
+                      {cancelTarget._refund?.pct === 0 && (
+                        <p style={{ margin: 0 }}>
+                          <strong>No refund</strong> will be issued since the showtime is within 12 hours.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {cancelError && (
+              <p style={{ fontSize: "0.8rem", color: "#ef4444", margin: "0.5rem 1.5rem 0", wordBreak: "break-word" }}>
+                Error: {cancelError}
+              </p>
+            )}
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={cancelInProgress}>Keep Booking</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={cancelInProgress}
+                style={{ background: "#ef4444", color: "#fff" }}
+                onClick={() => { void handleCancelBooking(); }}
+              >
+                {cancelInProgress ? "Cancelling…" : "Yes, Cancel Ticket"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <AlertDialog
           open={deleteTargetCardId.length > 0}

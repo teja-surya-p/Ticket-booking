@@ -128,3 +128,28 @@ export function fetchBookingSummary(bookingId, token) {
     token
   });
 }
+
+/**
+ * fetchUserBookings
+ *
+ * GET /api/v1/bookings/mine
+ * Returns all confirmed bookings for the authenticated user,
+ * enriched with movieTitle and moviePoster. Requires Firebase Auth token.
+ */
+export function fetchUserBookings(token) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.mine,
+    method: "GET",
+    operation: "Fetch user bookings",
+    token
+  });
+}
+
+export function cancelBooking(bookingId, token) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.cancel(encodeURIComponent(bookingId)),
+    method: "PATCH",
+    operation: "Cancel booking",
+    token
+  });
+}

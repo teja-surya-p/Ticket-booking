@@ -74,6 +74,18 @@ class BookingsController {
   async createBooking(authorization, body) {
     return await this.bookingsService.createBooking(body, authorization);
   }
+
+  // ── User booking history ──────────────────────────────────────────────────
+
+  async getMyBookings(authorization) {
+    return await this.bookingsService.getMyBookings(authorization);
+  }
+
+  // ── Cancel booking ────────────────────────────────────────────────────────
+
+  async cancelBooking(authorization, bookingId) {
+    return await this.bookingsService.cancelBooking(bookingId, authorization);
+  }
 }
 
 // ── Card routes ────────────────────────────────────────────────────────────
@@ -188,6 +200,27 @@ decorateMethod(
   "createBooking",
   [Post(), parameterDecorator(0, Headers("authorization")), parameterDecorator(1, Body())],
   { paramTypes: [String, Object], returnType: Promise }
+);
+
+// ── User booking history route ────────────────────────────────────────────
+
+decorateMethod(
+  BookingsController.prototype,
+  "getMyBookings",
+  [Get("mine"), parameterDecorator(0, Headers("authorization"))],
+  { paramTypes: [String], returnType: Promise }
+);
+
+decorateMethod(
+  BookingsController.prototype,
+  "cancelBooking",
+  [
+    Patch(":bookingId/cancel"),
+    HttpCode(HttpStatus.OK),
+    parameterDecorator(0, Headers("authorization")),
+    parameterDecorator(1, Param("bookingId"))
+  ],
+  { paramTypes: [String, String], returnType: Promise }
 );
 
 decorateClass(BookingsController, [Controller("bookings")], [BookingsService]);

@@ -142,6 +142,7 @@ export function SeatSelectionDialog({
     { length: COLS - leftColumns.length },
     (_, index) => index + leftColumns.length
   );
+  const dynamicGridTemplate = `var(--label-width) repeat(${leftColumns.length}, var(--seat-size)) var(--aisle-width) repeat(${rightColumns.length}, var(--seat-size))`;
   const inlineCardErrors = cardFieldErrors ?? {};
   const inlineEditErrors = editCardFieldErrors ?? {};
   const getCardholderFirstName = (value) => {
@@ -218,7 +219,11 @@ export function SeatSelectionDialog({
           <div className={styles["seat-dialog-class-3"]}>
             <div>
               <DialogTitle>{showPaymentStep ? "Select Payment Card" : showOrderSummaryStep ? "Order Summary" : "Select Your Seats"}</DialogTitle>
-              {currentItem && (
+              {showPaymentStep && Array.isArray(allItems) && allItems.length > 1 ? (
+                <p className={styles["seat-dialog-class-4"]}>
+                  {allItems.map((item) => item.movie.title).join(", ")}
+                </p>
+              ) : currentItem ? (
                 <p className={styles["seat-dialog-class-4"]}>
                   {currentItem.movie.title} - {formatShowtime(currentItem.showtime)}
                   {(() => {
@@ -232,7 +237,7 @@ export function SeatSelectionDialog({
                     return hallName ? ` · ${hallName}` : "";
                   })()}
                 </p>
-              )}
+              ) : null}
             </div>
           </div>
           <DialogDescription className={styles["seat-dialog-class-5"]}>
@@ -368,7 +373,7 @@ export function SeatSelectionDialog({
                     </div>
                   ) : (
                     <div className={styles["seat-dialog-class-22"]}>
-                      <div className={styles["seat-dialog-class-29"]}>
+                      <div className={styles["seat-dialog-class-29"]} style={{ gridTemplateColumns: dynamicGridTemplate }}>
                         <span className={styles["seat-dialog-class-30"]} aria-hidden="true" />
                         <div className={styles["seat-dialog-class-31"]}>
                           {leftColumns.map((col) => (
@@ -392,7 +397,7 @@ export function SeatSelectionDialog({
                       </div>
 
                       {Array.from({ length: ROWS }, (_, row) => (
-                        <div key={row} className={styles["seat-dialog-class-29"]}>
+                        <div key={row} className={styles["seat-dialog-class-29"]} style={{ gridTemplateColumns: dynamicGridTemplate }}>
                           <span className={styles["seat-dialog-class-30"]}>
                             {String.fromCharCode(65 + row)}
                           </span>
@@ -409,20 +414,47 @@ export function SeatSelectionDialog({
               </>
             )}
 
-            {!showOrderSummaryStep && <div className={styles["seat-dialog-class-34"]}>
-              <p className={styles["seat-dialog-class-35"]}>Selected Seats</p>
-              <div className={styles["seat-dialog-class-36"]}>
-                {selectedSeatLabels.length > 0 ? (
-                  selectedSeatLabels.map((seatLabel) => (
-                    <span key={seatLabel} className={styles["seat-dialog-class-37"]}>
-                      {seatLabel}
-                    </span>
-                  ))
-                ) : (
-                  <span className={styles["seat-dialog-class-38"]}>No seats selected yet</span>
-                )}
-              </div>
-            </div>}
+            {!showOrderSummaryStep && (
+              showPaymentStep && Array.isArray(allItems) && allItems.length > 0 ? (
+                <div className={styles["seat-dialog-class-34"]}>
+                  <p className={styles["seat-dialog-class-35"]}>Selected Seats</p>
+                  {allItems.map((item) => {
+                    const itemSeatLabels = ((allSeatSelections ?? {})[item.id] ?? []).map((seatId) => formatSeatIdLabel(seatId));
+                    return (
+                      <div key={item.id} style={{ marginBottom: "0.5rem" }}>
+                        <p style={{ fontSize: "0.8rem", fontWeight: 500, margin: "0 0 0.2rem", color: "var(--foreground)" }}>
+                          {item.movie.title}
+                        </p>
+                        <div className={styles["seat-dialog-class-36"]}>
+                          {itemSeatLabels.length > 0 ? (
+                            itemSeatLabels.map((label) => (
+                              <span key={label} className={styles["seat-dialog-class-37"]}>{label}</span>
+                            ))
+                          ) : (
+                            <span className={styles["seat-dialog-class-38"]}>—</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className={styles["seat-dialog-class-34"]}>
+                  <p className={styles["seat-dialog-class-35"]}>Selected Seats</p>
+                  <div className={styles["seat-dialog-class-36"]}>
+                    {selectedSeatLabels.length > 0 ? (
+                      selectedSeatLabels.map((seatLabel) => (
+                        <span key={seatLabel} className={styles["seat-dialog-class-37"]}>
+                          {seatLabel}
+                        </span>
+                      ))
+                    ) : (
+                      <span className={styles["seat-dialog-class-38"]}>No seats selected yet</span>
+                    )}
+                  </div>
+                </div>
+              )
+            )}
 
             {showOrderSummaryStep && (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>

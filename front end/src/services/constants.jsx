@@ -30,7 +30,9 @@ export const API_ENDPOINTS = {
     bookingSeats: bookingId => `${API_ROUTES.bookings}/${bookingId}/seats`,
     bookingSummary: bookingId => `${API_ROUTES.bookings}/${bookingId}/summary`,
     card: `${API_ROUTES.bookings}/card`,
-    cardById: cardId => `${API_ROUTES.bookings}/card/${cardId}`
+    cardById: cardId => `${API_ROUTES.bookings}/card/${cardId}`,
+    mine: `${API_ROUTES.bookings}/mine`,
+    cancel: (bookingId) => `${API_ROUTES.bookings}/${bookingId}/cancel`
   },
   admin: {
     stats: `${API_ROUTES.admin}/stats`,

@@ -36,7 +36,7 @@ class ProfileNotificationService {
       typeof process.env.SMTP_SERVICE === "string" ? process.env.SMTP_SERVICE.trim() : "";
     const host = typeof process.env.SMTP_HOST === "string" ? process.env.SMTP_HOST.trim() : "";
     const user = typeof process.env.SMTP_USER === "string" ? process.env.SMTP_USER.trim() : "";
-    const pass = typeof process.env.SMTP_PASS === "string" ? process.env.SMTP_PASS : "";
+    const pass = typeof process.env.SMTP_PASS === "string" ? process.env.SMTP_PASS.replace(/\s/g, "") : "";
     const portValue =
       typeof process.env.SMTP_PORT === "string" ? process.env.SMTP_PORT.trim() : "";
     const parsedPort = Number(portValue);
@@ -331,6 +331,134 @@ class ProfileNotificationService {
     };
 
     return await this.dispatchEmailMessage(message, "showtime-notification");
+  }
+
+  /**
+   * Sends a booking confirmation email to the customer.
+   * @param {object} params
+   * @param {string} params.toEmail
+   * @param {string} params.customerName
+   * @param {string} params.bookingId
+   * @param {string} params.movieTitle
+   * @param {string} params.showtime   - ISO timestamp
+   * @param {string} params.hallName
+   * @param {string[]} params.seatIds
+   * @param {{ adult: number, child: number, senior: number }} params.tickets
+   * @param {number} params.total
+   * @param {{ brand: string, last4: string }} params.paymentCard
+   * @param {string|null} params.promoCode
+   * @param {number} params.discountPercent
+   */
+  async sendBookingConfirmationEmail({
+    toEmail,
+    customerName,
+    bookingId,
+    movieTitle,
+    showtime,
+    hallName,
+    seatIds,
+    tickets,
+    total,
+    paymentCard,
+    promoCode,
+    discountPercent
+  }) {
+    if (typeof toEmail !== "string" || toEmail.trim().length === 0) {
+      return { sent: false, reason: "missing-recipient" };
+    }
+
+    const name = this.sanitizeHeaderText(customerName, "there");
+    const safeMovie = this.sanitizeHeaderText(movieTitle, "your movie");
+    const safeBookingId = this.sanitizeHeaderText(bookingId, "N/A");
+    const safeHall = this.sanitizeHeaderText(hallName, "N/A");
+
+    const showtimeDate = new Date(showtime);
+    const dateStr = isNaN(showtimeDate.getTime())
+      ? showtime
+      : showtimeDate.toLocaleDateString("en-US", {
+          weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "UTC"
+        });
+    const timeStr = isNaN(showtimeDate.getTime())
+      ? ""
+      : showtimeDate.toLocaleTimeString("en-US", {
+          hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC"
+        });
+    const showtimeLabel = timeStr ? `${dateStr} at ${timeStr}` : dateStr;
+
+    const adult = Number(tickets?.adult ?? 0);
+    const child = Number(tickets?.child ?? 0);
+    const senior = Number(tickets?.senior ?? 0);
+    const ticketLines = [];
+    if (adult > 0) ticketLines.push(`Adult × ${adult}`);
+    if (child > 0) ticketLines.push(`Child × ${child}`);
+    if (senior > 0) ticketLines.push(`Senior × ${senior}`);
+
+    const seatsLabel = Array.isArray(seatIds) && seatIds.length > 0
+      ? seatIds.join(", ")
+      : "N/A";
+    const cardLabel = paymentCard
+      ? `${paymentCard.brand} ending in ${paymentCard.last4}`
+      : "N/A";
+    const promoLine = promoCode
+      ? `Promo code: ${promoCode} (${discountPercent}% off)`
+      : null;
+
+    // Plain text
+    const textLines = [
+      `Hi ${name},`,
+      "",
+      "Your booking is confirmed! Here are your details:",
+      "",
+      `Booking ID   : ${safeBookingId}`,
+      `Movie        : ${safeMovie}`,
+      `Showtime     : ${showtimeLabel}`,
+      `Hall         : ${safeHall}`,
+      `Seats        : ${seatsLabel}`,
+      `Tickets      : ${ticketLines.join(", ")}`,
+      ...(promoLine ? [`Promo        : ${promoLine}`] : []),
+      `Total Paid   : $${Number(total).toFixed(2)}`,
+      `Payment      : ${cardLabel}`,
+      "",
+      "Enjoy the show! Please arrive at least 15 minutes before the showtime.",
+      "",
+      "— The CineBook Team"
+    ];
+
+    // HTML
+    const ticketRows = ticketLines
+      .map((line) => `<tr><td colspan="2" style="padding:0.2rem 0;color:#374151">${line}</td></tr>`)
+      .join("");
+
+    const promoRow = promoLine
+      ? `<tr><td style="padding:0.25rem 0.5rem 0.25rem 0;color:#6b7280;white-space:nowrap">Promo</td><td style="padding:0.25rem 0;color:#374151">${promoLine}</td></tr>`
+      : "";
+
+    const html = [
+      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:1.5rem;background:#ffffff">`,
+      `<h2 style="color:#111827;margin-bottom:0.25rem">Booking Confirmed!</h2>`,
+      `<p style="color:#6b7280;margin-top:0">Hi ${name}, your ticket is locked in.</p>`,
+      `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1.25rem;margin:1.25rem 0">`,
+      `<table style="width:100%;border-collapse:collapse">`,
+      `<tr><td style="padding:0.25rem 0.5rem 0.25rem 0;color:#6b7280;white-space:nowrap;vertical-align:top">Booking ID</td><td style="padding:0.25rem 0;color:#111827;font-weight:600;font-family:monospace">${safeBookingId}</td></tr>`,
+      `<tr><td style="padding:0.25rem 0.5rem 0.25rem 0;color:#6b7280;white-space:nowrap">Movie</td><td style="padding:0.25rem 0;color:#111827;font-weight:600">${safeMovie}</td></tr>`,
+      `<tr><td style="padding:0.25rem 0.5rem 0.25rem 0;color:#6b7280;white-space:nowrap">Showtime</td><td style="padding:0.25rem 0;color:#374151">${showtimeLabel}</td></tr>`,
+      `<tr><td style="padding:0.25rem 0.5rem 0.25rem 0;color:#6b7280;white-space:nowrap">Hall</td><td style="padding:0.25rem 0;color:#374151">${safeHall}</td></tr>`,
+      `<tr><td style="padding:0.25rem 0.5rem 0.25rem 0;color:#6b7280;white-space:nowrap;vertical-align:top">Seats</td><td style="padding:0.25rem 0;color:#374151">${seatsLabel}</td></tr>`,
+      `<tr><td style="padding:0.25rem 0.5rem 0.25rem 0;color:#6b7280;white-space:nowrap;vertical-align:top">Tickets</td><td style="padding:0.25rem 0"><table style="border-collapse:collapse">${ticketRows}</table></td></tr>`,
+      promoRow,
+      `<tr style="border-top:1px solid #e5e7eb"><td style="padding:0.5rem 0.5rem 0.25rem 0;color:#6b7280;white-space:nowrap;font-weight:600">Total Paid</td><td style="padding:0.5rem 0 0.25rem;color:#111827;font-weight:700;font-size:1.1rem">$${Number(total).toFixed(2)}</td></tr>`,
+      `<tr><td style="padding:0.25rem 0.5rem 0.25rem 0;color:#6b7280;white-space:nowrap">Payment</td><td style="padding:0.25rem 0;color:#374151">${cardLabel}</td></tr>`,
+      `</table>`,
+      `</div>`,
+      `<p style="color:#374151">Enjoy the show! Please arrive at least 15 minutes before the showtime.</p>`,
+      `<p style="color:#9ca3af;font-size:0.8rem;margin-top:1.5rem">— The CineBook Team</p>`,
+      `</div>`
+    ].join("");
+
+    return await this.dispatchEmailMessage(
+      { toEmail: toEmail.trim(), subject: `Booking Confirmed — ${safeMovie}`, text: textLines.join("\n"), html },
+      "booking-confirmation"
+    );
   }
 
   async dispatchEmailMessage(message, category = "notification") {
