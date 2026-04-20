@@ -187,6 +187,33 @@ class ProfileNotificationService {
     return await this.dispatchEmailMessage(message, "password-changed");
   }
 
+  async sendOtpEmail(toEmail, otp) {
+    if (typeof toEmail !== "string" || toEmail.trim().length === 0) {
+      return { sent: false, reason: "missing-recipient" };
+    }
+
+    const message = {
+      toEmail: toEmail.trim(),
+      subject: "Your CineBook Verification Code",
+      text: [
+        "Your CineBook email verification code is:",
+        "",
+        `  ${otp}`,
+        "",
+        "This code expires in 10 minutes. Do not share it with anyone.",
+        "If you did not request this, you can ignore this email."
+      ].join("\n"),
+      html: [
+        "<p>Your CineBook email verification code is:</p>",
+        `<p style="font-size:2rem;font-weight:bold;letter-spacing:0.3em;text-align:center">${otp}</p>`,
+        "<p>This code expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>",
+        "<p style='color:#888;font-size:0.85rem'>If you did not request this, you can ignore this email.</p>"
+      ].join("")
+    };
+
+    return await this.dispatchEmailMessage(message, "otp");
+  }
+
   async sendPromotionEmail(toEmail, displayName, promotion) {
     if (typeof toEmail !== "string" || toEmail.trim().length === 0) {
       return { sent: false, reason: "missing-recipient" };

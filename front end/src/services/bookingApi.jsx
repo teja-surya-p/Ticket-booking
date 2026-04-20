@@ -145,6 +145,24 @@ export function fetchUserBookings(token) {
   });
 }
 
+export function sendEmailOtp(email) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.sendEmailOtp,
+    method: "POST",
+    operation: "Send email OTP",
+    body: { email }
+  });
+}
+
+export function verifyEmailOtp(email, code) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.verifyEmailOtp,
+    method: "POST",
+    operation: "Verify email OTP",
+    body: { email, code }
+  });
+}
+
 export function cancelBooking(bookingId, token) {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.cancel(encodeURIComponent(bookingId)),

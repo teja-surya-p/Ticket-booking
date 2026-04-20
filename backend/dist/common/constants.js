@@ -10,7 +10,8 @@ export const FIRESTORE_COLLECTIONS = {
   showtimes: "showtimes",
   promotions: "promotions",
   promoCodes: "promoCodes",
-  movieNotifications: "movieNotifications"
+  movieNotifications: "movieNotifications",
+  emailVerificationCodes: "emailVerificationCodes"
 };
 
 export const USER_ACCOUNT_STATUSES = {

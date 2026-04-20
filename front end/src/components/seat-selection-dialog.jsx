@@ -80,7 +80,18 @@ export function SeatSelectionDialog({
   allItems,
   allSeatSelections,
   customerEmail,
+  customerEmailFormatError,
   onCustomerEmailChange,
+  needsEmailVerification,
+  otpSent,
+  otpCode,
+  onOtpCodeChange,
+  otpVerified,
+  isSendingOtp,
+  isVerifyingOtp,
+  otpError,
+  onSendOtp,
+  onVerifyOtp,
   ticketPriceMap,
   onSelectCard,
   onCardFieldChange,
@@ -533,17 +544,93 @@ export function SeatSelectionDialog({
 
                 <div className={styles["seat-dialog-class-47"]}>
                   <Label htmlFor="order-summary-email">Confirm Email Address</Label>
-                  <Input
-                    id="order-summary-email"
-                    type="email"
-                    value={customerEmail ?? ""}
-                    onChange={(event) => onCustomerEmailChange?.(event.target.value)}
-                    placeholder="your@email.com"
-                    autoComplete="email"
-                  />
-                  <p style={{ fontSize: "0.75rem", opacity: 0.6, marginTop: "0.25rem" }}>
-                    Booking confirmation will be sent to this address.
-                  </p>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                    <Input
+                      id="order-summary-email"
+                      type="email"
+                      value={customerEmail ?? ""}
+                      onChange={(event) => onCustomerEmailChange?.(event.target.value)}
+                      placeholder="your@email.com"
+                      autoComplete="email"
+                      style={customerEmailFormatError ? { borderColor: "var(--destructive)" } : undefined}
+                    />
+                    {otpVerified && (
+                      <span style={{ color: "var(--primary)", fontWeight: 600, whiteSpace: "nowrap", fontSize: "0.85rem" }}>
+                        ✓ Verified
+                      </span>
+                    )}
+                    {needsEmailVerification && !otpSent && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onSendOtp?.()}
+                        disabled={isSendingOtp}
+                        style={{ whiteSpace: "nowrap" }}
+                      >
+                        {isSendingOtp ? "Sending..." : "Send Code"}
+                      </Button>
+                    )}
+                  </div>
+
+                  {customerEmailFormatError ? (
+                    <p style={{ fontSize: "0.75rem", color: "var(--destructive)", marginTop: "0.25rem" }}>
+                      {customerEmailFormatError}
+                    </p>
+                  ) : otpVerified ? (
+                    <p style={{ fontSize: "0.75rem", opacity: 0.6, marginTop: "0.25rem" }}>
+                      Booking confirmation will be sent to this address.
+                    </p>
+                  ) : needsEmailVerification ? (
+                    <p style={{ fontSize: "0.75rem", opacity: 0.6, marginTop: "0.25rem" }}>
+                      This email differs from your login email — verification required.
+                    </p>
+                  ) : (
+                    <p style={{ fontSize: "0.75rem", opacity: 0.6, marginTop: "0.25rem" }}>
+                      Booking confirmation will be sent to this address.
+                    </p>
+                  )}
+
+                  {otpSent && (
+                    <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                      <Label htmlFor="otp-input">Enter 6-digit verification code</Label>
+                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                        <Input
+                          id="otp-input"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={otpCode ?? ""}
+                          onChange={(event) => onOtpCodeChange?.(event.target.value.replace(/\D/g, ""))}
+                          placeholder="123456"
+                          style={{ width: "9rem", letterSpacing: "0.2em", fontWeight: 600 }}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => onVerifyOtp?.()}
+                          disabled={isVerifyingOtp || (otpCode ?? "").trim().length < 6}
+                        >
+                          {isVerifyingOtp ? "Verifying..." : "Verify"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onSendOtp?.()}
+                          disabled={isSendingOtp}
+                        >
+                          {isSendingOtp ? "Sending..." : "Resend"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {otpError && (
+                    <p style={{ fontSize: "0.75rem", color: "var(--destructive)", marginTop: "0.25rem" }}>
+                      {otpError}
+                    </p>
+                  )}
                 </div>
               </div>
             )}

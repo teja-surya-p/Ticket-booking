@@ -32,7 +32,9 @@ export const API_ENDPOINTS = {
     card: `${API_ROUTES.bookings}/card`,
     cardById: cardId => `${API_ROUTES.bookings}/card/${cardId}`,
     mine: `${API_ROUTES.bookings}/mine`,
-    cancel: (bookingId) => `${API_ROUTES.bookings}/${bookingId}/cancel`
+    cancel: (bookingId) => `${API_ROUTES.bookings}/${bookingId}/cancel`,
+    sendEmailOtp: `${API_ROUTES.bookings}/verify-email/send-otp`,
+    verifyEmailOtp: `${API_ROUTES.bookings}/verify-email/verify-otp`
   },
   admin: {
     stats: `${API_ROUTES.admin}/stats`,

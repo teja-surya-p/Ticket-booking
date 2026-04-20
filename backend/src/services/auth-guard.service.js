@@ -105,11 +105,6 @@ class AuthGuardService {
       throw new UnauthorizedException("customerUid does not match authenticated user");
     }
 
-    const requestedEmail = this.normalizeOptionalCustomerEmail(payload?.customerEmail);
-    if (requestedEmail && requestedEmail !== authenticatedEmail) {
-      throw new UnauthorizedException("customerEmail does not match authenticated user");
-    }
-
     return { customerUid: authenticatedUid, customerEmail: authenticatedEmail };
   }
 }

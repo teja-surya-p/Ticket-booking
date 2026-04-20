@@ -86,6 +86,16 @@ class BookingsController {
   async cancelBooking(authorization, bookingId) {
     return await this.bookingsService.cancelBooking(bookingId, authorization);
   }
+
+  // ── Email OTP verification ────────────────────────────────────────────────
+
+  async sendEmailOtp(body) {
+    return await this.bookingsService.sendEmailOtp(body?.email);
+  }
+
+  async verifyEmailOtp(body) {
+    return await this.bookingsService.verifyEmailOtp(body?.email, body?.code);
+  }
 }
 
 // ── Card routes ────────────────────────────────────────────────────────────
@@ -221,6 +231,20 @@ decorateMethod(
     parameterDecorator(1, Param("bookingId"))
   ],
   { paramTypes: [String, String], returnType: Promise }
+);
+
+decorateMethod(
+  BookingsController.prototype,
+  "sendEmailOtp",
+  [Post("verify-email/send-otp"), HttpCode(HttpStatus.OK), parameterDecorator(0, Body())],
+  { paramTypes: [Object], returnType: Promise }
+);
+
+decorateMethod(
+  BookingsController.prototype,
+  "verifyEmailOtp",
+  [Post("verify-email/verify-otp"), HttpCode(HttpStatus.OK), parameterDecorator(0, Body())],
+  { paramTypes: [Object], returnType: Promise }
 );
 
 decorateClass(BookingsController, [Controller("bookings")], [BookingsService]);

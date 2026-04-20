@@ -11,6 +11,7 @@ import {
 } from "@/services";
 import { fetchShowroomById } from "@/services/showroomsApi";
 import { validatePromoCode } from "@/services/promoCodesApi";
+import { sendEmailOtp, verifyEmailOtp } from "@/services/bookingApi";
 import {
   BOOKING_SEAT_COLS,
   BOOKING_SEAT_ROWS,
@@ -202,6 +203,12 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [promoError, setPromoError] = useState(null);
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState(null);
 
   const currentItem = isOpen ? items[currentIndex] ?? null : null;
   const totalSteps = items.length;
@@ -227,6 +234,21 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const totalTickets = currentItem ? getTotalTickets(currentItem.tickets) : 0;
   const remainingSeats = Math.max(totalTickets - selectedSeatIds.length, 0);
   const normalizedCustomerEmail = normalizeEmail(customerEmail);
+  const customerEmailFormatError =
+    normalizedCustomerEmail.length > 0 &&
+    normalizedCustomerEmail !== resolvedUserEmail &&
+    !isValidEmail(normalizedCustomerEmail)
+      ? "Please enter a valid email address."
+      : null;
+
+  // OTP required when the user typed a valid email different from their login email
+  // and hasn't verified it yet.
+  const needsEmailVerification =
+    normalizedCustomerEmail.length > 0 &&
+    normalizedCustomerEmail !== resolvedUserEmail &&
+    isValidEmail(normalizedCustomerEmail) &&
+    !otpVerified;
+
   const selectedCard = useMemo(
     () => savedCards.find((card) => card.cardId === selectedCardId) ?? null,
     [savedCards, selectedCardId]
@@ -455,9 +477,13 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setAppliedPromo(null);
     setPromoError(null);
     setIsApplyingPromo(false);
+    setOtpSent(false);
+    setOtpCode("");
+    setOtpVerified(false);
+    setOtpError(null);
   };
 
-  const openDialog = () => {
+  const openDialog = (resumeState = null) => {
     if (!Array.isArray(items) || items.length === 0) {
       return;
     }
@@ -468,7 +494,12 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
       return;
     }
 
-    setSeatSelections(buildEmptySelections(items));
+    const restoredSelections =
+      resumeState?.seatSelections && typeof resumeState.seatSelections === "object"
+        ? resumeState.seatSelections
+        : buildEmptySelections(items);
+
+    setSeatSelections(restoredSelections);
     setCurrentIndex(0);
     setLoadError(null);
     setSelectionError(null);
@@ -486,7 +517,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setPaymentInfo(null);
     setMaxCardsAllowed(3);
     setIsPaymentStep(false);
-    setIsOrderSummaryStep(false);
+    setIsOrderSummaryStep(resumeState?.step === "order_summary");
     setEditingCardId("");
     setEditCardForm(createEmptyEditCardForm());
     setEditCardFieldErrors(createEmptyEditCardFieldErrors());
@@ -495,6 +526,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setAppliedPromo(null);
     setPromoError(null);
     setIsApplyingPromo(false);
+    setOtpSent(false);
+    setOtpCode("");
+    setOtpVerified(false);
+    setOtpError(null);
     setIsOpen(true);
   };
 
@@ -1102,6 +1137,44 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     }
   };
 
+  const handleCustomerEmailChange = (value) => {
+    setCustomerEmail(value);
+    // Reset OTP state whenever the email field is edited
+    setOtpSent(false);
+    setOtpCode("");
+    setOtpVerified(false);
+    setOtpError(null);
+  };
+
+  const handleSendOtp = async () => {
+    setIsSendingOtp(true);
+    setOtpError(null);
+    try {
+      await sendEmailOtp(normalizedCustomerEmail);
+      setOtpSent(true);
+      setOtpCode("");
+    } catch (err) {
+      setOtpError(err?.message ?? "Failed to send verification code. Please try again.");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setIsVerifyingOtp(true);
+    setOtpError(null);
+    try {
+      await verifyEmailOtp(normalizedCustomerEmail, otpCode.trim());
+      setOtpVerified(true);
+      setOtpSent(false);
+      setOtpError(null);
+    } catch (err) {
+      setOtpError(err?.message ?? "Invalid code. Please try again.");
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
   const continueCheckout = async () => {
     if (isPaymentStep) {
       if (!canCheckoutWithPayment) {
@@ -1116,6 +1189,11 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     if (isOrderSummaryStep) {
       if (!isValidEmail(normalizeEmail(customerEmail))) {
         setPaymentError("Please enter a valid email address to continue.");
+        return;
+      }
+
+      if (needsEmailVerification) {
+        setPaymentError("Please verify your email address before continuing.");
         return;
       }
 
@@ -1188,7 +1266,19 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     showOrderSummaryStep: isOrderSummaryStep,
     canCheckoutWithPayment,
     customerEmail,
+    customerEmailFormatError,
     setCustomerEmail,
+    handleCustomerEmailChange,
+    needsEmailVerification,
+    otpSent,
+    otpCode,
+    setOtpCode,
+    otpVerified,
+    isSendingOtp,
+    isVerifyingOtp,
+    otpError,
+    handleSendOtp,
+    handleVerifyOtp,
     seatSelections,
     needsLogin,
     clearNeedsLogin: () => setNeedsLogin(false),

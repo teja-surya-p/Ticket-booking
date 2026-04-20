@@ -83,7 +83,19 @@ export function CartPage({
     applyPromoCode,
     showOrderSummaryStep,
     customerEmail,
+    customerEmailFormatError,
     setCustomerEmail,
+    handleCustomerEmailChange,
+    needsEmailVerification,
+    otpSent,
+    otpCode,
+    setOtpCode,
+    otpVerified,
+    isSendingOtp,
+    isVerifyingOtp,
+    otpError,
+    handleSendOtp,
+    handleVerifyOtp,
     seatSelections,
     showroomNameMap,
     itemShowroomMap,
@@ -103,11 +115,16 @@ export function CartPage({
     if (didResumeRef.current) return;
     if (!isAuthenticatedForCheckout) return;
     if (items.length === 0) return;
-    const flag = sessionStorage.getItem("cinebook:resumeCheckout");
-    if (flag) {
+    const flagRaw = sessionStorage.getItem("cinebook:resumeCheckout");
+    if (flagRaw) {
       didResumeRef.current = true;
       sessionStorage.removeItem("cinebook:resumeCheckout");
-      openDialog();
+      try {
+        const resumeState = JSON.parse(flagRaw);
+        openDialog(resumeState);
+      } catch {
+        openDialog();
+      }
     }
   }, [isAuthenticatedForCheckout, items.length, openDialog]);
 
@@ -323,7 +340,18 @@ export function CartPage({
         allItems={items}
         allSeatSelections={seatSelections}
         customerEmail={customerEmail}
-        onCustomerEmailChange={setCustomerEmail}
+        customerEmailFormatError={customerEmailFormatError}
+        onCustomerEmailChange={handleCustomerEmailChange}
+        needsEmailVerification={needsEmailVerification}
+        otpSent={otpSent}
+        otpCode={otpCode}
+        onOtpCodeChange={setOtpCode}
+        otpVerified={otpVerified}
+        isSendingOtp={isSendingOtp}
+        isVerifyingOtp={isVerifyingOtp}
+        otpError={otpError}
+        onSendOtp={handleSendOtp}
+        onVerifyOtp={handleVerifyOtp}
         ticketPriceMap={ticketPrices}
         ROWS={ROWS}
         COLS={COLS}
@@ -343,7 +371,10 @@ export function CartPage({
         onDeleteCard={deleteSavedCardById}
         onClose={closeDialog}
         onLogin={() => {
-          sessionStorage.setItem("cinebook:resumeCheckout", "true");
+          sessionStorage.setItem("cinebook:resumeCheckout", JSON.stringify({
+            step: "order_summary",
+            seatSelections
+          }));
           closeDialog();
           const returnTo = encodeURIComponent(router.asPath || "/");
           void router.push(`/login?mode=login&returnTo=${returnTo}`);

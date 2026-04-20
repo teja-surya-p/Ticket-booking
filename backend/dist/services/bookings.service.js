@@ -350,6 +350,74 @@ class BookingsService {
     };
   }
 
+  // ── Email OTP verification ────────────────────────────────────────────────
+
+  otpCollection() {
+    return this.firestoreService.db().collection(FIRESTORE_COLLECTIONS.emailVerificationCodes);
+  }
+
+  async sendEmailOtp(email) {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (typeof email !== "string" || !emailPattern.test(email.trim().toLowerCase())) {
+      throw new BadRequestException("Invalid email address.");
+    }
+    const normalizedEmail = email.trim().toLowerCase();
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
+
+    // Overwrite any existing code for this email
+    await this.otpCollection().doc(normalizedEmail).set({
+      email: normalizedEmail,
+      code,
+      createdAt: now.toISOString(),
+      expiresAt,
+      attempts: 0
+    });
+
+    await this.profileNotificationService.sendOtpEmail(normalizedEmail, code);
+    return { sent: true };
+  }
+
+  async verifyEmailOtp(email, code) {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (typeof email !== "string" || !emailPattern.test(email.trim().toLowerCase())) {
+      throw new BadRequestException("Invalid email address.");
+    }
+    if (typeof code !== "string" || code.trim().length === 0) {
+      throw new BadRequestException("Verification code is required.");
+    }
+    const normalizedEmail = email.trim().toLowerCase();
+    const docRef = this.otpCollection().doc(normalizedEmail);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      throw new BadRequestException("No verification code found. Please request a new one.");
+    }
+
+    const data = doc.data();
+
+    if (new Date(data.expiresAt) < new Date()) {
+      await docRef.delete();
+      throw new BadRequestException("Verification code has expired. Please request a new one.");
+    }
+
+    const attempts = (data.attempts ?? 0) + 1;
+    if (attempts > 5) {
+      await docRef.delete();
+      throw new BadRequestException("Too many failed attempts. Please request a new code.");
+    }
+
+    if (data.code !== code.trim()) {
+      await docRef.update({ attempts });
+      throw new BadRequestException("Invalid verification code.");
+    }
+
+    // Correct — delete so code can't be reused
+    await docRef.delete();
+    return { verified: true };
+  }
+
   // ── Confirmed booking ────────────────────────────────────────────────────
 
   async createBooking(payload, authorization) {
@@ -420,8 +488,14 @@ class BookingsService {
       await this.promoCodesService.markUsed(appliedPromoCodeId, customerUid);
     }
 
+    // Resolve notification email: use the user-supplied address if it's a valid format,
+    // otherwise fall back to the authenticated email.
+    const _emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const _rawPayloadEmail = typeof payload?.customerEmail === "string" ? payload.customerEmail.trim().toLowerCase() : "";
+    const notificationEmail = _emailPattern.test(_rawPayloadEmail) ? _rawPayloadEmail : customerEmail;
+
     // Fire-and-forget: send booking confirmation email
-    this._sendBookingConfirmationEmail(booking, savedCard).catch((err) => {
+    this._sendBookingConfirmationEmail(booking, savedCard, notificationEmail).catch((err) => {
       console.error("[BookingsService] Booking confirmation email failed:", err?.message ?? err);
     });
 
@@ -953,13 +1027,16 @@ class BookingsService {
     throw new BadRequestException("The hall for this showtime could not be found");
   }
 
-  async _sendBookingConfirmationEmail(booking, savedCard) {
+  async _sendBookingConfirmationEmail(booking, savedCard, notificationEmail) {
     if (!this.profileNotificationService) {
       console.warn("[BookingsService] profileNotificationService not injected — skipping confirmation email.");
       return;
     }
-    if (typeof booking.customerEmail !== "string" || booking.customerEmail.trim().length === 0) return;
-    console.log(`[BookingsService] Sending booking confirmation email to ${booking.customerEmail} for booking ${booking.bookingId}`);
+    const toEmail = typeof notificationEmail === "string" && notificationEmail.trim().length > 0
+      ? notificationEmail
+      : booking.customerEmail;
+    if (typeof toEmail !== "string" || toEmail.trim().length === 0) return;
+    console.log(`[BookingsService] Sending booking confirmation email to ${toEmail} for booking ${booking.bookingId}`);
 
     let hallName = "N/A";
     try {
@@ -978,7 +1055,7 @@ class BookingsService {
     }
 
     await this.profileNotificationService.sendBookingConfirmationEmail({
-      toEmail: booking.customerEmail,
+      toEmail,
       customerName: booking.customerName ?? booking.customerEmail,
       bookingId: booking.bookingId,
       movieTitle,
