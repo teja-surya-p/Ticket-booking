@@ -8,12 +8,14 @@ import {
   fetchCurrentUserProfile,
   fetchMovies,
   getMeaningfulErrorMessage,
+  initializeTokensForUser,
   isAdminModeEnabled,
   removeFavoriteMovie,
   signOutCurrentUser,
   subscribeToAuthState,
   updateMovie
 } from "@/services";
+import { tokenManager } from "@/services/tokenManager";
 import {
   addMovieToCart,
   getCartCount,
@@ -140,12 +142,18 @@ export function useCinemaAppController() {
     const unsubscribe = subscribeToAuthState((user) => {
       setCurrentUser(user ?? null);
       setAuthBusy(false);
-      // If the user just signed in after being redirected from the checkout dialog,
-      // navigate to the cart view so CartPage mounts and reopens the dialog.
-      if (user && typeof window !== "undefined") {
-        if (sessionStorage.getItem("cinebook:resumeCheckout")) {
+
+      if (user) {
+        // Ensure session token is populated (try refresh cookie first, then full login exchange)
+        void initializeTokensForUser(user);
+
+        // If the user just signed in after being redirected from the checkout dialog,
+        // navigate to the cart view so CartPage mounts and reopens the dialog.
+        if (typeof window !== "undefined" && sessionStorage.getItem("cinebook:resumeCheckout")) {
           setView({ type: "cart" });
         }
+      } else {
+        tokenManager.clearAll();
       }
     });
 

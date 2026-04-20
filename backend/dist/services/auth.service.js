@@ -11,12 +11,95 @@ import {
 } from "../common/constants.js";
 import { decorateClass } from "../common/nest-metadata.js";
 import { FirestoreService } from "../config/firestore.service.js";
+import { JwtService } from "./jwt.service.js";
 import { ProfileNotificationService } from "./profile-notification.service.js";
 
 class AuthService {
-  constructor(firestoreService, profileNotificationService) {
+  constructor(firestoreService, profileNotificationService, jwtService) {
     this.firestoreService = firestoreService;
     this.profileNotificationService = profileNotificationService;
+    this.jwtService = jwtService;
+  }
+
+  // ── Token-based auth ───────────────────────────────────────────────────────
+
+  async login(authorization, res) {
+    const userRecord = await this.getFirebaseUserFromAuthorizationHeader(authorization);
+    const uid = userRecord.uid;
+    const email = this.resolveEmail(userRecord, {});
+
+    if (!email) {
+      throw new UnauthorizedException("Authenticated user email is missing");
+    }
+
+    const sessionToken = this.jwtService.signSessionToken(uid, email);
+    const refreshToken = this.jwtService.signRefreshToken(uid, email);
+    const accessToken = this.jwtService.signAccessToken(uid, email);
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    return { sessionToken, accessToken, uid, email };
+  }
+
+  logout(res) {
+    res.clearCookie("refreshToken", { httpOnly: true, sameSite: "strict" });
+    return { ok: true };
+  }
+
+  refreshSession(req) {
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) {
+      throw new UnauthorizedException("No refresh token cookie");
+    }
+
+    const payload = this.jwtService.verifyRefreshToken(refreshToken);
+    const sessionToken = this.jwtService.signSessionToken(payload.uid, payload.email);
+    return { sessionToken };
+  }
+
+  refreshTokens(body, res) {
+    const incomingAccessToken = body?.accessToken;
+    if (!incomingAccessToken) {
+      throw new UnauthorizedException("Access token is required");
+    }
+
+    const payload = this.jwtService.verifyAccessToken(incomingAccessToken);
+    const sessionToken = this.jwtService.signSessionToken(payload.uid, payload.email);
+    const newRefreshToken = this.jwtService.signRefreshToken(payload.uid, payload.email);
+    const newAccessToken = this.jwtService.signAccessToken(payload.uid, payload.email);
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    return { sessionToken, accessToken: newAccessToken };
+  }
+
+  async getFirebaseUserFromAccessToken(authorization) {
+    const token = this.extractBearerToken(authorization);
+    const payload = this.jwtService.verifyAccessToken(token);
+
+    try {
+      return await this.firestoreService.auth().getUser(payload.uid);
+    } catch (error) {
+      throw new UnauthorizedException(
+        error instanceof Error ? error.message : "Unable to load user profile"
+      );
+    }
+  }
+
+  // Refresh the short-lived access token using the in-memory session token
+  refreshAccess(authorization) {
+    const token = this.extractBearerToken(authorization);
+    const payload = this.jwtService.verifySessionToken(token);
+    const accessToken = this.jwtService.signAccessToken(payload.uid, payload.email);
+    return { accessToken };
   }
 
   async register(authorization, body = {}) {
@@ -44,7 +127,7 @@ class AuthService {
   }
 
   async getProfile(authorization) {
-    const userRecord = await this.getFirebaseUserFromAuthorizationHeader(authorization);
+    const userRecord = await this.getFirebaseUserFromAccessToken(authorization);
     const userRef = this.collection().doc(userRecord.uid);
     let snapshot = await userRef.get();
 
@@ -68,7 +151,7 @@ class AuthService {
   }
 
   async updateProfile(authorization, body = {}) {
-    const userRecord = await this.getFirebaseUserFromAuthorizationHeader(authorization);
+    const userRecord = await this.getFirebaseUserFromAccessToken(authorization);
     const previousProfile = await this.getProfile(authorization);
 
     await this.upsertUserProfile(userRecord, body);
@@ -375,6 +458,6 @@ class AuthService {
   }
 }
 
-decorateClass(AuthService, [Injectable()], [FirestoreService, ProfileNotificationService]);
+decorateClass(AuthService, [Injectable()], [FirestoreService, ProfileNotificationService, JwtService]);
 
 export { AuthService };

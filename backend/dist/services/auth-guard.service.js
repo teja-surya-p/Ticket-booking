@@ -12,10 +12,12 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { decorateClass } from "../common/nest-metadata.js";
 import { FirestoreService } from "../config/firestore.service.js";
+import { JwtService } from "./jwt.service.js";
 
 class AuthGuardService {
-  constructor(firestoreService) {
+  constructor(firestoreService, jwtService) {
     this.firestoreService = firestoreService;
+    this.jwtService = jwtService;
   }
 
   extractBearerToken(authorization) {
@@ -72,10 +74,10 @@ class AuthGuardService {
     let decodedToken;
 
     try {
-      decodedToken = await this.firestoreService.auth().verifyIdToken(token);
+      decodedToken = this.jwtService.verifyAccessToken(token);
     } catch (error) {
       throw new UnauthorizedException(
-        error instanceof Error ? error.message : "Invalid or expired Firebase ID token"
+        error instanceof Error ? error.message : "Invalid or expired access token"
       );
     }
 
@@ -84,18 +86,7 @@ class AuthGuardService {
       throw new UnauthorizedException("Authenticated user uid is missing");
     }
 
-    let authenticatedEmail = this.normalizeOptionalCustomerEmail(decodedToken?.email);
-    if (!authenticatedEmail) {
-      try {
-        const userRecord = await this.firestoreService.auth().getUser(authenticatedUid);
-        authenticatedEmail = this.normalizeOptionalCustomerEmail(userRecord?.email);
-      } catch (error) {
-        throw new UnauthorizedException(
-          error instanceof Error ? error.message : "Unable to load authenticated user profile"
-        );
-      }
-    }
-
+    const authenticatedEmail = this.normalizeOptionalCustomerEmail(decodedToken?.email);
     if (!authenticatedEmail) {
       throw new UnauthorizedException("Authenticated user email is missing");
     }
@@ -109,6 +100,6 @@ class AuthGuardService {
   }
 }
 
-decorateClass(AuthGuardService, [Injectable()], [FirestoreService]);
+decorateClass(AuthGuardService, [Injectable()], [FirestoreService, JwtService]);
 
 export { AuthGuardService };

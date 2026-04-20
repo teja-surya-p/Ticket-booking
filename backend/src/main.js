@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import path from "node:path";
 import { NestFactory } from "@nestjs/core";
@@ -20,11 +21,13 @@ async function bootstrap() {
   const allowedHeaders = [
     "Content-Type",
     "Authorization",
+    "Cookie",
     "X-Admin-Email",
     "X-Admin-Password"
   ];
 
   const app = await NestFactory.create(AppModule);
+  app.use(cookieParser());
   const corsOrigins = appConfig.corsOrigin
     .split(",")
     .map((value) => value.trim())

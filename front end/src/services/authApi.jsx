@@ -15,6 +15,7 @@ import {
 } from "firebase/auth";
 import { APICallHandler, APICallError } from "./apiCallHandler";
 import { API_ENDPOINTS } from "./constants";
+import { tokenManager } from "./tokenManager";
 import { firebaseApp } from "./firebaseConfig";
 
 const firebaseAuth = getAuth(firebaseApp);
@@ -69,6 +70,90 @@ async function getCurrentUserIdToken(forceRefresh = false) {
   }
 
   return await user.getIdToken(forceRefresh);
+}
+
+async function callBackendLogin(firebaseToken) {
+  const result = await APICallHandler({
+    url: API_ENDPOINTS.auth.login,
+    method: "POST",
+    operation: "Exchange Firebase token for session",
+    token: firebaseToken,
+    credentials: "include",
+    _isRetry: true  // login uses a Firebase token — never auto-refresh
+  });
+  tokenManager.setSessionToken(result.sessionToken);
+  tokenManager.setAccessToken(result.accessToken);
+  return result;
+}
+
+export { callBackendLogin };
+
+export async function refreshSessionToken() {
+  const result = await APICallHandler({
+    url: API_ENDPOINTS.auth.refreshSession,
+    method: "POST",
+    operation: "Refresh session token",
+    credentials: "include",
+    token: null,
+    _isRetry: true  // must not trigger further auto-refresh
+  });
+  tokenManager.setSessionToken(result.sessionToken);
+  return result.sessionToken;
+}
+
+// Refresh the short-lived access token using the in-memory session token.
+// Throws if the session token is missing or expired.
+export async function refreshAccessToken() {
+  const sessionToken = tokenManager.getSessionToken();
+  if (!sessionToken) {
+    throw new Error("No session token available — cannot refresh access token");
+  }
+
+  const result = await APICallHandler({
+    url: API_ENDPOINTS.auth.refreshAccess,
+    method: "POST",
+    operation: "Refresh access token",
+    token: sessionToken,  // send session token explicitly
+    _isRetry: true        // must not trigger further auto-refresh
+  });
+  tokenManager.setAccessToken(result.accessToken);
+  return result.accessToken;
+}
+
+// Force-sign-out and clear all tokens (called when session token is also expired).
+export function forceLogout() {
+  tokenManager.clearAll();
+  signOut(firebaseAuth).catch(() => {});
+}
+
+export async function initializeTokensForUser(firebaseUser) {
+  const doInit = async () => {
+    try {
+      // Step 1: restore session token from the HttpOnly refresh cookie
+      await refreshSessionToken();
+    } catch {
+      // Refresh cookie missing or expired — do full login exchange with Firebase
+      try {
+        const firebaseToken = await firebaseUser.getIdToken(true);
+        await callBackendLogin(firebaseToken);
+        return; // callBackendLogin already sets both session + access tokens
+      } catch (err) {
+        console.warn("[auth] Token initialization failed:", err?.message);
+        return;
+      }
+    }
+
+    // Step 2: get a fresh access token using the restored session token
+    try {
+      await refreshAccessToken();
+    } catch (err) {
+      console.warn("[auth] Could not obtain access token after session restore:", err?.message);
+    }
+  };
+
+  const initPromise = doInit();
+  tokenManager.setInitPromise(initPromise);
+  return initPromise;
 }
 
 export function mapAuthErrorToMessage(error) {
@@ -209,6 +294,7 @@ export async function syncVerificationStatus() {
     }
 
     await reload(user);
+    // syncVerification still uses Firebase ID token (called during account setup flow)
     const token = await getCurrentUserIdToken(true);
     const profile = await APICallHandler({
       url: API_ENDPOINTS.auth.syncVerification,
@@ -258,12 +344,10 @@ export async function sendPasswordResetLink(email) {
 
 export async function fetchCurrentUserProfile(forceRefreshToken = false) {
   try {
-    const token = await getCurrentUserIdToken(forceRefreshToken);
     const profile = await APICallHandler({
       url: API_ENDPOINTS.auth.profile,
       method: "GET",
-      operation: "Fetch current user profile",
-      token
+      operation: "Fetch current user profile"
     });
 
     return {
@@ -282,12 +366,10 @@ export async function fetchCurrentUserProfile(forceRefreshToken = false) {
 
 export async function updateCurrentUserProfile(payload, forceRefreshToken = false) {
   try {
-    const token = await getCurrentUserIdToken(forceRefreshToken);
     const profile = await APICallHandler({
       url: API_ENDPOINTS.auth.profile,
       method: "PATCH",
       operation: "Update current user profile",
-      token,
       body: payload
     });
 
@@ -325,6 +407,9 @@ export async function signInWithEmailPassword(credentials) {
       status: user.emailVerified ? "Active" : "Inactive"
     };
     const { profile, syncWarning } = await syncProfileAfterSignIn(token, fallbackProfile);
+
+    // Exchange Firebase token for our custom 3-tier tokens
+    await callBackendLogin(token);
 
     return {
       ok: true,
@@ -372,6 +457,9 @@ export async function signInWithGoogle() {
     };
     const { profile, syncWarning } = await syncProfileAfterSignIn(token, fallbackProfile);
 
+    // Exchange Firebase token for our custom 3-tier tokens
+    await callBackendLogin(token);
+
     return {
       ok: true,
       user: {
@@ -407,6 +495,21 @@ export async function signInWithGoogle() {
 
 export async function signOutCurrentUser() {
   try {
+    // Clear backend refresh cookie
+    try {
+      await APICallHandler({
+        url: API_ENDPOINTS.auth.logout,
+        method: "POST",
+        operation: "Logout",
+        credentials: "include",
+        allowEmptyResponse: true,
+        token: null,
+        _isRetry: true  // never auto-refresh during logout
+      });
+    } catch {
+      // Best-effort — proceed with local cleanup even if backend call fails
+    }
+    tokenManager.clearAll();
     await signOut(firebaseAuth);
     return { ok: true };
   } catch (error) {
@@ -449,12 +552,10 @@ export async function changeCurrentUserPassword(currentPassword, newPassword) {
 
     let notificationResult = null;
     try {
-      const token = await user.getIdToken(true);
       notificationResult = await APICallHandler({
         url: API_ENDPOINTS.auth.passwordChanged,
         method: "POST",
-        operation: "Notify password changed",
-        token
+        operation: "Notify password changed"
       });
     } catch (error) {
       notificationResult = {

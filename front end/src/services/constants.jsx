@@ -53,7 +53,12 @@ export const API_ENDPOINTS = {
     register: `${API_ROUTES.auth}/register`,
     syncVerification: `${API_ROUTES.auth}/sync-verification`,
     profile: `${API_ROUTES.auth}/profile`,
-    passwordChanged: `${API_ROUTES.auth}/password-changed`
+    passwordChanged: `${API_ROUTES.auth}/password-changed`,
+    login: `${API_ROUTES.auth}/login`,
+    logout: `${API_ROUTES.auth}/logout`,
+    refreshSession: `${API_ROUTES.auth}/refresh-session`,
+    refreshTokens: `${API_ROUTES.auth}/refresh-tokens`,
+    refreshAccess: `${API_ROUTES.auth}/refresh-access`
   },
   favorites: {
     list: API_ROUTES.favorites,
