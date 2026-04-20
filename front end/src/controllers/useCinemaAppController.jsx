@@ -140,6 +140,13 @@ export function useCinemaAppController() {
     const unsubscribe = subscribeToAuthState((user) => {
       setCurrentUser(user ?? null);
       setAuthBusy(false);
+      // If the user just signed in after being redirected from the checkout dialog,
+      // navigate to the cart view so CartPage mounts and reopens the dialog.
+      if (user && typeof window !== "undefined") {
+        if (sessionStorage.getItem("cinebook:resumeCheckout")) {
+          setView({ type: "cart" });
+        }
+      }
     });
 
     return () => {

@@ -123,6 +123,7 @@ export function AdminPage({
     cancelError,
     setCancelError,
     handleCancelShow,
+    isLastShowForMovie,
     handleChange,
     handleToggleGenre,
     handleFileChange,
@@ -1107,15 +1108,26 @@ export function AdminPage({
             <DialogTitle>Cancel Scheduled Show</DialogTitle>
             <DialogDescription>
               {cancelTarget && (
-                <>
-                  Are you sure you want to cancel <strong>{cancelTarget.movieTitle}</strong> at{" "}
-                  <strong>
+                isLastShowForMovie ? (
+                  <>
+                    <strong>{cancelTarget.movieTitle}</strong> has only one show left (
                     {new Date(cancelTarget.startAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}
                     {" · "}
                     {new Date(cancelTarget.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" })}
-                  </strong>{" "}
-                  in <strong>{cancelTarget.showroomName}</strong>? This cannot be undone.
-                </>
+                    {" in "}<strong>{cancelTarget.showroomName}</strong>).
+                    {" "}Cancelling it will move the movie to <strong>Coming Soon</strong> status. This cannot be undone.
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to cancel <strong>{cancelTarget.movieTitle}</strong> at{" "}
+                    <strong>
+                      {new Date(cancelTarget.startAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}
+                      {" · "}
+                      {new Date(cancelTarget.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" })}
+                    </strong>{" "}
+                    in <strong>{cancelTarget.showroomName}</strong>? This cannot be undone.
+                  </>
+                )
               )}
             </DialogDescription>
           </DialogHeader>
@@ -1123,7 +1135,7 @@ export function AdminPage({
           <DialogFooter style={{ marginTop: "1rem" }}>
             <Button variant="outline" onClick={() => { setCancelTarget(null); setCancelError(""); }} disabled={isCancelling}>Keep Show</Button>
             <Button variant="destructive" onClick={handleCancelShow} disabled={isCancelling}>
-              {isCancelling ? "Cancelling..." : "Cancel Show"}
+              {isCancelling ? "Cancelling..." : isLastShowForMovie ? "Yes, Cancel & Move to Coming Soon" : "Cancel Show"}
             </Button>
           </DialogFooter>
         </DialogContent>

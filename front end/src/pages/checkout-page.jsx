@@ -81,7 +81,7 @@ export default function CheckoutPageRoute() {
       setIsAuthResolved(true);
 
       if (!signedIn) {
-        void router.replace("/login?mode=login");
+        void router.replace(`/login?mode=login&returnTo=${encodeURIComponent(router.asPath || "/checkout")}`);
       }
     });
 

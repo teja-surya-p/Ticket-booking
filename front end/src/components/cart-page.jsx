@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { ArrowLeft, Minus, Plus, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -95,6 +96,20 @@ export function CartPage({
   });
   const isAuthenticatedForCheckout =
     typeof currentUser?.uid === "string" && currentUser.uid.trim().length > 0;
+
+  // After a login redirect, reopen the checkout dialog if the user had been mid-checkout.
+  const didResumeRef = useRef(false);
+  useEffect(() => {
+    if (didResumeRef.current) return;
+    if (!isAuthenticatedForCheckout) return;
+    if (items.length === 0) return;
+    const flag = sessionStorage.getItem("cinebook:resumeCheckout");
+    if (flag) {
+      didResumeRef.current = true;
+      sessionStorage.removeItem("cinebook:resumeCheckout");
+      openDialog();
+    }
+  }, [isAuthenticatedForCheckout, items.length, openDialog]);
 
   const handleCheckoutClick = () => {
     openDialog();
@@ -328,6 +343,7 @@ export function CartPage({
         onDeleteCard={deleteSavedCardById}
         onClose={closeDialog}
         onLogin={() => {
+          sessionStorage.setItem("cinebook:resumeCheckout", "true");
           closeDialog();
           const returnTo = encodeURIComponent(router.asPath || "/");
           void router.push(`/login?mode=login&returnTo=${returnTo}`);

@@ -611,7 +611,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
 
     if (!isValidEmail(normalizedCustomerEmail)) {
       setPaymentError(
-        "Please sign in to save a card."
+        "Please enter a valid email address."
       );
       return;
     }

@@ -607,11 +607,18 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     }, 3000);
   };
 
+  const isLastShowForMovie = cancelTarget
+    ? allScheduledShows.filter((s) => String(s.movieId) === String(cancelTarget.movieId)).length === 1
+    : false;
+
   const handleCancelShow = async () => {
     if (!cancelTarget) return;
     setIsCancelling(true);
     setCancelError("");
     try {
+      if (isLastShowForMovie) {
+        await onUpdateMovie?.(cancelTarget.movieId, { status: "coming_soon" });
+      }
       await cancelAdminShowtime(cancelTarget.showtimeId);
       setAllScheduledShows((prev) => prev.filter((s) => s.showtimeId !== cancelTarget.showtimeId));
       setCancelTarget(null);
@@ -879,6 +886,7 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     cancelError,
     setCancelError,
     handleCancelShow,
+    isLastShowForMovie,
     isLoadingAllShows,
     buildStartAtFromForm,
     handleChange,
