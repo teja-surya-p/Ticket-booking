@@ -1,7 +1,10 @@
 @reference "../pages/globals.css";
 
 .home-hero-shell {
-  @apply relative overflow-hidden rounded-[2rem] border border-white/10 bg-neutral-950 shadow-[0_40px_120px_rgba(0,0,0,0.4)];
+  @apply relative overflow-hidden rounded-[2rem] bg-neutral-950;
+  /* Hero is a dark cinematic surface — use a deep drop shadow here, not neo (neo needs mid-tone bg) */
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.38), 0 8px 32px rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .home-hero-carousel {
@@ -90,7 +93,13 @@
 }
 
 .home-hero-primary-action {
-  @apply h-14 rounded-2xl border border-primary/40 px-7 text-base font-semibold shadow-[0_20px_40px_rgba(224,74,80,0.22)];
+  @apply h-14 rounded-2xl px-7 text-base font-semibold;
+  box-shadow: var(--shadow-neo-primary);
+  border: none;
+}
+.home-hero-primary-action:active {
+  box-shadow: var(--shadow-neo-primary-pressed);
+  transform: translateY(1px);
 }
 
 .home-hero-secondary-action {
@@ -159,11 +168,17 @@
 }
 
 .home-hero-nav-button {
-  @apply inline-flex size-11 items-center justify-center rounded-full border border-white/12 bg-black/35 text-white transition-colors hover:bg-white/12;
+  @apply inline-flex size-11 items-center justify-center rounded-full bg-black/35 text-white hover:bg-white/12;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.45), -3px -3px 8px rgba(80, 80, 80, 0.12);
+  transition: box-shadow 150ms ease-out, transform 150ms ease-out;
 }
-
+.home-hero-nav-button:active:not(:disabled) {
+  box-shadow: inset 3px 3px 7px rgba(0, 0, 0, 0.6), inset -2px -2px 5px rgba(80, 80, 80, 0.1);
+  transform: translateY(1px);
+}
 .home-hero-nav-button:disabled {
-  @apply cursor-not-allowed opacity-40 hover:bg-black/35;
+  @apply cursor-not-allowed opacity-40;
 }
 
 .home-hero-nav-icon {

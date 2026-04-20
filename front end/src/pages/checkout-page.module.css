@@ -5,7 +5,11 @@
 }
 
 .checkout-confirmation-class-2 {
-  @apply rounded-xl border border-emerald-200/80 bg-card p-6 text-center shadow-[0_25px_80px_rgba(16,185,129,0.08)] sm:p-8;
+  @apply rounded-xl bg-card p-6 text-center sm:p-8;
+  box-shadow:
+    var(--shadow-neo-lg),
+    0 0 0 1px color-mix(in oklch, oklch(0.65 0.15 165) 25%, transparent);
+  border: none;
 }
 
 .checkout-confirmation-class-3 {
@@ -25,7 +29,9 @@
 }
 
 .checkout-confirmation-class-7 {
-  @apply mx-auto mt-6 max-w-md rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 text-left;
+  @apply mx-auto mt-6 max-w-md rounded-lg bg-emerald-50/70 p-4 text-left;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
 }
 
 .checkout-confirmation-class-8 {

@@ -1,7 +1,8 @@
 @reference "../pages/globals.css";
 
 .navbar-class-1 {
-  @apply sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-md;
+  @apply sticky top-0 z-50 bg-card/90 backdrop-blur-md;
+  box-shadow: var(--shadow-neo-sm);
 }
 
 .navbar-class-2 {
@@ -33,7 +34,9 @@
 }
 
 .navbar-class-9 {
-  @apply h-9 pl-9 bg-secondary border-border text-foreground placeholder:text-muted-foreground;
+  @apply h-9 pl-9 bg-background text-foreground placeholder:text-muted-foreground;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .navbar-class-10 {

@@ -7,11 +7,14 @@
 
 .seat-dialog-class-1[data-slot="dialog-content"] {
   max-height: calc(100vh - 1rem);
-  @apply flex flex-col overflow-hidden rounded-[1.3rem] border border-border bg-background p-0 shadow-[0_24px_72px_rgba(15,23,42,0.16)];
+  @apply flex flex-col overflow-hidden rounded-[1.3rem] bg-background p-0;
+  box-shadow: var(--shadow-neo-xl);
+  border: none;
 }
 
 .seat-dialog-class-2 {
-  @apply border-b border-border px-4 py-4 sm:px-5;
+  @apply px-4 py-4 sm:px-5;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
 }
 
 .seat-dialog-class-3 {
@@ -31,7 +34,9 @@
 }
 
 .seat-dialog-class-7 {
-  @apply mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3;
+  @apply mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-card px-4 py-3;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
 }
 
 .seat-dialog-class-8 {
@@ -59,11 +64,15 @@
 }
 
 .seat-dialog-class-14 {
-  @apply block h-3.5 w-3.5 rounded-[0.35rem] border border-border bg-card;
+  @apply block h-3.5 w-3.5 rounded-[0.35rem] bg-card;
+  box-shadow: var(--shadow-neo-xs);
+  border: none;
 }
 
 .seat-dialog-class-15 {
-  @apply rounded-[1.1rem] border border-border bg-card p-4;
+  @apply rounded-[1.1rem] bg-card p-4;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
 }
 
 .seat-dialog-class-16 {
@@ -84,7 +93,9 @@
 
 .seat-dialog-class-20 {
   min-height: 20rem;
-  @apply flex items-center justify-center gap-3 rounded-[0.95rem] border border-border bg-muted/20 text-sm text-muted-foreground;
+  @apply flex items-center justify-center gap-3 rounded-[0.95rem] bg-muted/20 text-sm text-muted-foreground;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .seat-dialog-class-21 {
@@ -96,7 +107,9 @@
   --seat-gap: 0.5rem;
   --label-width: 1.85rem;
   --aisle-width: 1.15rem;
-  @apply overflow-x-auto rounded-[1rem] border border-border bg-background p-3;
+  @apply overflow-x-auto rounded-[1rem] bg-background p-3;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .seat-dialog-class-29 {
@@ -129,28 +142,40 @@
 
 .seat-dialog-class-23 {
   height: 3.2rem;
-  @apply flex items-center justify-center gap-1 rounded-[1rem] border border-border bg-card px-1.5 text-foreground transition-all duration-150;
+  @apply flex items-center justify-center gap-1 rounded-[1rem] bg-card px-1.5 text-foreground;
+  box-shadow: var(--shadow-neo-xs);
+  border: none;
+  transition: box-shadow 150ms ease-out, transform 150ms ease-out;
 }
 
 .seat-dialog-class-23:hover:not(:disabled) {
-  @apply border-primary/40 bg-primary/5;
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-neo-sm);
+  transform: translateY(-2px);
+}
+
+.seat-dialog-class-23:active:not(:disabled) {
+  box-shadow: var(--shadow-neo-pressed);
+  transform: translateY(0);
 }
 
 .seat-dialog-class-23:focus-visible {
-  @apply outline-none ring-2 ring-primary/50 ring-offset-2 ring-offset-background;
+  outline: none;
+  box-shadow: var(--shadow-neo-xs), 0 0 0 2px color-mix(in oklch, var(--ring) 40%, transparent);
 }
 
 .seat-dialog-class-24 {
-  @apply cursor-not-allowed border-border bg-muted text-muted-foreground opacity-70;
+  @apply cursor-not-allowed bg-muted text-muted-foreground opacity-70;
+  box-shadow: var(--shadow-neo-inset-xs);
 }
 
 .seat-dialog-class-25 {
-  @apply border-primary bg-primary text-primary-foreground shadow-[0_10px_22px_rgba(15,23,42,0.12)];
+  @apply bg-primary text-primary-foreground;
+  box-shadow: var(--shadow-neo-primary);
 }
 
 .seat-dialog-class-26 {
-  @apply border-border bg-card text-foreground shadow-[0_4px_14px_rgba(15,23,42,0.05)];
+  @apply bg-card text-foreground;
+  box-shadow: var(--shadow-neo-xs);
 }
 
 .seat-dialog-class-27 {
@@ -162,7 +187,9 @@
 }
 
 .seat-dialog-class-34 {
-  @apply mt-4 rounded-2xl border border-border bg-card px-4 py-3;
+  @apply mt-4 rounded-2xl bg-card px-4 py-3;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
 }
 
 .seat-dialog-class-35 {
@@ -186,7 +213,9 @@
 }
 
 .seat-dialog-class-40 {
-  @apply sticky bottom-0 mt-auto border-t border-border bg-background/95 px-4 py-4 backdrop-blur sm:px-5;
+  @apply sticky bottom-0 mt-auto bg-background/95 px-4 py-4 backdrop-blur sm:px-5;
+  border-top: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
 }
 
 .seat-dialog-class-41 {
@@ -198,7 +227,9 @@
 }
 
 .seat-dialog-class-43 {
-  @apply mt-4 rounded-2xl border border-border bg-card px-4 py-4;
+  @apply mt-4 rounded-2xl bg-card px-4 py-4;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
 }
 
 .seat-dialog-class-44 {
@@ -218,7 +249,9 @@
 }
 
 .seat-dialog-class-48 {
-  @apply mt-3 rounded-xl border border-border bg-background px-3 py-2;
+  @apply mt-3 rounded-xl bg-background px-3 py-2;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .seat-dialog-class-49 {
@@ -226,7 +259,9 @@
 }
 
 .seat-dialog-class-50 {
-  @apply mt-3 space-y-3 rounded-xl border border-border bg-background p-3;
+  @apply mt-3 space-y-3 rounded-xl bg-background p-3;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .seat-dialog-class-51 {
@@ -242,15 +277,20 @@
 }
 
 .seat-dialog-class-54 {
-  @apply grid w-full gap-2 rounded-xl border border-border bg-background px-3 py-2 text-left transition-colors;
+  @apply grid w-full gap-2 rounded-xl bg-background px-3 py-2 text-left;
+  box-shadow: var(--shadow-neo-xs);
+  border: none;
+  transition: box-shadow 150ms ease-out, transform 150ms ease-out;
 }
 
 .seat-dialog-class-54:hover {
-  @apply border-primary/40 bg-primary/5;
+  box-shadow: var(--shadow-neo-sm);
+  transform: translateY(-1px);
 }
 
 .seat-dialog-class-55 {
-  @apply border-primary bg-primary/10;
+  @apply bg-primary/10;
+  box-shadow: var(--shadow-neo-inset-xs), 0 0 0 2px color-mix(in oklch, var(--primary) 40%, transparent);
 }
 
 .seat-dialog-class-56 {
@@ -294,7 +334,9 @@
 }
 
 .seat-dialog-class-66 {
-  @apply grid gap-2 rounded-lg border border-border bg-card px-3 py-3;
+  @apply grid gap-2 rounded-lg bg-card px-3 py-3;
+  box-shadow: var(--shadow-neo-xs);
+  border: none;
 }
 
 .seat-dialog-class-67 {

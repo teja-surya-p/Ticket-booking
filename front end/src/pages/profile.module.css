@@ -17,7 +17,9 @@
 }
 
 .hero {
-  @apply flex flex-wrap items-start justify-between gap-4 rounded-3xl border border-border/80 bg-card/90 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-6;
+  @apply flex flex-wrap items-start justify-between gap-4 rounded-3xl bg-card/90 p-5 backdrop-blur sm:p-6;
+  box-shadow: var(--shadow-neo-lg);
+  border: none;
 }
 
 .identityWrap {
@@ -30,7 +32,8 @@
     color-mix(in oklch, var(--primary) 85%, white 15%),
     color-mix(in oklch, var(--primary) 65%, black 12%)
   );
-  @apply flex size-14 items-center justify-center rounded-2xl text-xl font-black text-primary-foreground shadow-[0_10px_25px_color-mix(in_oklch,var(--primary)_35%,transparent)];
+  @apply flex size-14 items-center justify-center rounded-2xl text-xl font-black text-primary-foreground;
+  box-shadow: var(--shadow-neo-primary);
 }
 
 .heroCopy {
@@ -54,7 +57,9 @@
 }
 
 .panel {
-  @apply rounded-3xl border border-border/80 bg-card/90 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-6;
+  @apply rounded-3xl bg-card/90 p-5 backdrop-blur sm:p-6;
+  box-shadow: var(--shadow-neo-lg);
+  border: none;
 }
 
 .stack {
@@ -62,7 +67,9 @@
 }
 
 .loadingText {
-  @apply rounded-xl border border-border/80 bg-background/70 px-4 py-3 text-sm text-muted-foreground;
+  @apply rounded-xl bg-background/70 px-4 py-3 text-sm text-muted-foreground;
+  box-shadow: var(--shadow-neo-inset-xs);
+  border: none;
 }
 
 .note {
@@ -90,7 +97,9 @@
 }
 
 .summaryCard {
-  @apply grid content-start gap-3 rounded-2xl border border-border/80 bg-background/70 p-4;
+  @apply grid content-start gap-3 rounded-2xl bg-background/70 p-4;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
 }
 
 .summaryLabel {
@@ -123,7 +132,9 @@
 }
 
 .metaRow {
-  @apply grid gap-1 rounded-xl border border-border/70 bg-card px-3 py-2;
+  @apply grid gap-1 rounded-xl bg-card px-3 py-2;
+  box-shadow: var(--shadow-neo-xs);
+  border: none;
 }
 
 .metaLabel {
@@ -147,7 +158,9 @@
 }
 
 .detailsCard {
-  @apply rounded-2xl border border-border/80 bg-background/70 p-4 sm:p-5;
+  @apply rounded-2xl bg-background/70 p-4 sm:p-5;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
 }
 
 .sectionHeading {
@@ -159,7 +172,9 @@
 }
 
 .dataCard {
-  @apply rounded-xl border border-border/80 bg-card px-4 py-3;
+  @apply rounded-xl bg-card px-4 py-3;
+  box-shadow: var(--shadow-neo-xs);
+  border: none;
 }
 
 .dataCardWide {
@@ -179,7 +194,9 @@
 }
 
 .section {
-  @apply rounded-2xl border border-border/80 bg-background/70 p-4 sm:p-5;
+  @apply rounded-2xl bg-background/70 p-4 sm:p-5;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
 }
 
 .sectionTitle {
@@ -207,7 +224,9 @@
 }
 
 .savedCardsSection {
-  @apply mt-4 rounded-2xl border border-border/80 bg-card/70 p-4;
+  @apply mt-4 rounded-2xl bg-card/70 p-4;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
 }
 
 .savedCardsHeader {
@@ -239,7 +258,9 @@
 }
 
 .addCardForm {
-  @apply mb-3 rounded-xl border border-border/80 bg-background px-3 py-3;
+  @apply mb-3 rounded-xl bg-background px-3 py-3;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .savedCardFieldError {
@@ -251,7 +272,14 @@
 }
 
 .savedCardItem {
-  @apply rounded-xl border border-border/80 bg-background px-3 py-3;
+  @apply rounded-xl bg-background px-3 py-3;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
+  transition: box-shadow 180ms ease-out, transform 180ms ease-out;
+}
+.savedCardItem:hover {
+  box-shadow: var(--shadow-neo-md);
+  transform: translateY(-1px);
 }
 
 .savedCardTopRow {
@@ -271,7 +299,9 @@
 }
 
 .savedCardEditForm {
-  @apply mt-3 rounded-lg border border-border/80 bg-card px-3 py-3;
+  @apply mt-3 rounded-lg bg-card px-3 py-3;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .savedCardEditGrid {

@@ -1,74 +1,159 @@
 :root {
-  --background: oklch(0.98 0.002 260);
-  --foreground: oklch(0.14 0.005 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.14 0.005 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.14 0.005 260);
-  --primary: oklch(0.55 0.22 15);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.94 0.002 260);
-  --secondary-foreground: oklch(0.2 0.005 260);
-  --muted: oklch(0.94 0.002 260);
-  --muted-foreground: oklch(0.45 0.005 260);
-  --accent: oklch(0.55 0.22 15);
-  --accent-foreground: oklch(0.98 0 0);
-  --warning: oklch(0.8 0.16 83);
-  --warning-foreground: oklch(0.18 0.02 83);
-  --destructive: oklch(0.577 0.245 27.325);
+  /* ─── Neo surface ───────────────────────────────────────────────────────── */
+  /* Classic neomorphism base: a specific mid-tone that lets shadows breathe   */
+  --background:           oklch(0.90 0.011 252);
+  --foreground:           oklch(0.20 0.014 255);
+
+  /* Cards / popovers share the same surface tone for the neo "same-material" look */
+  --card:                 oklch(0.90 0.011 252);
+  --card-foreground:      oklch(0.20 0.014 255);
+  --popover:              oklch(0.92 0.009 252);
+  --popover-foreground:   oklch(0.20 0.014 255);
+
+  /* ─── Brand ─────────────────────────────────────────────────────────────── */
+  --primary:              oklch(0.55 0.22 15);
+  --primary-foreground:   oklch(0.98 0 0);
+  --accent:               oklch(0.55 0.22 15);
+  --accent-foreground:    oklch(0.98 0 0);
+
+  /* ─── Neutral surfaces ───────────────────────────────────────────────────── */
+  --secondary:            oklch(0.87 0.013 252);
+  --secondary-foreground: oklch(0.28 0.014 255);
+  --muted:                oklch(0.87 0.013 252);
+  --muted-foreground:     oklch(0.47 0.010 255);
+
+  /* ─── Semantic ───────────────────────────────────────────────────────────── */
+  --warning:              oklch(0.80 0.16 83);
+  --warning-foreground:   oklch(0.18 0.02 83);
+  --destructive:          oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.88 0.005 260);
-  --input: oklch(0.91 0.005 260);
-  --ring: oklch(0.55 0.22 15);
+
+  /* ─── Controls ───────────────────────────────────────────────────────────── */
+  /* Borders are very subtle — neo relies on shadows, not hard edges */
+  --border:               oklch(0.83 0.013 252 / 0.45);
+  --input:                oklch(0.90 0.011 252);
+  --ring:                 oklch(0.55 0.22 15);
+
+  /* ─── Charts ─────────────────────────────────────────────────────────────── */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.96 0.002 260);
-  --sidebar-foreground: oklch(0.14 0.005 260);
-  --sidebar-primary: oklch(0.55 0.22 15);
+
+  /* ─── Radius ─────────────────────────────────────────────────────────────── */
+  --radius: 0.875rem; /* 14 px — soft, rounded, neo-appropriate */
+
+  /* ─── Sidebar ────────────────────────────────────────────────────────────── */
+  --sidebar:                    oklch(0.90 0.011 252);
+  --sidebar-foreground:         oklch(0.20 0.014 255);
+  --sidebar-primary:            oklch(0.55 0.22 15);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.94 0.002 260);
-  --sidebar-accent-foreground: oklch(0.2 0.005 260);
-  --sidebar-border: oklch(0.88 0.005 260);
-  --sidebar-ring: oklch(0.55 0.22 15);
+  --sidebar-accent:             oklch(0.87 0.013 252);
+  --sidebar-accent-foreground:  oklch(0.28 0.014 255);
+  --sidebar-border:             oklch(0.83 0.013 252 / 0.45);
+  --sidebar-ring:               oklch(0.55 0.22 15);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     NEOMORPHISM SHADOW SYSTEM
+     Light mode: background ~#dde3ed
+       • highlight (top-left):  pure white
+       • shadow   (btm-right):  #a3b1c6 — the "classic" neo dark shade
+  ═══════════════════════════════════════════════════════════════════════════ */
+  --neo-light: rgba(255, 255, 255, 0.82);
+  --neo-dark:  rgba(155, 170, 195, 0.70);
+
+  /* Raised — element floats above the surface */
+  --shadow-neo-xs: 3px 3px 6px var(--neo-dark),   -3px -3px 6px var(--neo-light);
+  --shadow-neo-sm: 5px 5px 10px var(--neo-dark),  -5px -5px 10px var(--neo-light);
+  --shadow-neo-md: 8px 8px 16px var(--neo-dark),  -8px -8px 16px var(--neo-light);
+  --shadow-neo-lg: 12px 12px 24px var(--neo-dark), -12px -12px 24px var(--neo-light);
+  --shadow-neo-xl: 18px 18px 36px var(--neo-dark), -18px -18px 36px var(--neo-light);
+
+  /* Inset — element appears pressed into the surface (used on inputs) */
+  --shadow-neo-inset-xs: inset 2px 2px 5px var(--neo-dark),  inset -2px -2px 5px var(--neo-light);
+  --shadow-neo-inset-sm: inset 3px 3px 6px var(--neo-dark),  inset -3px -3px 6px var(--neo-light);
+  --shadow-neo-inset:    inset 5px 5px 10px var(--neo-dark), inset -5px -5px 10px var(--neo-light);
+
+  /* Pressed — button click / active state */
+  --shadow-neo-pressed:
+    inset 3px 3px 7px var(--neo-dark),
+    inset -2px -2px 5px var(--neo-light);
+
+  /* Primary colored neo button */
+  --neo-primary-dark:  color-mix(in oklch, var(--primary) 60%, black 40%);
+  --neo-primary-light: color-mix(in oklch, var(--primary) 20%, white 80%);
+  --shadow-neo-primary:
+    5px 5px 14px var(--neo-primary-dark),
+    -4px -4px 10px var(--neo-primary-light);
+  --shadow-neo-primary-pressed:
+    inset 4px 4px 8px var(--neo-primary-dark),
+    inset -2px -2px 6px var(--neo-primary-light);
+
+  /* Destructive colored neo button */
+  --shadow-neo-destructive:
+    5px 5px 14px rgba(180, 30, 30, 0.45),
+    -4px -4px 10px rgba(255, 140, 140, 0.35);
+  --shadow-neo-destructive-pressed:
+    inset 4px 4px 8px rgba(180, 30, 30, 0.50),
+    inset -2px -2px 6px rgba(255, 140, 140, 0.25);
+
+  /* Flat — visually "on" surface, no elevation (selected tab, etc.) */
+  --shadow-neo-flat:
+    1px 1px 2px var(--neo-dark),
+    -1px -1px 2px var(--neo-light);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK MODE
+   Background ~#1e2430 (deep cool blue-gray)
+   • highlight: slightly lighter than background
+   • shadow:    nearly black
+───────────────────────────────────────────────────────────────────────────── */
 .dark {
-  --background: oklch(0.13 0.005 260);
-  --foreground: oklch(0.96 0 0);
-  --card: oklch(0.17 0.005 260);
-  --card-foreground: oklch(0.96 0 0);
-  --popover: oklch(0.17 0.005 260);
-  --popover-foreground: oklch(0.96 0 0);
-  --primary: oklch(0.65 0.2 15);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.22 0.005 260);
-  --secondary-foreground: oklch(0.9 0 0);
-  --muted: oklch(0.22 0.005 260);
-  --muted-foreground: oklch(0.6 0 0);
-  --accent: oklch(0.65 0.2 15);
-  --accent-foreground: oklch(0.98 0 0);
-  --warning: oklch(0.72 0.15 83);
-  --warning-foreground: oklch(0.12 0.01 83);
-  --destructive: oklch(0.577 0.245 27.325);
+  --background:           oklch(0.18 0.012 252);
+  --foreground:           oklch(0.92 0.005 255);
+  --card:                 oklch(0.18 0.012 252);
+  --card-foreground:      oklch(0.92 0.005 255);
+  --popover:              oklch(0.21 0.012 252);
+  --popover-foreground:   oklch(0.92 0.005 255);
+  --primary:              oklch(0.65 0.20 15);
+  --primary-foreground:   oklch(0.98 0 0);
+  --accent:               oklch(0.65 0.20 15);
+  --accent-foreground:    oklch(0.98 0 0);
+  --secondary:            oklch(0.23 0.012 252);
+  --secondary-foreground: oklch(0.86 0.005 255);
+  --muted:                oklch(0.23 0.012 252);
+  --muted-foreground:     oklch(0.58 0.007 255);
+  --warning:              oklch(0.72 0.15 83);
+  --warning-foreground:   oklch(0.12 0.01 83);
+  --destructive:          oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.28 0.005 260);
-  --input: oklch(0.22 0.005 260);
-  --ring: oklch(0.65 0.2 15);
+  --border:               oklch(0.30 0.012 252 / 0.55);
+  --input:                oklch(0.18 0.012 252);
+  --ring:                 oklch(0.65 0.20 15);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.15 0.005 260);
-  --sidebar-foreground: oklch(0.96 0 0);
-  --sidebar-primary: oklch(0.65 0.2 15);
+  --sidebar:                    oklch(0.18 0.012 252);
+  --sidebar-foreground:         oklch(0.92 0.005 255);
+  --sidebar-primary:            oklch(0.65 0.20 15);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.22 0.005 260);
-  --sidebar-accent-foreground: oklch(0.96 0 0);
-  --sidebar-border: oklch(0.28 0.005 260);
-  --sidebar-ring: oklch(0.65 0.2 15);
+  --sidebar-accent:             oklch(0.23 0.012 252);
+  --sidebar-accent-foreground:  oklch(0.86 0.005 255);
+  --sidebar-border:             oklch(0.30 0.012 252 / 0.55);
+  --sidebar-ring:               oklch(0.65 0.20 15);
+
+  /* Dark-mode neo shadows */
+  --neo-light: rgba(50,  62,  85, 0.55);
+  --neo-dark:  rgba(0,   0,   0,  0.58);
+
+  --shadow-neo-primary:
+    5px 5px 14px color-mix(in oklch, var(--primary) 55%, black),
+    -4px -4px 10px color-mix(in oklch, var(--primary) 20%, white);
+  --shadow-neo-primary-pressed:
+    inset 4px 4px 8px color-mix(in oklch, var(--primary) 65%, black),
+    inset -2px -2px 6px color-mix(in oklch, var(--primary) 15%, white);
 }

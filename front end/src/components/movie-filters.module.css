@@ -5,7 +5,9 @@
 }
 
 .movie-filters-class-2 {
-  @apply w-full sm:w-[160px] bg-secondary border-border text-foreground;
+  @apply w-full sm:w-[160px] bg-background text-foreground;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .movie-filters-class-3 {

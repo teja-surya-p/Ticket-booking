@@ -37,7 +37,9 @@
 }
 
 .booking-page-class-10 {
-  @apply rounded-lg border border-border bg-card p-4 sm:p-6;
+  @apply rounded-xl bg-card p-4 sm:p-6;
+  box-shadow: var(--shadow-neo-md);
+  border: none;
 }
 
 .booking-page-class-11 {
@@ -77,19 +79,28 @@
 }
 
 .booking-page-class-20 {
-  @apply flex size-6 items-center justify-center rounded text-[9px] font-medium transition-colors sm:size-7 sm:text-[10px] md:size-8 md:text-xs;
+  @apply flex size-6 items-center justify-center rounded text-[9px] font-medium sm:size-7 sm:text-[10px] md:size-8 md:text-xs;
+  box-shadow: var(--shadow-neo-xs);
+  transition: box-shadow 150ms ease-out, transform 150ms ease-out;
 }
 
 .booking-page-class-21 {
   @apply bg-muted text-muted-foreground/40 cursor-not-allowed;
+  box-shadow: var(--shadow-neo-inset-xs);
 }
 
 .booking-page-class-22 {
   @apply bg-primary text-primary-foreground;
+  box-shadow: var(--shadow-neo-primary);
 }
 
 .booking-page-class-23 {
-  @apply bg-secondary text-secondary-foreground hover:bg-primary/20;
+  @apply bg-background text-foreground;
+  box-shadow: var(--shadow-neo-xs);
+}
+.booking-page-class-23:hover {
+  box-shadow: var(--shadow-neo-sm);
+  transform: translateY(-1px);
 }
 
 .booking-page-class-24 {

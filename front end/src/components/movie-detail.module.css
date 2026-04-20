@@ -21,7 +21,9 @@
 }
 
 .movie-detail-class-6 {
-  @apply relative overflow-hidden rounded-lg border border-border;
+  @apply relative overflow-hidden rounded-xl;
+  box-shadow: var(--shadow-neo-md);
+  border: none;
 }
 
 .movie-detail-class-7 {
@@ -46,6 +48,7 @@
 
 .movie-detail-class-12 {
   @apply flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground sm:size-16;
+  box-shadow: var(--shadow-neo-primary);
 }
 
 .movie-detail-class-13 {

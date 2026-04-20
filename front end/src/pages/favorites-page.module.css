@@ -8,7 +8,9 @@
 }
 
 .favorites-hero {
-  @apply rounded-[1.75rem] border border-border/80 bg-card px-5 py-5 text-card-foreground shadow-[0_20px_60px_rgba(12,9,16,0.08)] sm:px-6 sm:py-6;
+  @apply rounded-[1.75rem] bg-card px-5 py-5 text-card-foreground sm:px-6 sm:py-6;
+  box-shadow: var(--shadow-neo-lg);
+  border: none;
 }
 
 .favorites-title-row {
@@ -36,7 +38,9 @@
 }
 
 .favorites-empty-state {
-  @apply flex flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-border/70 bg-card/60 px-6 py-16 text-center;
+  @apply flex flex-col items-center justify-center rounded-[1.5rem] bg-card/60 px-6 py-16 text-center;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .favorites-empty-title {

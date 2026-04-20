@@ -5,7 +5,12 @@
 }
 
 .radio-group-class-2 {
-  @apply border-input text-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 aspect-square size-4 shrink-0 rounded-full border shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50;
+  @apply text-primary bg-input dark:bg-input/30 aspect-square size-4 shrink-0 rounded-full outline-none disabled:cursor-not-allowed disabled:opacity-50;
+  box-shadow: var(--shadow-neo-inset-xs);
+  border: none;
+}
+.radio-group-class-2[data-state='checked'] {
+  box-shadow: var(--shadow-neo-xs);
 }
 
 .radio-group-class-3 {

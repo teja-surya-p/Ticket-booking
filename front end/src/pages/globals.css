@@ -49,12 +49,72 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ─── Neomorphism utility classes ────────────────────────────────────────── */
+@layer components {
+  /* Raised surfaces */
+  .neo-xs    { box-shadow: var(--shadow-neo-xs); }
+  .neo-sm    { box-shadow: var(--shadow-neo-sm); }
+  .neo-md    { box-shadow: var(--shadow-neo-md); }
+  .neo-lg    { box-shadow: var(--shadow-neo-lg); }
+  .neo-xl    { box-shadow: var(--shadow-neo-xl); }
+  .neo-flat  { box-shadow: var(--shadow-neo-flat); }
+
+  /* Sunken / inset surfaces (inputs, recesses) */
+  .neo-inset-xs { box-shadow: var(--shadow-neo-inset-xs); }
+  .neo-inset-sm { box-shadow: var(--shadow-neo-inset-sm); }
+  .neo-inset    { box-shadow: var(--shadow-neo-inset); }
+
+  /* Click/pressed states — apply on :active */
+  .neo-pressed       { box-shadow: var(--shadow-neo-pressed); }
+  .neo-primary-btn   {
+    box-shadow: var(--shadow-neo-primary);
+    border: none;
+  }
+  .neo-primary-btn:active:not(:disabled) {
+    box-shadow: var(--shadow-neo-primary-pressed);
+    transform: translateY(1px);
+  }
+  .neo-destructive-btn {
+    box-shadow: var(--shadow-neo-destructive);
+    border: none;
+  }
+  .neo-destructive-btn:active:not(:disabled) {
+    box-shadow: var(--shadow-neo-destructive-pressed);
+    transform: translateY(1px);
+  }
+  .neo-neutral-btn {
+    box-shadow: var(--shadow-neo-sm);
+    border: none;
+  }
+  .neo-neutral-btn:active:not(:disabled) {
+    box-shadow: var(--shadow-neo-pressed);
+    transform: translateY(1px);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
+  /* Smooth transitions for neo interactions */
+  *,
+  *::before,
+  *::after {
+    transition-property: box-shadow, transform, background-color, color, opacity, border-color;
+    transition-duration: 180ms;
+    transition-timing-function: ease-out;
+  }
+  /* But don't slow down animations/keyframes */
+  [class*='animate-'],
+  [class*='motion-'] {
+    transition: none;
+  }
+
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   button:not(:disabled),
   [type='button']:not(:disabled),
@@ -73,5 +133,11 @@
   h3 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
+  }
+
+  /* ── Neo focus ring (replaces hard blue outline) ─────────────── */
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-neo-sm), 0 0 0 3px color-mix(in oklch, var(--ring) 40%, transparent);
   }
 }

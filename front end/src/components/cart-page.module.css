@@ -25,7 +25,9 @@
 }
 
 .cart-page-class-7 {
-  @apply rounded-lg border border-border bg-card p-8 text-center;
+  @apply rounded-xl bg-card p-8 text-center;
+  box-shadow: var(--shadow-neo-md);
+  border: none;
 }
 
 .cart-page-class-8 {
@@ -45,7 +47,14 @@
 }
 
 .cart-page-class-12 {
-  @apply rounded-lg border border-border bg-card p-4;
+  @apply rounded-xl bg-card p-4;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
+  transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+}
+.cart-page-class-12:hover {
+  box-shadow: var(--shadow-neo-md);
+  transform: translateY(-1px);
 }
 
 .cart-page-class-13 {
@@ -81,7 +90,9 @@
 }
 
 .cart-page-class-21 {
-  @apply rounded-md border border-border bg-secondary/50 p-2;
+  @apply rounded-md bg-secondary/50 p-2;
+  box-shadow: var(--shadow-neo-inset-xs);
+  border: none;
 }
 
 .cart-page-class-22 {
@@ -113,7 +124,9 @@
 }
 
 .cart-page-class-29 {
-  @apply h-fit rounded-lg border border-border bg-card p-4 sm:p-5;
+  @apply h-fit rounded-xl bg-card p-4 sm:p-5;
+  box-shadow: var(--shadow-neo-md);
+  border: none;
 }
 
 .cart-page-class-30 {

@@ -8,11 +8,15 @@
 }
 
 .home-banner {
-  @apply mb-4 rounded-md border border-primary/40 bg-primary/10 p-3 text-sm text-foreground;
+  @apply mb-4 rounded-xl bg-primary/10 p-3 text-sm text-foreground;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
 }
 
 .home-toolbar {
-  @apply flex flex-col gap-5 rounded-[1.75rem] border border-border/80 bg-card px-5 py-5 text-card-foreground shadow-[0_20px_60px_rgba(12,9,16,0.08)] sm:flex-row sm:items-end sm:justify-between sm:px-6 sm:py-6;
+  @apply flex flex-col gap-5 rounded-[1.75rem] bg-card px-5 py-5 text-card-foreground sm:flex-row sm:items-end sm:justify-between sm:px-6 sm:py-6;
+  box-shadow: var(--shadow-neo-lg);
+  border: none;
 }
 
 .home-title-row {
@@ -45,9 +49,11 @@
 
 .home-search-shell {
   background:
-    radial-gradient(circle at top right, rgba(220, 91, 64, 0.1), transparent 30%),
+    radial-gradient(circle at top right, rgba(220, 91, 64, 0.08), transparent 30%),
     var(--card);
-  @apply rounded-[1.9rem] border border-border/80 bg-card px-5 py-5 text-card-foreground shadow-[0_30px_100px_rgba(12,9,16,0.12)] sm:px-6 sm:py-6;
+  @apply rounded-[1.9rem] bg-card px-5 py-5 text-card-foreground sm:px-6 sm:py-6;
+  box-shadow: var(--shadow-neo-lg);
+  border: none;
 }
 
 .home-section-header {
@@ -82,7 +88,9 @@
 }
 
 .home-notify-dialog {
-  @apply border-border/80 bg-card text-card-foreground;
+  @apply bg-card text-card-foreground;
+  box-shadow: var(--shadow-neo-xl);
+  border: none;
 }
 
 .home-notify-actions {

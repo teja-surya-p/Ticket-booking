@@ -1,7 +1,14 @@
 @reference "../pages/globals.css";
 
 .movie-card-class-1 {
-  @apply relative flex flex-col overflow-hidden rounded-lg border border-border bg-card text-left transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5;
+  @apply relative flex flex-col overflow-hidden rounded-xl bg-card text-left;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
+  transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+}
+.movie-card-class-1:hover {
+  box-shadow: var(--shadow-neo-md);
+  transform: translateY(-2px);
 }
 
 .movie-card-class-2 {
@@ -63,7 +70,8 @@
 }
 
 .movie-card-class-16 {
-  @apply flex items-center gap-2 border-t border-border p-3;
+  @apply flex items-center gap-2 p-3;
+  border-top: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
 }
 
 .movie-card-class-17 {
@@ -75,7 +83,13 @@
 }
 
 .movie-card-class-19 {
-  @apply absolute right-3 top-3 z-10 inline-flex size-9 items-center justify-center rounded-full border border-border/60 bg-card/90 text-muted-foreground shadow-sm backdrop-blur transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60;
+  @apply absolute right-3 top-3 z-10 inline-flex size-9 items-center justify-center rounded-full bg-card/90 text-muted-foreground backdrop-blur hover:text-primary disabled:cursor-not-allowed disabled:opacity-60;
+  box-shadow: var(--shadow-neo-xs);
+  border: none;
+}
+.movie-card-class-19:active {
+  box-shadow: var(--shadow-neo-pressed);
+  transform: translateY(1px);
 }
 
 .movie-card-class-20 {

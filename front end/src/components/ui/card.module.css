@@ -1,7 +1,9 @@
 @reference "../../pages/globals.css";
 
 .card-class-1 {
-  @apply bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm;
+  @apply bg-card text-card-foreground flex flex-col gap-6 rounded-xl py-6;
+  box-shadow: var(--shadow-neo-md);
+  border: none;
 }
 
 .card-class-2 {

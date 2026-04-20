@@ -21,7 +21,14 @@
 }
 
 .admin-stat-card {
-  @apply rounded-lg border border-border bg-card p-3 sm:p-4;
+  @apply rounded-xl bg-card p-3 sm:p-4;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
+  transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+}
+.admin-stat-card:hover {
+  box-shadow: var(--shadow-neo-md);
+  transform: translateY(-2px);
 }
 
 .admin-stat-label {
@@ -53,7 +60,9 @@
 }
 
 .admin-status-filter {
-  @apply w-full sm:w-[180px] bg-secondary border-border text-foreground;
+  @apply w-full sm:w-[180px] bg-background text-foreground;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .admin-add-button {
@@ -65,7 +74,9 @@
 }
 
 .admin-mobile-card {
-  @apply rounded-lg border border-border bg-card p-4;
+  @apply rounded-xl bg-card p-4;
+  box-shadow: var(--shadow-neo-sm);
+  border: none;
 }
 
 .admin-mobile-card-header {
@@ -109,7 +120,8 @@
 }
 
 .admin-mobile-card-footer {
-  @apply mt-3 flex items-center justify-between border-t border-border pt-3;
+  @apply mt-3 flex items-center justify-between pt-3;
+  border-top: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
 }
 
 .admin-showtime-text {
@@ -145,7 +157,9 @@
 }
 
 .admin-no-showtimes-row {
-  @apply flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2;
+  @apply flex items-center gap-3 rounded-lg bg-card px-3 py-2;
+  box-shadow: var(--shadow-neo-xs);
+  border: none;
 }
 
 .admin-no-showtimes-poster {
@@ -161,7 +175,9 @@
 }
 
 .admin-table-wrapper {
-  @apply hidden overflow-hidden rounded-lg border border-border md:block;
+  @apply hidden overflow-hidden rounded-xl md:block;
+  box-shadow: var(--shadow-neo-md);
+  border: none;
 }
 
 .admin-table-scroll {
@@ -173,7 +189,8 @@
 }
 
 .admin-table-header-row {
-  @apply border-b border-border bg-secondary/50;
+  @apply bg-secondary/50;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
 }
 
 .admin-table-header-cell {
@@ -185,7 +202,8 @@
 }
 
 .admin-table-row {
-  @apply border-b border-border transition-colors hover:bg-secondary/30;
+  @apply transition-colors hover:bg-secondary/30;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 40%, transparent);
 }
 
 .admin-table-row-alt {
@@ -253,11 +271,15 @@
 }
 
 .admin-description-input {
-  @apply min-h-24 rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground;
+  @apply min-h-24 rounded-md bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .admin-assets-card {
-  @apply grid gap-3 rounded-md border border-border bg-secondary/40 p-3;
+  @apply grid gap-3 rounded-md bg-secondary/40 p-3;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .admin-assets-header {
@@ -281,7 +303,9 @@
 }
 
 .admin-issue-report-code {
-  @apply max-h-28 overflow-auto rounded border border-border bg-background p-2 text-[11px] text-muted-foreground;
+  @apply max-h-28 overflow-auto rounded bg-background p-2 text-[11px] text-muted-foreground;
+  box-shadow: var(--shadow-neo-inset-xs);
+  border: none;
 }
 
 .admin-copy-button {

@@ -1,7 +1,9 @@
 @reference "../../pages/globals.css";
 
 .input-group-class-1 {
-  @apply group/input-group border-input dark:bg-input/30 relative flex w-full items-center rounded-md border shadow-xs transition-[color,box-shadow] outline-none;
+  @apply group/input-group bg-input dark:bg-input/30 relative flex w-full items-center rounded-md outline-none;
+  box-shadow: var(--shadow-neo-inset-sm);
+  border: none;
 }
 
 .input-group-class-2 {
@@ -25,7 +27,10 @@
 }
 
 .input-group-class-7 {
-  @apply has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot=input-group-control]:focus-visible]:ring-[3px];
+  /* focus: deepen the inset shadow + add subtle ring */
+}
+.input-group-class-1:has([data-slot=input-group-control]:focus-visible) {
+  box-shadow: var(--shadow-neo-inset), 0 0 0 2px color-mix(in oklch, var(--ring) 35%, transparent);
 }
 
 .input-group-class-8 {
