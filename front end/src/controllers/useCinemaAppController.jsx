@@ -224,8 +224,7 @@ export function useCinemaAppController() {
       setFavoritesLoading(true);
 
       try {
-        const token = await currentUser.getIdToken();
-        const response = await fetchFavorites(token);
+        const response = await fetchFavorites();
         if (!cancelled) {
           setFavoriteMovieIds(parseFavoriteMovieIds(response));
         }
@@ -470,10 +469,9 @@ export function useCinemaAppController() {
     );
 
     try {
-      const token = await currentUser.getIdToken();
       const response = wasFavorite
-        ? await removeFavoriteMovie(movieIdKey, token)
-        : await addFavoriteMovie(movieIdKey, token);
+        ? await removeFavoriteMovie(movieIdKey)
+        : await addFavoriteMovie(movieIdKey);
       setFavoriteMovieIds(parseFavoriteMovieIds(response));
     } catch (error) {
       setFavoriteMovieIds((previous) =>

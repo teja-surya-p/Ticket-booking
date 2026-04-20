@@ -12,6 +12,7 @@ import {
 import { fetchShowroomById } from "@/services/showroomsApi";
 import { validatePromoCode } from "@/services/promoCodesApi";
 import { sendEmailOtp, verifyEmailOtp } from "@/services/bookingApi";
+import { tokenManager } from "@/services/tokenManager";
 import {
   BOOKING_SEAT_COLS,
   BOOKING_SEAT_ROWS,
@@ -219,12 +220,12 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const resolvedUserEmail = normalizeEmail(currentUser?.email ?? "");
   const resolvedUserName = getCustomerNameFromUser(currentUser);
 
-  const getAuthToken = async () => {
-    if (typeof currentUser?.getIdToken !== "function") {
+  const getAuthToken = () => {
+    const t = tokenManager.getAccessToken();
+    if (!t) {
       throw new Error("Please sign in to continue checkout.");
     }
-
-    return await currentUser.getIdToken();
+    return t;
   };
 
   const selectedSeatIds = useMemo(
@@ -382,11 +383,9 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     }
 
     try {
-      const token = await getAuthToken();
       const response = await fetchSavedCards(
         normalizedEmail,
-        customerUid || undefined,
-        token
+        customerUid || undefined
       );
       applySavedCardsPayload(response);
     } catch (error) {
@@ -725,7 +724,6 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setPaymentInfo(null);
 
     try {
-      const token = await getAuthToken();
       const response = await savePaymentCard({
         customerUid: customerUid || undefined,
         customerEmail: normalizedCustomerEmail,
@@ -734,7 +732,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
         cvv: cardForm.cvv,
         expMonth: Number(cardForm.expMonth),
         expYear: Number(cardForm.expYear)
-      }, token);
+      });
 
       const cards = Array.isArray(response?.cards) ? response.cards : [];
       setSavedCards(cards);
@@ -779,8 +777,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setPaymentInfo(null);
 
     try {
-      const token = await getAuthToken();
-      const response = await deleteSavedCardRequest(cardId.trim(), token);
+      const response = await deleteSavedCardRequest(cardId.trim());
       const cards = Array.isArray(response?.cards) ? response.cards : [];
       const maxAllowed = toMaxCardsAllowed(response?.maxCardsAllowed);
 
@@ -934,15 +931,13 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setPaymentInfo(null);
 
     try {
-      const token = await getAuthToken();
       const response = await updateSavedCardRequest(
         normalizedCardId,
         {
           cardholderName,
           expMonth: Number(expMonthValue),
           expYear: Number(expYearValue)
-        },
-        token
+        }
       );
 
       const cards = Array.isArray(response?.cards) ? response.cards : [];
@@ -998,7 +993,6 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
 
       try {
         setIsSubmitting(true);
-        const authToken = await getAuthToken();
         const response = await savePaymentCard({
           customerUid: customerUid || undefined,
           customerEmail: normalizedCustomerEmail,
@@ -1007,7 +1001,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
           cvv: cardForm.cvv,
           expMonth: Number(cardForm.expMonth),
           expYear: Number(cardForm.expYear)
-        }, authToken);
+        });
         tempCardId = response?.savedCardId ?? (Array.isArray(response?.cards) ? response.cards[0]?.cardId : null);
         if (!tempCardId) {
           setPaymentError("Could not process card. Please try again.");
@@ -1031,10 +1025,8 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setIsSubmitting(true);
     setSelectionError(null);
     setPaymentError(null);
-    let authToken = "";
-
     try {
-      authToken = await getAuthToken();
+      getAuthToken(); // validates user is signed in before proceeding
     } catch (error) {
       setPaymentError(getPaymentErrorMessage(error));
       setIsSubmitting(false);
@@ -1067,7 +1059,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
           customerName: customerName.trim() || selectedCard?.cardholderName,
           paymentCardId: effectiveCardId,
           ...(appliedPromo?.code ? { promoCode: appliedPromo.code } : {})
-        }, authToken);
+        });
 
         confirmedBookings.push({
           itemId: item.id,
@@ -1103,8 +1095,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     // Clean up the temporarily saved card if user chose not to save it
     if (tempCardId && !saveCard) {
       try {
-        const cleanupToken = await getAuthToken();
-        await deleteSavedCardRequest(tempCardId, cleanupToken);
+        await deleteSavedCardRequest(tempCardId);
       } catch {
         // Non-fatal: card cleanup failure doesn't affect the booking
       }
