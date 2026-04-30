@@ -239,9 +239,14 @@ class MoviesService {
     }
 
     const movieToDelete = this.normalizeMovie(snapshot.data(), id);
-    await this.deleteMovieAssetsFromStorage(movieToDelete);
+    // Delete showtimes and the movie document first — these must succeed.
+    // Storage cleanup is best-effort: a missing or inaccessible asset must not
+    // block the deletion or leave orphaned showtimes behind.
     await this.showtimesService.deleteByMovieId(movieToDelete.id);
     await docRef.delete();
+    this.deleteMovieAssetsFromStorage(movieToDelete).catch(() => {
+      // Non-fatal: assets are orphaned in storage but the movie + showtimes are gone.
+    });
   }
 
   async deleteMovieAssetsFromStorage(movie) {

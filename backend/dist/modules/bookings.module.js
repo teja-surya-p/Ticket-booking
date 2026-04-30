@@ -8,12 +8,13 @@ import { MoviesModule } from "./movies.module.js";
 import { PromoCodesModule } from "./promo-codes.module.js";
 import { ShowroomsModule } from "./showrooms.module.js";
 import { ShowtimesModule } from "./showtimes.module.js";
+import { SeatLocksModule } from "./seat-locks.module.js";
 
 class BookingsModule {}
 
 decorateClass(BookingsModule, [
   Module({
-    imports: [MoviesModule, ShowtimesModule, PromoCodesModule, ShowroomsModule],
+    imports: [MoviesModule, ShowtimesModule, PromoCodesModule, ShowroomsModule, SeatLocksModule],
     controllers: [BookingsController],
     providers: [BookingsService, DefaultPricingStrategy, ProfileNotificationService],
     exports: [BookingsService]

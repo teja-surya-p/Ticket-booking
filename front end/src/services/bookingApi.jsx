@@ -1,6 +1,49 @@
 import { APICallHandler } from "./apiCallHandler";
 import { API_ENDPOINTS, QUERY_KEYS } from "./constants";
 import "./bookingApi.module.css";
+
+/**
+ * Returns a stable guest session ID stored in localStorage.
+ * Generates one on first call using crypto.randomUUID().
+ * Safe to call during SSR — returns null on the server.
+ */
+export function getOrCreateGuestSessionId() {
+  if (typeof window === "undefined") return null;
+  const key = "cinebook:guestSessionId";
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = `guest_${crypto.randomUUID()}`;
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+/**
+ * Acquires a 5-minute seat lock.
+ * payload: { movieId, showtime, seatId, lockedBy, isGuest }
+ */
+export function lockSeat(payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.lockSeat,
+    method: "POST",
+    operation: "Lock seat",
+    body: payload
+  });
+}
+
+/**
+ * Releases a seat lock.
+ * payload: { movieId, showtime, seatId, lockedBy }
+ */
+export function unlockSeat(payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.unlockSeat,
+    method: "POST",
+    operation: "Unlock seat",
+    body: payload
+  });
+}
+
 export function fetchReservedSeats(movieId, showtime) {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.seats,

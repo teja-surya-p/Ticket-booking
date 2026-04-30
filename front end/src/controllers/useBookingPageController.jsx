@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createBooking,
   fetchBookingQuote,
@@ -7,6 +7,7 @@ import {
   getMeaningfulErrorMessage
 } from "@/services";
 import { fetchShowroomById } from "@/services/showroomsApi";
+import { lockSeat, unlockSeat, getOrCreateGuestSessionId } from "@/services/bookingApi";
 import {
   BOOKING_SEAT_COLS,
   BOOKING_SEAT_ROWS,
@@ -20,9 +21,21 @@ import {
   getTotalTickets
 } from "@/models/booking-model";
 
+/** Formats milliseconds remaining into "M:SS" */
+function formatCountdown(ms) {
+  if (ms <= 0) return "0:00";
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 export function useBookingPageController({ movie, showtime, currentUser }) {
   const [reservedSeats, setReservedSeats] = useState(new Set());
   const [selectedSeats, setSelectedSeats] = useState(new Set());
+  const [lockedSeats, setLockedSeats] = useState(new Map()); // seatId → { lockedBy, lockExpiresAt, isGuest }
+  const [lockCountdown, setLockCountdown] = useState(null); // "4:32" or null
+  const [selfId, setSelfId] = useState(null);
   const [tickets, setTickets] = useState(INITIAL_TICKETS);
   const [pricing, setPricing] = useState(DEFAULT_PRICING);
   const [quote, setQuote] = useState(null);
@@ -36,6 +49,9 @@ export function useBookingPageController({ movie, showtime, currentUser }) {
   const [quoteError, setQuoteError] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
   const [checkoutSuccess, setCheckoutSuccess] = useState(null);
+
+  // Track pending lock operations so we don't double-fire on rapid clicks
+  const lockingRef = useRef(new Set());
 
   const totalTickets = useMemo(() => getTotalTickets(tickets), [tickets]);
   const selectedSeatIds = useMemo(() => Array.from(selectedSeats).sort(), [selectedSeats]);
@@ -72,10 +88,20 @@ export function useBookingPageController({ movie, showtime, currentUser }) {
     });
   };
 
+  // Resolve selfId once on mount / when auth state changes
+  useEffect(() => {
+    const id = currentUser?.uid ?? getOrCreateGuestSessionId();
+    setSelfId(id);
+  }, [currentUser?.uid]);
+
   const refreshReservedSeats = async () => {
     const data = await fetchReservedSeats(movie.id, showtime);
     const reserved = new Set(data.reservedSeats);
     setReservedSeats(reserved);
+
+    // Parse the new lockedSeats map from the API response
+    const lockMap = new Map(Object.entries(data.lockedSeats ?? {}));
+    setLockedSeats(lockMap);
 
     setSelectedSeats((previous) => {
       const next = new Set(previous);
@@ -88,6 +114,7 @@ export function useBookingPageController({ movie, showtime, currentUser }) {
     });
   };
 
+  // Initial data load
   useEffect(() => {
     let active = true;
 
@@ -111,6 +138,7 @@ export function useBookingPageController({ movie, showtime, currentUser }) {
         }
 
         setReservedSeats(new Set(reservedSeatsData.reservedSeats));
+        setLockedSeats(new Map(Object.entries(reservedSeatsData.lockedSeats ?? {})));
         setPricing(pricingData);
 
         if (showroomData?.layout?.rows && showroomData?.layout?.cols) {
@@ -138,6 +166,47 @@ export function useBookingPageController({ movie, showtime, currentUser }) {
     };
   }, [movie.id, movie.showroomId, showtime]);
 
+  // Poll reserved/locked seats every 30 seconds so the grid stays current
+  useEffect(() => {
+    const id = setInterval(() => {
+      void refreshReservedSeats().catch(() => {
+        // Best-effort; don't surface polling errors to the user
+      });
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [movie.id, showtime]);
+
+  // Countdown timer: tick every second, derived from earliest self-locked seat expiry
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!selfId) {
+        setLockCountdown(null);
+        return;
+      }
+
+      // Find the earliest expiry among seats locked by self that are still selected
+      let earliest = null;
+      for (const [seatId, info] of lockedSeats) {
+        if (info.lockedBy === selfId && selectedSeats.has(seatId)) {
+          const exp = new Date(info.lockExpiresAt).getTime();
+          if (earliest === null || exp < earliest) {
+            earliest = exp;
+          }
+        }
+      }
+
+      if (earliest === null) {
+        setLockCountdown(null);
+      } else {
+        const remaining = earliest - Date.now();
+        setLockCountdown(remaining > 0 ? formatCountdown(remaining) : "0:00");
+      }
+    }, 1_000);
+
+    return () => clearInterval(id);
+  }, [lockedSeats, selectedSeats, selfId]);
+
+  // Quote fetch
   useEffect(() => {
     let active = true;
 
@@ -184,30 +253,87 @@ export function useBookingPageController({ movie, showtime, currentUser }) {
     };
   }, [movie.id, selectedSeatIds, showtime, tickets, totalTickets]);
 
-  const toggleSeat = (seatId) => {
+  const toggleSeat = async (seatId) => {
+    // Block if reserved (confirmed booking)
     if (reservedSeats.has(seatId)) {
+      return;
+    }
+
+    // Block if locked by someone else
+    const lockInfo = lockedSeats.get(seatId);
+    if (lockInfo && lockInfo.lockedBy !== selfId) {
+      return;
+    }
+
+    // Prevent concurrent lock operations on the same seat
+    if (lockingRef.current.has(seatId)) {
       return;
     }
 
     setCheckoutError(null);
     setCheckoutSuccess(null);
 
-    setSelectedSeats((previous) => {
-      const next = new Set(previous);
-
-      if (next.has(seatId)) {
+    if (selectedSeats.has(seatId)) {
+      // Deselect: remove from state immediately, then fire unlock (best-effort)
+      setSelectedSeats((previous) => {
+        const next = new Set(previous);
         next.delete(seatId);
         return next;
-      }
+      });
 
-      if (next.size >= totalTickets) {
-        setCheckoutError("Selected seats cannot exceed total tickets. Increase tickets or unselect a seat.");
+      if (selfId) {
+        lockingRef.current.add(seatId);
+        unlockSeat({ movieId: movie.id, showtime, seatId, lockedBy: selfId }).catch(() => {
+          // Unlock is best-effort; the lock will expire naturally
+        }).finally(() => {
+          lockingRef.current.delete(seatId);
+        });
+      }
+      return;
+    }
+
+    // Adding a seat: enforce ticket count limit first
+    if (selectedSeats.size >= totalTickets) {
+      setCheckoutError("Selected seats cannot exceed total tickets. Increase tickets or unselect a seat.");
+      return;
+    }
+
+    if (!selfId) {
+      // selfId not yet resolved — skip (should be rare)
+      return;
+    }
+
+    // Acquire the lock
+    lockingRef.current.add(seatId);
+    try {
+      const isGuest = !currentUser;
+      const result = await lockSeat({
+        movieId: movie.id,
+        showtime,
+        seatId,
+        lockedBy: selfId,
+        isGuest
+      });
+
+      // Update locked seats map with the fresh expiry
+      setLockedSeats((previous) => {
+        const next = new Map(previous);
+        next.set(seatId, { lockedBy: selfId, lockExpiresAt: result.lockExpiresAt, isGuest });
         return next;
-      }
+      });
 
-      next.add(seatId);
-      return next;
-    });
+      setSelectedSeats((previous) => {
+        const next = new Set(previous);
+        next.add(seatId);
+        return next;
+      });
+    } catch (error) {
+      // If 409 the seat was just taken by someone else — refresh to show current state
+      await refreshReservedSeats().catch(() => {});
+      setCheckoutError(getMeaningfulErrorMessage(error, "user"));
+    } finally {
+      lockingRef.current.delete(seatId);
+    }
   };
 
   const updateTicket = (type, delta) => {
@@ -257,15 +383,21 @@ export function useBookingPageController({ movie, showtime, currentUser }) {
     try {
       setIsSubmitting(true);
 
+      // Pass guestSessionId so the backend can verify locks acquired as a guest
+      const guestSessionId = !currentUser ? selfId : undefined;
+
       const booking = await createBooking({
         movieId: movie.id,
         showtime,
         seatIds: selectedSeatIds,
-        tickets
+        tickets,
+        ...(guestSessionId ? { guestSessionId } : {})
       });
 
       setCheckoutSuccess(`Booking confirmed. Reference: ${booking.bookingId}`);
       setSelectedSeats(new Set());
+      setLockedSeats(new Map());
+      setLockCountdown(null);
       setTickets(INITIAL_TICKETS);
       setQuote(null);
       await refreshReservedSeats();
@@ -285,6 +417,9 @@ export function useBookingPageController({ movie, showtime, currentUser }) {
     ticketTypes: BOOKING_TICKET_TYPES,
     reservedSeats,
     selectedSeats,
+    lockedSeats,
+    lockCountdown,
+    selfId,
     tickets,
     pricing,
     quote,

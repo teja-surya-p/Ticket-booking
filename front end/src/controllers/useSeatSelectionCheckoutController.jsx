@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createBooking,
   deleteSavedCard as deleteSavedCardRequest,
@@ -11,7 +11,7 @@ import {
 } from "@/services";
 import { fetchShowroomById } from "@/services/showroomsApi";
 import { validatePromoCode } from "@/services/promoCodesApi";
-import { sendEmailOtp, verifyEmailOtp } from "@/services/bookingApi";
+import { sendEmailOtp, verifyEmailOtp, lockSeat, unlockSeat, getOrCreateGuestSessionId } from "@/services/bookingApi";
 import { tokenManager } from "@/services/tokenManager";
 import {
   BOOKING_SEAT_COLS,
@@ -171,6 +171,10 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
   const [currentIndex, setCurrentIndex] = useState(0);
   const [seatSelections, setSeatSelections] = useState({});
   const [reservedSeats, setReservedSeats] = useState(new Set());
+  const [lockedSeats, setLockedSeats] = useState(new Map()); // seatId → { lockedBy, lockExpiresAt, isGuest }
+  const [lockCountdown, setLockCountdown] = useState(null); // "4:32" or null
+  const [selfId, setSelfId] = useState(null);
+  const lockingRef = useRef(new Set()); // prevents concurrent lock ops on same seat
   const [isLoadingSeats, setIsLoadingSeats] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -304,6 +308,7 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     try {
       const data = await fetchReservedSeats(item.movie.id, item.showtime);
       setReservedSeats(new Set(data.reservedSeats));
+      setLockedSeats(new Map(Object.entries(data.lockedSeats ?? {})));
       // Use the showtime-specific hall returned by the server so the seat
       // grid and hall label always reflect the actual scheduled hall.
       if (data?.showroomId) {
@@ -532,37 +537,133 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     setIsOpen(true);
   };
 
-  const toggleSeat = (seatId) => {
+  // Resolve selfId whenever auth state changes
+  useEffect(() => {
+    const id = currentUser?.uid ?? getOrCreateGuestSessionId();
+    setSelfId(id);
+  }, [currentUser?.uid]);
+
+  // Poll seat availability every 30 seconds while the dialog is open
+  useEffect(() => {
+    if (!isOpen || !currentItem) return;
+    const id = setInterval(() => {
+      void loadReservedSeatsForItem(currentItem).catch(() => {});
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [isOpen, currentItem?.id]);
+
+  // Countdown ticker for self-locked seats
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!selfId) {
+        setLockCountdown(null);
+        return;
+      }
+      const currentSeatIds = new Set(
+        Array.isArray(seatSelections[currentItem?.id]) ? seatSelections[currentItem.id] : []
+      );
+      let earliest = null;
+      for (const [seatId, info] of lockedSeats) {
+        if (info.lockedBy === selfId && currentSeatIds.has(seatId)) {
+          const exp = new Date(info.lockExpiresAt).getTime();
+          if (earliest === null || exp < earliest) earliest = exp;
+        }
+      }
+      if (earliest === null) {
+        setLockCountdown(null);
+      } else {
+        const remaining = earliest - Date.now();
+        if (remaining <= 0) {
+          setLockCountdown("0:00");
+        } else {
+          const totalSec = Math.ceil(remaining / 1000);
+          const m = Math.floor(totalSec / 60);
+          const s = totalSec % 60;
+          setLockCountdown(`${m}:${String(s).padStart(2, "0")}`);
+        }
+      }
+    }, 1_000);
+    return () => clearInterval(id);
+  }, [lockedSeats, seatSelections, currentItem?.id, selfId]);
+
+  const toggleSeat = async (seatId) => {
     if (!currentItem || loadError || reservedSeats.has(seatId)) {
+      return;
+    }
+
+    // Block if locked by someone else
+    const lockInfo = lockedSeats.get(seatId);
+    if (lockInfo && lockInfo.lockedBy !== selfId) {
+      return;
+    }
+
+    // Prevent concurrent lock operations on the same seat
+    if (lockingRef.current.has(seatId)) {
       return;
     }
 
     setSelectionError(null);
 
-    setSeatSelections((previous) => {
-      const nextSelection = new Set(previous[currentItem.id] ?? []);
+    const currentSelection = new Set(seatSelections[currentItem.id] ?? []);
 
-      if (nextSelection.has(seatId)) {
+    if (currentSelection.has(seatId)) {
+      // Deselect: update state immediately, fire unlock best-effort
+      setSeatSelections((previous) => {
+        const nextSelection = new Set(previous[currentItem.id] ?? []);
         nextSelection.delete(seatId);
-        return {
-          ...previous,
-          [currentItem.id]: Array.from(nextSelection).sort()
-        };
-      }
+        return { ...previous, [currentItem.id]: Array.from(nextSelection).sort() };
+      });
 
-      if (nextSelection.size >= totalTickets) {
-        setSelectionError(
-          `Maximum seats for ${totalTickets} ticket${totalTickets === 1 ? "" : "s"} are already selected.`
-        );
-        return previous;
+      if (selfId) {
+        lockingRef.current.add(seatId);
+        unlockSeat({ movieId: currentItem.movie.id, showtime: currentItem.showtime, seatId, lockedBy: selfId }).catch(() => {
+          // Best-effort; lock expires naturally
+        }).finally(() => {
+          lockingRef.current.delete(seatId);
+        });
       }
+      return;
+    }
 
-      nextSelection.add(seatId);
-      return {
-        ...previous,
-        [currentItem.id]: Array.from(nextSelection).sort()
-      };
-    });
+    if (currentSelection.size >= totalTickets) {
+      setSelectionError(
+        `Maximum seats for ${totalTickets} ticket${totalTickets === 1 ? "" : "s"} are already selected.`
+      );
+      return;
+    }
+
+    if (!selfId) return;
+
+    // Acquire lock before adding to selection
+    lockingRef.current.add(seatId);
+    try {
+      const isGuest = !currentUser;
+      const result = await lockSeat({
+        movieId: currentItem.movie.id,
+        showtime: currentItem.showtime,
+        seatId,
+        lockedBy: selfId,
+        isGuest
+      });
+
+      setLockedSeats((previous) => {
+        const next = new Map(previous);
+        next.set(seatId, { lockedBy: selfId, lockExpiresAt: result.lockExpiresAt, isGuest });
+        return next;
+      });
+
+      setSeatSelections((previous) => {
+        const nextSelection = new Set(previous[currentItem.id] ?? []);
+        nextSelection.add(seatId);
+        return { ...previous, [currentItem.id]: Array.from(nextSelection).sort() };
+      });
+    } catch (error) {
+      // Seat was just taken — refresh and show the error
+      await loadReservedSeatsForItem(currentItem).catch(() => {});
+      setSelectionError(getMeaningfulErrorMessage(error, "user"));
+    } finally {
+      lockingRef.current.delete(seatId);
+    }
   };
 
   const goToPreviousItem = () => {
@@ -1049,6 +1150,8 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
       }
 
       try {
+        // Pass guestSessionId so the backend can verify locks acquired before login
+        const guestSessionId = !currentUser ? selfId : undefined;
         const booking = await createBooking({
           customerUid: customerUid || undefined,
           movieId: item.movie.id,
@@ -1058,7 +1161,8 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
           customerEmail: normalizedCustomerEmail,
           customerName: customerName.trim() || selectedCard?.cardholderName,
           paymentCardId: effectiveCardId,
-          ...(appliedPromo?.code ? { promoCode: appliedPromo.code } : {})
+          ...(appliedPromo?.code ? { promoCode: appliedPromo.code } : {}),
+          ...(guestSessionId ? { guestSessionId } : {})
         });
 
         confirmedBookings.push({
@@ -1230,6 +1334,9 @@ export function useSeatSelectionCheckoutController({ items, onCheckout, currentU
     currentIndex,
     totalSteps,
     reservedSeats,
+    lockedSeats,
+    lockCountdown,
+    selfId,
     isLoadingSeats,
     isSubmitting,
     loadError,

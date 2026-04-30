@@ -488,6 +488,100 @@ class ProfileNotificationService {
     );
   }
 
+  /**
+   * Sends a personalised movie recommendation email to a user.
+   *
+   * Adapter Pattern: RecommendationsService calls this method and never
+   * touches Nodemailer or Firestore mail directly. Swapping the email
+   * provider only requires changes here, not in the recommendation logic.
+   *
+   * @param {{ uid?: string, email: string, displayName?: string }} user
+   * @param {object[]} movies - Recommended movie objects
+   */
+  async sendRecommendationEmail(user, movies) {
+    const toEmail = typeof user?.email === "string" ? user.email.trim() : "";
+    if (!toEmail) {
+      return { sent: false, reason: "missing-recipient" };
+    }
+
+    if (!Array.isArray(movies) || movies.length === 0) {
+      return { sent: false, reason: "no-recommendations" };
+    }
+
+    const name = this.sanitizeHeaderText(user?.displayName, "Movie Fan");
+    const now = new Date();
+    const monthYear = now.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+    // Plain-text version
+    const movieTextBlocks = movies.map((movie) => {
+      const genres = Array.isArray(movie.genres) ? movie.genres.join(", ") : (movie.genre ?? "");
+      const desc =
+        typeof movie.description === "string" && movie.description.trim().length > 0
+          ? movie.description.trim().slice(0, 120) + (movie.description.trim().length > 120 ? "…" : "")
+          : "";
+      return [
+        `  ${movie.title}`,
+        genres ? `  Genres: ${genres}` : null,
+        desc ? `  ${desc}` : null
+      ]
+        .filter(Boolean)
+        .join("\n");
+    });
+
+    const textLines = [
+      `Hi ${name},`,
+      "",
+      "Based on movies you've added to your favourites, here are some picks we think you'll enjoy:",
+      "",
+      ...movieTextBlocks.join("\n\n").split("\n"),
+      "",
+      "Visit CineBook to book your tickets today.",
+      "",
+      "— The CineBook Team"
+    ];
+
+    // HTML version
+    const movieCardsHtml = movies
+      .map((movie) => {
+        const genres = Array.isArray(movie.genres) ? movie.genres.join(", ") : (movie.genre ?? "");
+        const desc =
+          typeof movie.description === "string" && movie.description.trim().length > 0
+            ? movie.description.trim().slice(0, 150) + (movie.description.trim().length > 150 ? "…" : "")
+            : "";
+        return [
+          `<div style="border:1px solid #e5e7eb;border-radius:0.5rem;padding:1rem;margin-bottom:0.75rem;background:#ffffff">`,
+          `<p style="font-size:1.05rem;font-weight:700;color:#111827;margin:0 0 0.25rem">${movie.title}</p>`,
+          genres
+            ? `<p style="font-size:0.8rem;color:#6b7280;margin:0 0 0.4rem">Genres: ${genres}</p>`
+            : "",
+          desc ? `<p style="font-size:0.875rem;color:#374151;margin:0">${desc}</p>` : "",
+          `</div>`
+        ].join("");
+      })
+      .join("");
+
+    const html = [
+      `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:1.5rem;background:#f9fafb">`,
+      `<h2 style="color:#111827;margin-bottom:0.25rem">Your CineBook Picks</h2>`,
+      `<p style="color:#6b7280;margin-top:0">Hi ${name},</p>`,
+      `<p style="color:#374151">Based on movies you've added to your favourites, here are some picks we think you'll enjoy:</p>`,
+      movieCardsHtml,
+      `<p style="color:#374151;margin-top:1rem">Visit <strong>CineBook</strong> to book your tickets today.</p>`,
+      `<p style="color:#9ca3af;font-size:0.8rem;margin-top:1.5rem">— The CineBook Team</p>`,
+      `</div>`
+    ].join("");
+
+    return await this.dispatchEmailMessage(
+      {
+        toEmail,
+        subject: `CineBook picks for you — ${monthYear}`,
+        text: textLines.join("\n"),
+        html
+      },
+      "recommendation"
+    );
+  }
+
   async dispatchEmailMessage(message, category = "notification") {
     const deliveryMode = this.resolveDeliveryMode();
 

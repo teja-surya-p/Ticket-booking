@@ -43,6 +43,9 @@ export function SeatSelectionDialog({
   currentIndex,
   totalSteps,
   reservedSeats,
+  lockedSeats,
+  selfId,
+  lockCountdown,
   selectedSeatIds,
   totalTickets,
   remainingSeats,
@@ -188,17 +191,30 @@ export function SeatSelectionDialog({
   const renderSeat = (row, col) => {
     const seatId = buildSeatId(row, col);
     const isReserved = reservedSeats.has(seatId);
+    const lockInfo = lockedSeats instanceof Map ? lockedSeats.get(seatId) : undefined;
+    const isLockedByOther = !isReserved && lockInfo && lockInfo.lockedBy !== selfId;
+    const isUnavailable = isReserved || isLockedByOther;
     const isSelected = selectedSeatIds.includes(seatId);
+
+    let ariaLabel = `Seat ${formatSeatLabel(row, col)}`;
+    let title = formatSeatLabel(row, col);
+    if (isReserved) {
+      ariaLabel = `Seat ${formatSeatLabel(row, col)} reserved`;
+      title = `${formatSeatLabel(row, col)} — Reserved`;
+    } else if (isLockedByOther) {
+      ariaLabel = `Seat ${formatSeatLabel(row, col)} temporarily held`;
+      title = `${formatSeatLabel(row, col)} — Temporarily held`;
+    }
 
     return (
       <button
         key={seatId}
         type="button"
-        disabled={isReserved}
+        disabled={isUnavailable}
         onClick={() => onToggleSeat(seatId)}
         className={[
           styles["seat-dialog-class-23"],
-          isReserved
+          isUnavailable
             ? styles["seat-dialog-class-24"]
             : isSelected
               ? styles["seat-dialog-class-25"]
@@ -206,8 +222,8 @@ export function SeatSelectionDialog({
         ]
           .filter(Boolean)
           .join(" ")}
-        aria-label={`Seat ${formatSeatLabel(row, col)}`}
-        title={formatSeatLabel(row, col)}
+        aria-label={ariaLabel}
+        title={title}
       >
         <Armchair className={styles["seat-dialog-class-27"]} />
         <span className={styles["seat-dialog-class-28"]}>{formatSeatLabel(row, col)}</span>
@@ -338,6 +354,12 @@ export function SeatSelectionDialog({
                       Unavailable
                     </span>
                   </div>
+
+                  {lockCountdown && (
+                    <p style={{ textAlign: "center", fontSize: "0.78rem", color: "var(--muted-foreground)", marginTop: "0.25rem" }}>
+                      Your selection expires in <strong>{lockCountdown}</strong>
+                    </p>
+                  )}
                 </div>
 
                 <section className={styles["seat-dialog-class-15"]}>

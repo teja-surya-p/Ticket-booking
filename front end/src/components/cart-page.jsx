@@ -27,6 +27,9 @@ export function CartPage({
     currentIndex,
     totalSteps,
     reservedSeats,
+    lockedSeats,
+    lockCountdown,
+    selfId,
     isLoadingSeats,
     isSubmitting,
     loadError,
@@ -311,6 +314,9 @@ export function CartPage({
         currentIndex={currentIndex}
         totalSteps={totalSteps}
         reservedSeats={reservedSeats}
+        lockedSeats={lockedSeats}
+        lockCountdown={lockCountdown}
+        selfId={selfId}
         selectedSeatIds={selectedSeatIds}
         totalTickets={seatSelectionTicketCount}
         remainingSeats={remainingSeats}

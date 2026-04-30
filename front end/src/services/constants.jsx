@@ -11,7 +11,8 @@ export const API_ROUTES = {
   auth: withPrefix("/auth"),
   favorites: withPrefix("/favorites"),
   showrooms: withPrefix("/showrooms"),
-  promoCodes: withPrefix("/promo-codes")
+  promoCodes: withPrefix("/promo-codes"),
+  recommendations: withPrefix("/recommendations")
 };
 export const API_ENDPOINTS = {
   movies: {
@@ -23,6 +24,8 @@ export const API_ENDPOINTS = {
   },
   bookings: {
     seats: `${API_ROUTES.bookings}/seats`,
+    lockSeat: `${API_ROUTES.bookings}/seats/lock`,
+    unlockSeat: `${API_ROUTES.bookings}/seats/unlock`,
     pricing: `${API_ROUTES.bookings}/pricing`,
     quote: `${API_ROUTES.bookings}/quote`,
     create: API_ROUTES.bookings,
@@ -68,6 +71,9 @@ export const API_ENDPOINTS = {
   showrooms: {
     list: API_ROUTES.showrooms,
     detail: (showroomId) => `${API_ROUTES.showrooms}/${showroomId}`
+  },
+  recommendations: {
+    sendAll: `${API_ROUTES.recommendations}/send-all`
   }
 };
 export const QUERY_KEYS = {
