@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addFavoriteMovie,
   clearAdminMode as clearStoredAdminMode,
@@ -7,6 +7,7 @@ import {
   fetchFavorites,
   fetchCurrentUserProfile,
   fetchMovies,
+  fetchRecommendations,
   getMeaningfulErrorMessage,
   initializeTokensForUser,
   isAdminModeEnabled,
@@ -95,6 +96,10 @@ export function useCinemaAppController() {
   const [favoriteMovieIds, setFavoriteMovieIds] = useState([]);
   const [favoritePendingMovieIds, setFavoritePendingMovieIds] = useState([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationsSource, setRecommendationsSource] = useState(null);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [recommendationsError, setRecommendationsError] = useState("");
 
   const cartStorageKey = useMemo(
     () => `cinebook:cart:${typeof currentUser?.uid === "string" ? currentUser.uid : "guest"}`,
@@ -245,6 +250,47 @@ export function useCinemaAppController() {
       cancelled = true;
     };
   }, [currentUser?.uid, currentUser]);
+
+  const refreshRecommendations = useCallback(async () => {
+    if (!currentUser) {
+      setRecommendations([]);
+      setRecommendationsSource(null);
+      setRecommendationsError("");
+      setRecommendationsLoading(false);
+      return;
+    }
+
+    setRecommendationsLoading(true);
+    setRecommendationsError("");
+
+    try {
+      const response = await fetchRecommendations();
+      const list = Array.isArray(response?.recommendations) ? response.recommendations : [];
+      setRecommendations(list);
+      setRecommendationsSource(typeof response?.source === "string" ? response.source : null);
+      if (typeof console !== "undefined") {
+        console.log("[recommendations]", {
+          source: response?.source ?? null,
+          count: list.length
+        });
+      }
+    } catch (error) {
+      setRecommendations([]);
+      setRecommendationsSource(null);
+      setRecommendationsError(getMeaningfulErrorMessage(error, "user"));
+      if (typeof console !== "undefined") {
+        console.warn("[recommendations] failed:", error);
+      }
+    } finally {
+      setRecommendationsLoading(false);
+    }
+  }, [currentUser]);
+
+  // Reload recommendations whenever the signed-in user changes (login/logout
+  // and tab refresh both trigger this).
+  useEffect(() => {
+    void refreshRecommendations();
+  }, [refreshRecommendations]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -431,6 +477,7 @@ export function useCinemaAppController() {
       bookings: confirmedBookings,
       warning
     });
+    void refreshRecommendations();
   };
 
   const cartCount = useMemo(() => getCartCount(cartItems), [cartItems]);
@@ -473,6 +520,7 @@ export function useCinemaAppController() {
         ? await removeFavoriteMovie(movieIdKey)
         : await addFavoriteMovie(movieIdKey);
       setFavoriteMovieIds(parseFavoriteMovieIds(response));
+      void refreshRecommendations();
     } catch (error) {
       setFavoriteMovieIds((previous) =>
         wasFavorite ? addFavoriteId(previous, movieIdKey) : removeFavoriteId(previous, movieIdKey)
@@ -553,6 +601,11 @@ export function useCinemaAppController() {
     handleToggleFavorite,
     navigateHome,
     navigateFavorites,
-    handleSignOut
+    handleSignOut,
+    recommendations,
+    recommendationsSource,
+    recommendationsLoading,
+    recommendationsError,
+    refreshRecommendations
   };
 }

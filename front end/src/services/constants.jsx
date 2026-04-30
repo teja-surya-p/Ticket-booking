@@ -73,6 +73,7 @@ export const API_ENDPOINTS = {
     detail: (showroomId) => `${API_ROUTES.showrooms}/${showroomId}`
   },
   recommendations: {
+    list: API_ROUTES.recommendations,
     sendAll: `${API_ROUTES.recommendations}/send-all`
   }
 };

@@ -9,6 +9,7 @@ export * from "./bookingApi";
 export * from "./adminApi";
 export * from "./authApi";
 export * from "./favoritesApi";
+export * from "./recommendationsApi";
 export * from "./showroomsApi";
 export * from "./firebaseConfig";
 export * from "./firebaseStorage";

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import nodemailer from "nodemailer";
 import { decorateClass } from "../common/nest-metadata.js";
+import { appConfig } from "../config/app.config.js";
 import { FirestoreService } from "../config/firestore.service.js";
 
 class ProfileNotificationService {
@@ -497,8 +498,9 @@ class ProfileNotificationService {
    *
    * @param {{ uid?: string, email: string, displayName?: string }} user
    * @param {object[]} movies - Recommended movie objects
+   * @param {{ reasonsByMovieId?: Record<string, string> }} [options]
    */
-  async sendRecommendationEmail(user, movies) {
+  async sendRecommendationEmail(user, movies, options = {}) {
     const toEmail = typeof user?.email === "string" ? user.email.trim() : "";
     if (!toEmail) {
       return { sent: false, reason: "missing-recipient" };
@@ -508,21 +510,27 @@ class ProfileNotificationService {
       return { sent: false, reason: "no-recommendations" };
     }
 
+    const reasonsByMovieId = options?.reasonsByMovieId ?? {};
     const name = this.sanitizeHeaderText(user?.displayName, "Movie Fan");
     const now = new Date();
     const monthYear = now.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    const frontendBase = (appConfig.frontendBaseUrl ?? "").replace(/\/$/, "");
+    const buildBookingLink = (movie) =>
+      frontendBase ? `${frontendBase}/?movieId=${encodeURIComponent(movie.id)}` : "";
 
     // Plain-text version
     const movieTextBlocks = movies.map((movie) => {
       const genres = Array.isArray(movie.genres) ? movie.genres.join(", ") : (movie.genre ?? "");
-      const desc =
-        typeof movie.description === "string" && movie.description.trim().length > 0
-          ? movie.description.trim().slice(0, 120) + (movie.description.trim().length > 120 ? "…" : "")
+      const reason =
+        typeof reasonsByMovieId[movie.id] === "string" && reasonsByMovieId[movie.id].trim().length > 0
+          ? reasonsByMovieId[movie.id].trim()
           : "";
+      const link = buildBookingLink(movie);
       return [
         `  ${movie.title}`,
         genres ? `  Genres: ${genres}` : null,
-        desc ? `  ${desc}` : null
+        reason ? `  Why you'll like it: ${reason}` : null,
+        link ? `  Book it: ${link}` : null
       ]
         .filter(Boolean)
         .join("\n");
@@ -531,7 +539,7 @@ class ProfileNotificationService {
     const textLines = [
       `Hi ${name},`,
       "",
-      "Based on movies you've added to your favourites, here are some picks we think you'll enjoy:",
+      "Based on your favourites and recent bookings, here are some picks we think you'll enjoy:",
       "",
       ...movieTextBlocks.join("\n\n").split("\n"),
       "",
@@ -544,17 +552,23 @@ class ProfileNotificationService {
     const movieCardsHtml = movies
       .map((movie) => {
         const genres = Array.isArray(movie.genres) ? movie.genres.join(", ") : (movie.genre ?? "");
-        const desc =
-          typeof movie.description === "string" && movie.description.trim().length > 0
-            ? movie.description.trim().slice(0, 150) + (movie.description.trim().length > 150 ? "…" : "")
+        const reason =
+          typeof reasonsByMovieId[movie.id] === "string" && reasonsByMovieId[movie.id].trim().length > 0
+            ? reasonsByMovieId[movie.id].trim()
             : "";
+        const link = buildBookingLink(movie);
         return [
           `<div style="border:1px solid #e5e7eb;border-radius:0.5rem;padding:1rem;margin-bottom:0.75rem;background:#ffffff">`,
-          `<p style="font-size:1.05rem;font-weight:700;color:#111827;margin:0 0 0.25rem">${movie.title}</p>`,
+          `<p style="font-size:1.05rem;font-weight:700;color:#111827;margin:0 0 0.25rem">${this.sanitizeHeaderText(movie.title, "Movie")}</p>`,
           genres
             ? `<p style="font-size:0.8rem;color:#6b7280;margin:0 0 0.4rem">Genres: ${genres}</p>`
             : "",
-          desc ? `<p style="font-size:0.875rem;color:#374151;margin:0">${desc}</p>` : "",
+          reason
+            ? `<p style="font-size:0.875rem;color:#374151;margin:0 0 0.5rem"><em>${reason}</em></p>`
+            : "",
+          link
+            ? `<a href="${link}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:0.45rem 0.9rem;border-radius:0.375rem;font-size:0.8rem;font-weight:600">Book / View Details</a>`
+            : "",
           `</div>`
         ].join("");
       })
@@ -564,7 +578,7 @@ class ProfileNotificationService {
       `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:1.5rem;background:#f9fafb">`,
       `<h2 style="color:#111827;margin-bottom:0.25rem">Your CineBook Picks</h2>`,
       `<p style="color:#6b7280;margin-top:0">Hi ${name},</p>`,
-      `<p style="color:#374151">Based on movies you've added to your favourites, here are some picks we think you'll enjoy:</p>`,
+      `<p style="color:#374151">Based on your favourites and recent bookings, here are some picks we think you'll enjoy:</p>`,
       movieCardsHtml,
       `<p style="color:#374151;margin-top:1rem">Visit <strong>CineBook</strong> to book your tickets today.</p>`,
       `<p style="color:#9ca3af;font-size:0.8rem;margin-top:1.5rem">— The CineBook Team</p>`,
