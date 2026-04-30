@@ -362,11 +362,9 @@ export default function ProfilePage() {
       setSavedCardsError("");
 
       try {
-        const token = await currentUser.getIdToken();
         const response = await fetchSavedCards(
           userEmail,
-          typeof currentUser.uid === "string" ? currentUser.uid : undefined,
-          token
+          typeof currentUser.uid === "string" ? currentUser.uid : undefined
         );
 
         if (cancelled) {
@@ -432,8 +430,8 @@ export default function ProfilePage() {
     }
     let cancelled = false;
     setBookingsLoading(true);
-    currentUser.getIdToken()
-      .then((token) => fetchUserBookings(token))
+    Promise.resolve()
+      .then(() => fetchUserBookings())
       .then((data) => { if (!cancelled) setUserBookings(Array.isArray(data) ? data : []); })
       .catch(() => { if (!cancelled) setUserBookings([]); })
       .finally(() => { if (!cancelled) setBookingsLoading(false); });
@@ -780,7 +778,6 @@ export default function ProfilePage() {
     setAddCardSaving(true);
 
     try {
-      const token = await currentUser.getIdToken();
       const response = await savePaymentCard(
         {
           customerUid: typeof currentUser.uid === "string" ? currentUser.uid : undefined,
@@ -790,8 +787,7 @@ export default function ProfilePage() {
           cvv: addCardForm.cvv,
           expMonth: Number(addCardForm.expMonth),
           expYear: Number(addCardForm.expYear)
-        },
-        token
+        }
       );
 
       const cards = Array.isArray(response?.cards) ? response.cards : [];
@@ -958,15 +954,13 @@ export default function ProfilePage() {
     setEditCardSaving(true);
 
     try {
-      const token = await currentUser.getIdToken();
       const response = await updateSavedCardRequest(
         normalizedCardId,
         {
           cardholderName,
           expMonth: Number(expMonthValue),
           expYear: Number(expYearValue)
-        },
-        token
+        }
       );
       const cards = Array.isArray(response?.cards) ? response.cards : [];
 
@@ -1019,8 +1013,7 @@ export default function ProfilePage() {
     setAddCardFieldErrors(createEmptyCardFieldErrors());
 
     try {
-      const token = await currentUser.getIdToken();
-      const response = await deleteSavedCardRequest(normalizedCardId, token);
+      const response = await deleteSavedCardRequest(normalizedCardId);
       const cards = Array.isArray(response?.cards) ? response.cards : [];
 
       setSavedCards(cards);
@@ -1048,9 +1041,8 @@ export default function ProfilePage() {
     setCancelInProgress(true);
     setCancelError("");
     try {
-      const token = await currentUser.getIdToken();
-      await cancelBooking(cancelTarget.bookingId, token);
-      const fresh = await fetchUserBookings(token);
+      await cancelBooking(cancelTarget.bookingId);
+      const fresh = await fetchUserBookings();
       setUserBookings(Array.isArray(fresh) ? fresh : []);
       setCancelTarget(null);
     } catch (err) {

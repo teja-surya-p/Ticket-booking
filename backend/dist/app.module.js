@@ -8,6 +8,7 @@ import { FavoritesModule } from "./modules/favorites.module.js";
 import { FirestoreModule } from "./modules/firestore.module.js";
 import { MoviesModule } from "./modules/movies.module.js";
 import { PromoCodesModule } from "./modules/promo-codes.module.js";
+import { RecommendationsModule } from "./modules/recommendations.module.js";
 import { ShowroomsModule } from "./modules/showrooms.module.js";
 
 class AppModule {}
@@ -23,7 +24,8 @@ decorateClass(AppModule, [
       AdminModule,
       AuthModule,
       ShowroomsModule,
-      PromoCodesModule
+      PromoCodesModule,
+      RecommendationsModule
     ]
   })
 ]);

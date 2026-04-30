@@ -54,7 +54,11 @@ export default function App() {
     handleToggleFavorite,
     navigateHome,
     navigateFavorites,
-    handleSignOut
+    handleSignOut,
+    recommendations,
+    recommendationsSource,
+    recommendationsLoading,
+    recommendationsError
   } = useCinemaAppController();
   const detailMovieIdKey =
     view.type === "detail"
@@ -169,6 +173,10 @@ export default function App() {
             favoriteMovieIds={favoriteMovieIds}
             favoritePendingMovieIds={favoritePendingMovieIds}
             currentUser={currentUser}
+            recommendations={recommendations}
+            recommendationsSource={recommendationsSource}
+            recommendationsLoading={recommendationsLoading}
+            recommendationsError={recommendationsError}
           />
         )}
       </main>

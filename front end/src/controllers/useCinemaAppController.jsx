@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addFavoriteMovie,
   clearAdminMode as clearStoredAdminMode,
@@ -7,13 +7,16 @@ import {
   fetchFavorites,
   fetchCurrentUserProfile,
   fetchMovies,
+  fetchRecommendations,
   getMeaningfulErrorMessage,
+  initializeTokensForUser,
   isAdminModeEnabled,
   removeFavoriteMovie,
   signOutCurrentUser,
   subscribeToAuthState,
   updateMovie
 } from "@/services";
+import { tokenManager } from "@/services/tokenManager";
 import {
   addMovieToCart,
   getCartCount,
@@ -93,6 +96,10 @@ export function useCinemaAppController() {
   const [favoriteMovieIds, setFavoriteMovieIds] = useState([]);
   const [favoritePendingMovieIds, setFavoritePendingMovieIds] = useState([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationsSource, setRecommendationsSource] = useState(null);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [recommendationsError, setRecommendationsError] = useState("");
 
   const cartStorageKey = useMemo(
     () => `cinebook:cart:${typeof currentUser?.uid === "string" ? currentUser.uid : "guest"}`,
@@ -140,12 +147,18 @@ export function useCinemaAppController() {
     const unsubscribe = subscribeToAuthState((user) => {
       setCurrentUser(user ?? null);
       setAuthBusy(false);
-      // If the user just signed in after being redirected from the checkout dialog,
-      // navigate to the cart view so CartPage mounts and reopens the dialog.
-      if (user && typeof window !== "undefined") {
-        if (sessionStorage.getItem("cinebook:resumeCheckout")) {
+
+      if (user) {
+        // Ensure session token is populated (try refresh cookie first, then full login exchange)
+        void initializeTokensForUser(user);
+
+        // If the user just signed in after being redirected from the checkout dialog,
+        // navigate to the cart view so CartPage mounts and reopens the dialog.
+        if (typeof window !== "undefined" && sessionStorage.getItem("cinebook:resumeCheckout")) {
           setView({ type: "cart" });
         }
+      } else {
+        tokenManager.clearAll();
       }
     });
 
@@ -216,8 +229,7 @@ export function useCinemaAppController() {
       setFavoritesLoading(true);
 
       try {
-        const token = await currentUser.getIdToken();
-        const response = await fetchFavorites(token);
+        const response = await fetchFavorites();
         if (!cancelled) {
           setFavoriteMovieIds(parseFavoriteMovieIds(response));
         }
@@ -238,6 +250,47 @@ export function useCinemaAppController() {
       cancelled = true;
     };
   }, [currentUser?.uid, currentUser]);
+
+  const refreshRecommendations = useCallback(async () => {
+    if (!currentUser) {
+      setRecommendations([]);
+      setRecommendationsSource(null);
+      setRecommendationsError("");
+      setRecommendationsLoading(false);
+      return;
+    }
+
+    setRecommendationsLoading(true);
+    setRecommendationsError("");
+
+    try {
+      const response = await fetchRecommendations();
+      const list = Array.isArray(response?.recommendations) ? response.recommendations : [];
+      setRecommendations(list);
+      setRecommendationsSource(typeof response?.source === "string" ? response.source : null);
+      if (typeof console !== "undefined") {
+        console.log("[recommendations]", {
+          source: response?.source ?? null,
+          count: list.length
+        });
+      }
+    } catch (error) {
+      setRecommendations([]);
+      setRecommendationsSource(null);
+      setRecommendationsError(getMeaningfulErrorMessage(error, "user"));
+      if (typeof console !== "undefined") {
+        console.warn("[recommendations] failed:", error);
+      }
+    } finally {
+      setRecommendationsLoading(false);
+    }
+  }, [currentUser]);
+
+  // Reload recommendations whenever the signed-in user changes (login/logout
+  // and tab refresh both trigger this).
+  useEffect(() => {
+    void refreshRecommendations();
+  }, [refreshRecommendations]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -424,6 +477,7 @@ export function useCinemaAppController() {
       bookings: confirmedBookings,
       warning
     });
+    void refreshRecommendations();
   };
 
   const cartCount = useMemo(() => getCartCount(cartItems), [cartItems]);
@@ -462,11 +516,11 @@ export function useCinemaAppController() {
     );
 
     try {
-      const token = await currentUser.getIdToken();
       const response = wasFavorite
-        ? await removeFavoriteMovie(movieIdKey, token)
-        : await addFavoriteMovie(movieIdKey, token);
+        ? await removeFavoriteMovie(movieIdKey)
+        : await addFavoriteMovie(movieIdKey);
       setFavoriteMovieIds(parseFavoriteMovieIds(response));
+      void refreshRecommendations();
     } catch (error) {
       setFavoriteMovieIds((previous) =>
         wasFavorite ? addFavoriteId(previous, movieIdKey) : removeFavoriteId(previous, movieIdKey)
@@ -547,6 +601,11 @@ export function useCinemaAppController() {
     handleToggleFavorite,
     navigateHome,
     navigateFavorites,
-    handleSignOut
+    handleSignOut,
+    recommendations,
+    recommendationsSource,
+    recommendationsLoading,
+    recommendationsError,
+    refreshRecommendations
   };
 }

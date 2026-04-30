@@ -47,6 +47,16 @@ class BookingsController {
     return await this.bookingsService.getReservedSeats({ movieId, showtime });
   }
 
+  // ── Seat locking ─────────────────────────────────────────────────────────
+
+  async lockSeat(authorization, body) {
+    return await this.bookingsService.lockSeat(body, authorization);
+  }
+
+  async unlockSeat(authorization, body) {
+    return await this.bookingsService.unlockSeat(body, authorization);
+  }
+
   async getPricing() {
     return this.bookingsService.getPricing();
   }
@@ -178,6 +188,32 @@ decorateMethod(
   "createDraftBooking",
   [Post("draft"), HttpCode(HttpStatus.CREATED), parameterDecorator(0, Body())],
   { paramTypes: [Object], returnType: Promise }
+);
+
+// ── Seat locking routes (must appear before ":bookingId/seats") ───────────
+
+decorateMethod(
+  BookingsController.prototype,
+  "lockSeat",
+  [
+    Post("seats/lock"),
+    HttpCode(HttpStatus.OK),
+    parameterDecorator(0, Headers("authorization")),
+    parameterDecorator(1, Body())
+  ],
+  { paramTypes: [String, Object], returnType: Promise }
+);
+
+decorateMethod(
+  BookingsController.prototype,
+  "unlockSeat",
+  [
+    Post("seats/unlock"),
+    HttpCode(HttpStatus.OK),
+    parameterDecorator(0, Headers("authorization")),
+    parameterDecorator(1, Body())
+  ],
+  { paramTypes: [String, Object], returnType: Promise }
 );
 
 decorateMethod(

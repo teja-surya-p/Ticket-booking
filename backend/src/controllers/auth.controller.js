@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Patch, Post, Req, Res } from "@nestjs/common";
 import { decorateClass, decorateMethod, parameterDecorator } from "../common/nest-metadata.js";
 import { AuthService } from "../services/auth.service.js";
 
@@ -25,6 +25,28 @@ class AuthController {
 
   async notifyPasswordChanged(authorization) {
     return await this.authService.notifyPasswordChanged(authorization);
+  }
+
+  // ── Token-based auth ───────────────────────────────────────────────────────
+
+  async login(authorization, res) {
+    return await this.authService.login(authorization, res);
+  }
+
+  logout(res) {
+    return this.authService.logout(res);
+  }
+
+  refreshSession(req) {
+    return this.authService.refreshSession(req);
+  }
+
+  async refreshTokens(body, res) {
+    return this.authService.refreshTokens(body, res);
+  }
+
+  refreshAccess(authorization) {
+    return this.authService.refreshAccess(authorization);
   }
 }
 
@@ -94,6 +116,65 @@ decorateMethod(
     paramTypes: [String],
     returnType: Promise
   }
+);
+
+// ── Token-based auth routes ────────────────────────────────────────────────
+
+decorateMethod(
+  AuthController.prototype,
+  "login",
+  [
+    Post("login"),
+    HttpCode(HttpStatus.OK),
+    parameterDecorator(0, Headers("authorization")),
+    parameterDecorator(1, Res({ passthrough: true }))
+  ],
+  { paramTypes: [String, Object], returnType: Promise }
+);
+
+decorateMethod(
+  AuthController.prototype,
+  "logout",
+  [
+    Post("logout"),
+    HttpCode(HttpStatus.OK),
+    parameterDecorator(0, Res({ passthrough: true }))
+  ],
+  { paramTypes: [Object], returnType: Object }
+);
+
+decorateMethod(
+  AuthController.prototype,
+  "refreshSession",
+  [
+    Post("refresh-session"),
+    HttpCode(HttpStatus.OK),
+    parameterDecorator(0, Req())
+  ],
+  { paramTypes: [Object], returnType: Object }
+);
+
+decorateMethod(
+  AuthController.prototype,
+  "refreshTokens",
+  [
+    Post("refresh-tokens"),
+    HttpCode(HttpStatus.OK),
+    parameterDecorator(0, Body()),
+    parameterDecorator(1, Res({ passthrough: true }))
+  ],
+  { paramTypes: [Object, Object], returnType: Object }
+);
+
+decorateMethod(
+  AuthController.prototype,
+  "refreshAccess",
+  [
+    Post("refresh-access"),
+    HttpCode(HttpStatus.OK),
+    parameterDecorator(0, Headers("authorization"))
+  ],
+  { paramTypes: [String], returnType: Object }
 );
 
 decorateClass(AuthController, [Controller("auth")], [AuthService]);

@@ -1,6 +1,49 @@
 import { APICallHandler } from "./apiCallHandler";
 import { API_ENDPOINTS, QUERY_KEYS } from "./constants";
 import "./bookingApi.module.css";
+
+/**
+ * Returns a stable guest session ID stored in localStorage.
+ * Generates one on first call using crypto.randomUUID().
+ * Safe to call during SSR — returns null on the server.
+ */
+export function getOrCreateGuestSessionId() {
+  if (typeof window === "undefined") return null;
+  const key = "cinebook:guestSessionId";
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = `guest_${crypto.randomUUID()}`;
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+/**
+ * Acquires a 5-minute seat lock.
+ * payload: { movieId, showtime, seatId, lockedBy, isGuest }
+ */
+export function lockSeat(payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.lockSeat,
+    method: "POST",
+    operation: "Lock seat",
+    body: payload
+  });
+}
+
+/**
+ * Releases a seat lock.
+ * payload: { movieId, showtime, seatId, lockedBy }
+ */
+export function unlockSeat(payload) {
+  return APICallHandler({
+    url: API_ENDPOINTS.bookings.unlockSeat,
+    method: "POST",
+    operation: "Unlock seat",
+    body: payload
+  });
+}
+
 export function fetchReservedSeats(movieId, showtime) {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.seats,
@@ -27,17 +70,16 @@ export function fetchBookingQuote(payload) {
     body: payload
   });
 }
-export function createBooking(payload, token) {
+export function createBooking(payload) {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.create,
     method: "POST",
     operation: "Create booking",
-    body: payload,
-    token
+    body: payload
   });
 }
 
-export function fetchSavedCards(customerEmail, customerUid, token) {
+export function fetchSavedCards(customerEmail, customerUid) {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.card,
     method: "GET",
@@ -45,37 +87,33 @@ export function fetchSavedCards(customerEmail, customerUid, token) {
     query: {
       customerEmail,
       customerUid
-    },
-    token
+    }
   });
 }
 
-export function savePaymentCard(payload, token) {
+export function savePaymentCard(payload) {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.card,
     method: "POST",
     operation: "Save payment card",
-    body: payload,
-    token
+    body: payload
   });
 }
 
-export function updateSavedCard(cardId, payload, token) {
+export function updateSavedCard(cardId, payload) {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.cardById(encodeURIComponent(cardId)),
     method: "PATCH",
     operation: "Update saved card",
-    body: payload,
-    token
+    body: payload
   });
 }
 
-export function deleteSavedCard(cardId, token) {
+export function deleteSavedCard(cardId) {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.cardById(encodeURIComponent(cardId)),
     method: "DELETE",
-    operation: "Delete saved card",
-    token
+    operation: "Delete saved card"
   });
 }
 
@@ -120,12 +158,11 @@ export function saveBookingSeats(bookingId, payload) {
  * GET /api/v1/bookings/:bookingId/summary
  * Returns the full order summary. Requires Firebase Auth token (checkout step).
  */
-export function fetchBookingSummary(bookingId, token) {
+export function fetchBookingSummary(bookingId) {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.bookingSummary(encodeURIComponent(bookingId)),
     method: "GET",
-    operation: "Fetch booking summary",
-    token
+    operation: "Fetch booking summary"
   });
 }
 
@@ -136,12 +173,11 @@ export function fetchBookingSummary(bookingId, token) {
  * Returns all confirmed bookings for the authenticated user,
  * enriched with movieTitle and moviePoster. Requires Firebase Auth token.
  */
-export function fetchUserBookings(token) {
+export function fetchUserBookings() {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.mine,
     method: "GET",
-    operation: "Fetch user bookings",
-    token
+    operation: "Fetch user bookings"
   });
 }
 
@@ -163,11 +199,10 @@ export function verifyEmailOtp(email, code) {
   });
 }
 
-export function cancelBooking(bookingId, token) {
+export function cancelBooking(bookingId) {
   return APICallHandler({
     url: API_ENDPOINTS.bookings.cancel(encodeURIComponent(bookingId)),
     method: "PATCH",
-    operation: "Cancel booking",
-    token
+    operation: "Cancel booking"
   });
 }

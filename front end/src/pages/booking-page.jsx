@@ -20,7 +20,8 @@ function formatShowtime(value) {
 export function BookingPage({
   movie,
   showtime,
-  onBack
+  onBack,
+  currentUser
 }) {
   const {
     ROWS,
@@ -28,6 +29,9 @@ export function BookingPage({
     ticketTypes,
     reservedSeats,
     selectedSeats,
+    lockedSeats,
+    lockCountdown,
+    selfId,
     tickets,
     pricing,
     isLoadingContext,
@@ -48,7 +52,8 @@ export function BookingPage({
     handleCheckout
   } = useBookingPageController({
     movie,
-    showtime
+    showtime,
+    currentUser
   });
 
   return <div className={styles["booking-page-class-1"]}>
@@ -98,14 +103,54 @@ export function BookingPage({
                 }, (_, col) => {
                   const seatId = buildSeatId(row, col);
                   const isReserved = reservedSeats.has(seatId);
+                  const lockInfo = lockedSeats.get(seatId);
+                  const isLockedByOther = !isReserved && lockInfo && lockInfo.lockedBy !== selfId;
+                  const isUnavailable = isReserved || isLockedByOther;
                   const isSelected = selectedSeats.has(seatId);
-                  return <button key={seatId} disabled={isReserved} onClick={() => toggleSeat(seatId)} className={[styles["booking-page-class-20"], isReserved ? styles["booking-page-class-21"] : isSelected ? styles["booking-page-class-22"] : styles["booking-page-class-23"]].filter(Boolean).join(" ")} title={isReserved ? `Seat ${seatLabel(row, col)} - Reserved` : `Seat ${seatLabel(row, col)}`} aria-label={isReserved ? `Seat ${seatLabel(row, col)} reserved` : isSelected ? `Seat ${seatLabel(row, col)} selected` : `Select seat ${seatLabel(row, col)}`}>
-                            {col + 1}
-                          </button>;
+
+                  let seatTitle;
+                  if (isReserved) {
+                    seatTitle = `Seat ${seatLabel(row, col)} - Reserved`;
+                  } else if (isLockedByOther) {
+                    seatTitle = `Seat ${seatLabel(row, col)} - Temporarily held`;
+                  } else {
+                    seatTitle = `Seat ${seatLabel(row, col)}`;
+                  }
+
+                  let ariaLabel;
+                  if (isReserved) {
+                    ariaLabel = `Seat ${seatLabel(row, col)} reserved`;
+                  } else if (isLockedByOther) {
+                    ariaLabel = `Seat ${seatLabel(row, col)} temporarily held`;
+                  } else if (isSelected) {
+                    ariaLabel = `Seat ${seatLabel(row, col)} selected`;
+                  } else {
+                    ariaLabel = `Select seat ${seatLabel(row, col)}`;
+                  }
+
+                  return <button
+                    key={seatId}
+                    disabled={isUnavailable}
+                    onClick={() => toggleSeat(seatId)}
+                    className={[
+                      styles["booking-page-class-20"],
+                      isUnavailable ? styles["booking-page-class-21"] : isSelected ? styles["booking-page-class-22"] : styles["booking-page-class-23"]
+                    ].filter(Boolean).join(" ")}
+                    title={seatTitle}
+                    aria-label={ariaLabel}
+                  >
+                    {col + 1}
+                  </button>;
                 })}
                     </div>)}
                 </div>
               </div>}
+
+            {lockCountdown && (
+              <p className={styles["booking-page-class-49"]} style={{ textAlign: "center", marginTop: "0.5rem" }}>
+                Your selection expires in {lockCountdown}
+              </p>
+            )}
 
             <div className={styles["booking-page-class-24"]}>
               <div className={styles["booking-page-class-25"]}>
@@ -118,7 +163,7 @@ export function BookingPage({
               </div>
               <div className={styles["booking-page-class-25"]}>
                 <div className={styles["booking-page-class-28"]} />
-                Reserved
+                Unavailable
               </div>
             </div>
           </div>

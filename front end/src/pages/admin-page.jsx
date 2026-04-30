@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { CalendarPlus, Film, Plus, Edit2, Trash2, Eye, BarChart3, Copy, Upload, ChevronDown, X, Mail, LayoutGrid } from "lucide-react";
+import { CalendarPlus, Film, Plus, Edit2, Trash2, Eye, BarChart3, Copy, Upload, ChevronDown, X, Mail, LayoutGrid, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -13,15 +13,19 @@ import { getMoviePosterUrl } from "@/models/movie-media";
 import { getMovieGenreList, shouldShowMovieRating } from "@/models/movie-model";
 import styles from "./admin-page.module.css";
 
+// Showtimes are stored as UTC ISO strings (e.g. "2026-04-20T21:00:00.000Z").
+// TIME_SLOT_OPTIONS values ("10:00", "14:00", "17:00", "21:00") and
+// buildStartAtFromForm both treat times as UTC.  These helpers must therefore
+// extract the UTC date/time so the grid lookup keys always match.
 function toLocalDateKey(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return String(value).slice(0, 10);
   }
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -31,8 +35,8 @@ function toLocalTimeKey(value) {
     return String(value).slice(11, 16);
   }
 
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
 }
 
@@ -97,6 +101,10 @@ export function AdminPage({
     closePromotionDialog,
     handlePromotionChange,
     handleSendPromotion,
+    isSendingRecommendations,
+    recommendationSendResult,
+    recommendationError,
+    handleSendRecommendations,
     editingMovieShowtimes,
     showScheduleDialog,
     scheduleForm,
@@ -114,6 +122,7 @@ export function AdminPage({
     selectedHall,
     setSelectedHall,
     pendingSlots,
+    conflictSlots,
     showScheduleMovieHint,
     togglePendingSlot,
     triggerScheduleMovieHint,
@@ -220,7 +229,29 @@ export function AdminPage({
           <Mail className={styles["admin-icon"]} />
           Send Promotion
         </Button>
+        <Button
+          onClick={handleSendRecommendations}
+          variant="outline"
+          disabled={isSendingRecommendations}
+        >
+          <Sparkles className={styles["admin-icon"]} />
+          {isSendingRecommendations ? "Sending…" : "Send Recommendations"}
+        </Button>
       </div>
+
+      {/* Recommendation send result / error banner */}
+      {recommendationSendResult && (
+        <div className={styles["admin-banner-success"]}>
+          Recommendations sent successfully — <strong>{recommendationSendResult.sent ?? 0}</strong> email(s) sent,{" "}
+          <strong>{recommendationSendResult.skipped ?? 0}</strong> user(s) skipped,{" "}
+          <strong>{recommendationSendResult.failed ?? 0}</strong> failed.
+        </div>
+      )}
+      {recommendationError && (
+        <div className={styles["admin-banner-error"]}>
+          {recommendationError}
+        </div>
+      )}
 
       {/* Movie Cards (mobile) */}
       <div className={styles["admin-mobile-list"]}>
@@ -940,10 +971,10 @@ export function AdminPage({
 
                 const dates = (() => {
                   const today = new Date();
-                  today.setHours(0, 0, 0, 0);
+                  today.setUTCHours(0, 0, 0, 0);
                   return Array.from({ length: 30 }, (_, i) => {
                     const d = new Date(today);
-                    d.setDate(today.getDate() + i);
+                    d.setUTCDate(today.getUTCDate() + i);
                     return toLocalDateKey(d);
                   });
                 })();
@@ -977,6 +1008,7 @@ export function AdminPage({
                       <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "var(--primary)", display: "inline-block" }} /> Booked (other movie)</span>
                       {hasSelectedMovie && <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "#3b82f6", display: "inline-block" }} /> Selected movie</span>}
                       <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "rgba(34,197,94,0.3)", border: "1px solid #22c55e", display: "inline-block" }} /> Selected</span>
+                      {conflictSlots.size > 0 && <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><span style={{ width: "0.7rem", height: "0.7rem", borderRadius: "0.2rem", background: "rgba(239,68,68,0.25)", border: "1px solid #ef4444", display: "inline-block" }} /> Already booked</span>}
                     </div>
 
                     {hallsToShow.map((hall) => (
@@ -1005,7 +1037,8 @@ export function AdminPage({
                                   const isOtherMovieHere = booked && !isThisMovieHere;
                                   const pendingInThisHall =
                                     pendingSlots.find((s) => s.key === pendingSlotKey) ?? null;
-                                  const isPending = !booked && Boolean(pendingInThisHall);
+                                  const isConflict = !booked && conflictSlots.has(pendingSlotKey);
+                                  const isPending = !booked && !isConflict && Boolean(pendingInThisHall);
 
                                   let borderColor, background, color, cursor, titleText;
                                   if (isPastSlot) {
@@ -1020,6 +1053,9 @@ export function AdminPage({
                                   } else if (isOtherMovieHere) {
                                     borderColor = "var(--primary)"; background = "var(--primary)"; color = "var(--primary-foreground)";
                                     cursor = "pointer"; titleText = `${booked.movieTitle} — click to cancel`;
+                                  } else if (isConflict) {
+                                    borderColor = "#ef4444"; background = "rgba(239,68,68,0.18)"; color = "#ef4444";
+                                    cursor = "pointer"; titleText = `${slot.label} is already booked in this hall — click to deselect`;
                                   } else if (isPending) {
                                     borderColor = "#22c55e"; background = "rgba(34,197,94,0.18)"; color = "#22c55e";
                                     cursor = "pointer"; titleText = `Deselect ${slot.label}`;
@@ -1057,16 +1093,18 @@ export function AdminPage({
                                         background,
                                         color,
                                         opacity: isPastSlot ? 0.65 : 1,
+                                        boxShadow: isConflict ? "0 0 0 1px #ef4444" : undefined,
                                       }}
                                       onMouseEnter={(e) => {
-                                        if (!booked && !isPending && !isPastSlot) { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.color = "#22c55e"; }
+                                        if (!booked && !isPending && !isPastSlot && !isConflict) { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.color = "#22c55e"; }
                                       }}
                                       onMouseLeave={(e) => {
-                                        if (!booked && !isPending && !isPastSlot) { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.color = color; }
+                                        if (!booked && !isPending && !isPastSlot && !isConflict) { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.color = color; }
                                       }}
                                     >
                                       {slot.label}
                                       {(isThisMovieHere || isOtherMovieHere) && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem", opacity: 0.85 }}>✕</span>}
+                                      {isConflict && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem" }}>!</span>}
                                       {isPending && <span style={{ marginLeft: "0.3rem", fontSize: "0.65rem" }}>✓</span>}
                                     </button>
                                   );

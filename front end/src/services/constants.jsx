@@ -11,7 +11,8 @@ export const API_ROUTES = {
   auth: withPrefix("/auth"),
   favorites: withPrefix("/favorites"),
   showrooms: withPrefix("/showrooms"),
-  promoCodes: withPrefix("/promo-codes")
+  promoCodes: withPrefix("/promo-codes"),
+  recommendations: withPrefix("/recommendations")
 };
 export const API_ENDPOINTS = {
   movies: {
@@ -23,6 +24,8 @@ export const API_ENDPOINTS = {
   },
   bookings: {
     seats: `${API_ROUTES.bookings}/seats`,
+    lockSeat: `${API_ROUTES.bookings}/seats/lock`,
+    unlockSeat: `${API_ROUTES.bookings}/seats/unlock`,
     pricing: `${API_ROUTES.bookings}/pricing`,
     quote: `${API_ROUTES.bookings}/quote`,
     create: API_ROUTES.bookings,
@@ -53,7 +56,12 @@ export const API_ENDPOINTS = {
     register: `${API_ROUTES.auth}/register`,
     syncVerification: `${API_ROUTES.auth}/sync-verification`,
     profile: `${API_ROUTES.auth}/profile`,
-    passwordChanged: `${API_ROUTES.auth}/password-changed`
+    passwordChanged: `${API_ROUTES.auth}/password-changed`,
+    login: `${API_ROUTES.auth}/login`,
+    logout: `${API_ROUTES.auth}/logout`,
+    refreshSession: `${API_ROUTES.auth}/refresh-session`,
+    refreshTokens: `${API_ROUTES.auth}/refresh-tokens`,
+    refreshAccess: `${API_ROUTES.auth}/refresh-access`
   },
   favorites: {
     list: API_ROUTES.favorites,
@@ -63,6 +71,10 @@ export const API_ENDPOINTS = {
   showrooms: {
     list: API_ROUTES.showrooms,
     detail: (showroomId) => `${API_ROUTES.showrooms}/${showroomId}`
+  },
+  recommendations: {
+    list: API_ROUTES.recommendations,
+    sendAll: `${API_ROUTES.recommendations}/send-all`
   }
 };
 export const QUERY_KEYS = {

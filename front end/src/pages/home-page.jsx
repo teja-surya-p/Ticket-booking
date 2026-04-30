@@ -5,6 +5,7 @@ import { Calendar, Clock, Film, Play, Search, Sparkles } from "lucide-react";
 import { HomeHeroCarousel } from "@/components/home-hero-carousel";
 import { MovieCard } from "@/components/movie-card";
 import { MovieFilters } from "@/components/movie-filters";
+import { RecommendationsSection } from "@/components/recommendations-section";
 import {
   Dialog,
   DialogContent,
@@ -39,7 +40,11 @@ export function HomePage({
   onAddToCart = NO_OP,
   favoriteMovieIds = [],
   favoritePendingMovieIds = [],
-  currentUser = null
+  currentUser = null,
+  recommendations = [],
+  recommendationsSource = null,
+  recommendationsLoading = false,
+  recommendationsError = ""
 }) {
   const normalizedSearchQuery = String(searchQuery || "").trim();
   const hasSearchQuery = normalizedSearchQuery.length > 0;
@@ -229,6 +234,17 @@ export function HomePage({
           onToggleFavorite={onToggleFavorite}
           favoriteMovieIds={favoriteMovieIds}
           favoritePendingMovieIds={favoritePendingMovieIds}
+        />
+      )}
+
+      {!isFocusedMode && Boolean(currentUser?.uid) && (
+        <RecommendationsSection
+          recommendations={recommendations}
+          isLoading={recommendationsLoading}
+          error={recommendationsError}
+          source={recommendationsSource}
+          onMovieClick={onMovieClick}
+          onBookNow={handleBookNow}
         />
       )}
 

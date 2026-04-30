@@ -21,6 +21,7 @@ import { ProfileNotificationService } from "./profile-notification.service.js";
 import { PromoCodesService } from "./promo-codes.service.js";
 import { ShowroomsService } from "./showrooms.service.js";
 import { ShowtimesService } from "./showtimes.service.js";
+import { SeatLocksService } from "./seat-locks.service.js";
 
 /**
  * BookingsService
@@ -36,7 +37,7 @@ import { ShowtimesService } from "./showtimes.service.js";
  *      (promotions, taxes) without modifying this class.
  */
 class BookingsService {
-  constructor(firestoreService, moviesService, authGuardService, pricingStrategy, showtimesService, promoCodesService, showroomsService, profileNotificationService) {
+  constructor(firestoreService, moviesService, authGuardService, pricingStrategy, showtimesService, promoCodesService, showroomsService, profileNotificationService, seatLocksService) {
     this.firestoreService = firestoreService;
     this.moviesService = moviesService;
     this.authGuardService = authGuardService;
@@ -45,6 +46,7 @@ class BookingsService {
     this.promoCodesService = promoCodesService;
     this.showroomsService = showroomsService;
     this.profileNotificationService = profileNotificationService;
+    this.seatLocksService = seatLocksService;
   }
 
   // ── Card management ──────────────────────────────────────────────────────
@@ -181,28 +183,43 @@ class BookingsService {
       new Set(bookings.flatMap((booking) => booking.seatIds))
     ).sort();
 
-    // Resolve the hall for this showtime so the frontend can render the
-    // correct seat grid without a separate API call.
-    let showroomId = null;
-    let showroomName = null;
-    let rows = null;
-    let cols = null;
-    try {
-      const { showroom } = await this.resolveShowroomForShowtime(query.movieId, query.showtime);
-      if (showroom) {
-        showroomId = showroom.showroomId ?? null;
-        showroomName = showroom.name ?? null;
-        rows = showroom.layout?.rows ?? null;
-        cols = showroom.layout?.cols ?? null;
-      }
-    } catch {
-      // Hall lookup is best-effort; reserved seats are still returned.
-    }
+    // Fetch active seat locks in parallel with showroom resolution.
+    let lockedSeats = {};
+    const [showroomResult] = await Promise.all([
+      (async () => {
+        let showroomId = null;
+        let showroomName = null;
+        let rows = null;
+        let cols = null;
+        try {
+          const { showroom } = await this.resolveShowroomForShowtime(query.movieId, query.showtime);
+          if (showroom) {
+            showroomId = showroom.showroomId ?? null;
+            showroomName = showroom.name ?? null;
+            rows = showroom.layout?.rows ?? null;
+            cols = showroom.layout?.cols ?? null;
+          }
+        } catch {
+          // Hall lookup is best-effort; reserved seats are still returned.
+        }
+        return { showroomId, showroomName, rows, cols };
+      })(),
+      (async () => {
+        try {
+          lockedSeats = await this.seatLocksService.getLocksForShowtime(query.movieId, query.showtime);
+        } catch {
+          // Lock lookup is best-effort; seat availability is still returned.
+        }
+      })()
+    ]);
+
+    const { showroomId, showroomName, rows, cols } = showroomResult;
 
     return {
       movieId: query.movieId,
       showtime: query.showtime,
       reservedSeats,
+      lockedSeats,
       showroomId,
       showroomName,
       rows,
@@ -430,6 +447,19 @@ class BookingsService {
     await this.validateAndNormalizePayload(payload);
     const savedCard = await this.requireSavedCard(customerEmail, paymentCardId, customerUid);
     const uniqueSeatIds = Array.from(new Set(payload.seatIds));
+
+    // Verify that the caller still holds valid locks on all requested seats.
+    // Accepts either the authenticated UID or a guestSessionId (for guests who
+    // locked seats before logging in).
+    const guestSessionId = typeof payload.guestSessionId === "string" ? payload.guestSessionId.trim() : null;
+    await this.seatLocksService.verifyLockOwnership(
+      uniqueSeatIds,
+      payload.movieId,
+      payload.showtime,
+      customerUid,
+      guestSessionId
+    );
+
     const existingReservedSeats = new Set(
       (
         await this.getReservedSeats({
@@ -499,7 +529,80 @@ class BookingsService {
       console.error("[BookingsService] Booking confirmation email failed:", err?.message ?? err);
     });
 
+    // Fire-and-forget: release all seat locks held by this user/session for this showtime
+    const lockOwner = guestSessionId || customerUid;
+    if (lockOwner) {
+      this.seatLocksService.releaseLocksForUser(lockOwner, payload.movieId, payload.showtime).catch((err) => {
+        console.error("[BookingsService] Lock release after booking failed:", err?.message ?? err);
+      });
+    }
+
     return { bookingId: booking.bookingId, status: booking.status, total: booking.total };
+  }
+
+  // ── Seat locking (delegates to SeatLocksService) ─────────────────────────
+
+  /**
+   * Acquires a 5-minute seat lock. If an auth token is present the backend
+   * overrides `lockedBy` with the verified UID to prevent spoofing.
+   */
+  async lockSeat(payload, authorization) {
+    let lockedBy = typeof payload?.lockedBy === "string" ? payload.lockedBy.trim() : "";
+    const isGuest = payload?.isGuest === true;
+
+    // If the caller is authenticated, trust the verified UID over the payload value
+    if (authorization && typeof authorization === "string" && authorization.startsWith("Bearer ")) {
+      try {
+        const { customerUid } = await this.authGuardService.requireAuthenticatedCustomer(authorization, {});
+        if (customerUid) lockedBy = customerUid;
+      } catch {
+        // Not authenticated — use payload lockedBy (guest)
+      }
+    }
+
+    if (!lockedBy) {
+      throw new BadRequestException("lockedBy is required");
+    }
+
+    const movieId = Number(payload?.movieId);
+    const showtime = typeof payload?.showtime === "string" ? payload.showtime.trim() : "";
+    const seatId = typeof payload?.seatId === "string" ? payload.seatId.trim() : "";
+
+    if (!Number.isFinite(movieId) || movieId <= 0) throw new BadRequestException("movieId must be a positive number");
+    if (!showtime) throw new BadRequestException("showtime is required");
+    if (!seatId) throw new BadRequestException("seatId is required");
+
+    return this.seatLocksService.acquireLock(movieId, showtime, seatId, lockedBy, !authorization ? true : isGuest);
+  }
+
+  /**
+   * Releases a seat lock if the caller is the current owner.
+   */
+  async unlockSeat(payload, authorization) {
+    let lockedBy = typeof payload?.lockedBy === "string" ? payload.lockedBy.trim() : "";
+
+    if (authorization && typeof authorization === "string" && authorization.startsWith("Bearer ")) {
+      try {
+        const { customerUid } = await this.authGuardService.requireAuthenticatedCustomer(authorization, {});
+        if (customerUid) lockedBy = customerUid;
+      } catch {
+        // Not authenticated — use payload lockedBy (guest)
+      }
+    }
+
+    if (!lockedBy) {
+      throw new BadRequestException("lockedBy is required");
+    }
+
+    const movieId = Number(payload?.movieId);
+    const showtime = typeof payload?.showtime === "string" ? payload.showtime.trim() : "";
+    const seatId = typeof payload?.seatId === "string" ? payload.seatId.trim() : "";
+
+    if (!Number.isFinite(movieId) || movieId <= 0) throw new BadRequestException("movieId must be a positive number");
+    if (!showtime) throw new BadRequestException("showtime is required");
+    if (!seatId) throw new BadRequestException("seatId is required");
+
+    return this.seatLocksService.releaseLock(movieId, showtime, seatId, lockedBy);
   }
 
   async getMyBookings(authorization) {
@@ -1120,7 +1223,8 @@ decorateClass(
     ShowtimesService,
     PromoCodesService,
     ShowroomsService,
-    ProfileNotificationService
+    ProfileNotificationService,
+    SeatLocksService
   ]
 );
 

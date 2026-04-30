@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./constants";
+import { tokenManager } from "./tokenManager";
 import "./apiCallHandler.module.css";
 export const getBaseURL = () => API_BASE_URL;
 export class APICallError extends Error {
@@ -68,12 +69,16 @@ export const APICallHandler = async options => {
     body,
     query,
     token,
-    allowEmptyResponse = false
+    credentials = "include",
+    allowEmptyResponse = false,
+    _isRetry = false
   } = options;
+  // Use explicit token first, then fall back to access token from localStorage
+  const resolvedToken = token ?? tokenManager.getAccessToken();
   const headers = {
     "Content-Type": "application/json",
-    ...(token ? {
-      Authorization: `Bearer ${token}`
+    ...(resolvedToken ? {
+      Authorization: `Bearer ${resolvedToken}`
     } : {}),
     ...(header ?? {})
   };
@@ -82,8 +87,36 @@ export const APICallHandler = async options => {
     const response = await fetch(requestUrl, {
       method,
       headers,
+      credentials,
       body: body !== undefined ? JSON.stringify(body) : undefined
     });
+
+    // Auto-refresh on 401 (access token expired).
+    // _isRetry prevents recursive loops — refresh calls themselves must NOT retry.
+    if (response.status === 401 && !_isRetry) {
+      try {
+        // Lazy import to avoid circular dependency at module load time
+        const { refreshAccessToken, forceLogout } = await import("./authApi");
+
+        // If initialization is still in progress (page load), wait for it —
+        // the access token may already be set by the time it finishes.
+        await tokenManager.waitForInit();
+
+        // If init gave us a fresh access token, just retry without refreshing.
+        if (tokenManager.getAccessToken()) {
+          return APICallHandler({ ...options, _isRetry: true });
+        }
+
+        // Deduplicate: all concurrent 401s share one refresh attempt.
+        await tokenManager.getOrStartRefresh(() => refreshAccessToken());
+
+        return APICallHandler({ ...options, _isRetry: true });
+      } catch {
+        // Session token expired or missing — force logout.
+        const { forceLogout } = await import("./authApi");
+        forceLogout();
+      }
+    }
     if (response.status === 204) {
       return undefined;
     }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { buildAdminIssueReport, getMeaningfulErrorMessage } from "@/services/apiErrorUtils";
 import { uploadMovieAssetToStorage } from "@/services/firebaseStorage";
 import { cancelAdminShowtime, fetchAllAdminShowtimes, scheduleShowtime, sendPromotion } from "@/services/adminApi";
+import { sendRecommendationsToAll } from "@/services/recommendationsApi";
 import { fetchMovieShowtimes } from "@/services/moviesApi";
 import {
   createShowroom,
@@ -154,6 +155,10 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   const [promotionSendResult, setPromotionSendResult] = useState(null);
   const [promotionError, setPromotionError] = useState(null);
 
+  const [isSendingRecommendations, setIsSendingRecommendations] = useState(false);
+  const [recommendationSendResult, setRecommendationSendResult] = useState(null);
+  const [recommendationError, setRecommendationError] = useState(null);
+
   const [editingMovieShowtimes, setEditingMovieShowtimes] = useState([]);
 
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
@@ -166,6 +171,7 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   const [isLoadingAllShows, setIsLoadingAllShows] = useState(false);
   const [selectedHall, setSelectedHall] = useState("");
   const [pendingSlots, setPendingSlots] = useState([]);
+  const [conflictSlots, setConflictSlots] = useState(new Set());
   const [showScheduleMovieHint, setShowScheduleMovieHint] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -588,6 +594,20 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     }
   };
 
+  const handleSendRecommendations = async () => {
+    setIsSendingRecommendations(true);
+    setRecommendationSendResult(null);
+    setRecommendationError(null);
+    try {
+      const result = await sendRecommendationsToAll();
+      setRecommendationSendResult(result);
+    } catch (error) {
+      setRecommendationError(getMeaningfulErrorMessage(error, "admin"));
+    } finally {
+      setIsSendingRecommendations(false);
+    }
+  };
+
   const loadAllScheduledShows = () => {
     setIsLoadingAllShows(true);
     fetchAllAdminShowtimes()
@@ -639,6 +659,7 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     setScheduleError(null);
     setScheduleSuccess(null);
     setShowScheduleMovieHint(false);
+    setConflictSlots(new Set());
     setShowScheduleDialog(true);
     loadAllScheduledShows();
   };
@@ -646,6 +667,7 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
   const closeScheduleDialog = () => {
     setShowScheduleDialog(false);
     setPendingSlots([]);
+    setConflictSlots(new Set());
     setShowScheduleMovieHint(false);
     if (scheduleMovieHintTimeoutRef.current) {
       window.clearTimeout(scheduleMovieHintTimeoutRef.current);
@@ -689,6 +711,12 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
       if (exists) return prev.filter((s) => s.key !== key);
       return [...prev, { key, dateKey, slotValue, hallName, showroomId: room.showroomId }];
     });
+    setConflictSlots((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
     setScheduleError(null);
     setScheduleSelectedRoom(room.showroomId);
     setScheduleForm((prev) => ({ ...prev, date: dateKey, timeSlot: slotValue }));
@@ -700,6 +728,7 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
 
       if (key === "movieId") {
         setPendingSlots([]);
+        setConflictSlots(new Set());
         setScheduleSelectedRoom("");
         setScheduleError(null);
         setScheduleSuccess(null);
@@ -724,11 +753,15 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
 
     setIsScheduling(true);
     const errors = [];
+    const newConflictKeys = new Set();
+    const successfulKeys = new Set();
     let successCount = 0;
+
     for (const slot of pendingSlots) {
       const startDate = new Date(buildStartAtFromForm(slot.dateKey, slot.slotValue));
       if (Number.isNaN(startDate.getTime()) || startDate < now) {
         errors.push(`${slot.hallName} ${slot.dateKey} ${slot.slotValue} is no longer available.`);
+        successfulKeys.add(slot.key); // treat as resolved — remove from pending
         continue;
       }
 
@@ -739,24 +772,34 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
           startAt: startDate.toISOString()
         });
         successCount++;
+        successfulKeys.add(slot.key);
       } catch (err) {
-        errors.push(getMeaningfulErrorMessage(err, "admin"));
+        const isConflict = err?.status === 409;
+        if (isConflict) {
+          newConflictKeys.add(slot.key);
+          errors.push(`${slot.hallName} ${slot.slotValue} on ${slot.dateKey} is already booked.`);
+        } else {
+          errors.push(getMeaningfulErrorMessage(err, "admin"));
+          successfulKeys.add(slot.key); // non-conflict errors: remove from pending
+        }
       }
     }
 
     setIsScheduling(false);
-    setPendingSlots([]);
-    setScheduleSelectedRoom("");
-    setScheduleForm((prev) => ({
-      ...prev,
-      date: "",
-      timeSlot: ""
-    }));
+    // Keep only conflict slots in pending so they stay highlighted red in the grid
+    setPendingSlots((prev) => prev.filter((s) => newConflictKeys.has(s.key)));
+    setConflictSlots(newConflictKeys);
+    if (successfulKeys.size === pendingSlots.length && newConflictKeys.size === 0) {
+      setScheduleSelectedRoom("");
+      setScheduleForm((prev) => ({ ...prev, date: "", timeSlot: "" }));
+    }
     loadAllScheduledShows();
     if (errors.length === 0) {
       setScheduleSuccess(`${successCount} show${successCount !== 1 ? "s" : ""} scheduled successfully!`);
     } else if (successCount > 0) {
-      setScheduleSuccess(`${successCount} scheduled. ${errors.length} failed: ${errors[0]}`);
+      setScheduleSuccess(`${successCount} scheduled. ${newConflictKeys.size > 0 ? `${newConflictKeys.size} slot${newConflictKeys.size !== 1 ? "s" : ""} highlighted in red are already booked — deselect to dismiss.` : errors[0]}`);
+    } else if (newConflictKeys.size > 0) {
+      setScheduleError(`${newConflictKeys.size === 1 ? "That time slot is" : `${newConflictKeys.size} time slots are`} already booked (highlighted in red). Choose different slots.`);
     } else {
       setScheduleError(errors[0] ?? "Scheduling failed.");
     }
@@ -860,6 +903,10 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     closePromotionDialog,
     handlePromotionChange,
     handleSendPromotion,
+    isSendingRecommendations,
+    recommendationSendResult,
+    recommendationError,
+    handleSendRecommendations,
     editingMovieShowtimes,
     showScheduleDialog,
     scheduleForm,
@@ -877,6 +924,7 @@ export function useAdminPageController({ movies, onCreateMovie, onUpdateMovie, o
     selectedHall,
     setSelectedHall,
     pendingSlots,
+    conflictSlots,
     showScheduleMovieHint,
     togglePendingSlot,
     triggerScheduleMovieHint,
